@@ -1786,11 +1786,5 @@
   </data>
  </layer>
  <objectgroup name="objects"/>
- <objectgroup name="players">
-  <object id="1" gid="102" x="904.394" y="231.97" width="70" height="70">
-   <properties>
-    <property name="num0" value=""/>
-   </properties>
-  </object>
- </objectgroup>
+ <objectgroup name="players"/>
 </map>
