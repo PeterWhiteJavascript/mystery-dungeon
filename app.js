@@ -1,14 +1,10 @@
-var cool = require('cool-ascii-faces');
+
 var express = require('express');
 var app = express();
 var server = require('http').Server(app);
 var io = require('socket.io')(server);
 
 app.use(express.static(__dirname + '/public'));
-
-app.get('/cool', function(request, response) {
-  response.send(cool());
-});
 
 app.get('/', function(req, res){
   res.render('/index.html');
