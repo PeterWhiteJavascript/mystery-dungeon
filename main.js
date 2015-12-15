@@ -79,7 +79,7 @@ Q.startGame = function(){
         //The current music
         currentMusic:"",
         
-        startLevel:[0,"first_plains0_0"],
+        startLevel:[0,"first_plains0_2"],
         
         playerMenuPos:"right",
         

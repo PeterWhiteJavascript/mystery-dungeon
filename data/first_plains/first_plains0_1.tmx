@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<map version="1.0" orientation="orthogonal" renderorder="left-down" width="25" height="25" tilewidth="70" tileheight="70" nextobjectid="1">
+<map version="1.0" orientation="orthogonal" renderorder="left-down" width="25" height="25" tilewidth="70" tileheight="70" nextobjectid="2">
  <tileset firstgid="1" name="tiles" tilewidth="70" tileheight="70" tilecount="100">
   <image source="../../images/tiles.png" width="700" height="700"/>
   <tile id="1">
@@ -1786,5 +1786,11 @@
   </data>
  </layer>
  <objectgroup name="objects"/>
- <objectgroup name="players"/>
+ <objectgroup name="players">
+  <object id="1" gid="102" x="904.394" y="231.97" width="70" height="70">
+   <properties>
+    <property name="num0" value=""/>
+   </properties>
+  </object>
+ </objectgroup>
 </map>
