@@ -1,0 +1,34 @@
+{
+  "name": "mysterydungeon",
+  "version": "1.0.0",
+  "keywords": [
+    "util",
+    "functional",
+    "server",
+    "client",
+    "browser"
+  ],
+  "author": "Peter",
+  "contributors": [],
+  "dependencies": {
+    "express": "^4.13.3",
+    "socket.io": "^1.3.7"
+  },
+  "main": "Gruntfile.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/PeterWhiteJavascript/mystery-dungeon.git"
+  },
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/PeterWhiteJavascript/mystery-dungeon/issues"
+  },
+  "homepage": "https://github.com/PeterWhiteJavascript/mystery-dungeon#readme",
+  "description": ""
+}
