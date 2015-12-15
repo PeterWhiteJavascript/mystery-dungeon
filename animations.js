@@ -1,5 +1,5 @@
 Quintus.Animations = function(Q){
-
+var a;
 Q.setUpAnimations=function(){
     Q.sheet("sprites",
         "sprites.png",
