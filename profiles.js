@@ -82,7 +82,7 @@ var RP = {
         "Estevan": {
             "name": "Estevan",
             "species": "Totodile",
-            "level": 8,
+            "level": 83,
             "exp": 680,
             "curHp": 51,
             "gender": "M",
