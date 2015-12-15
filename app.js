@@ -47,5 +47,5 @@ setInterval(function () {
   tagged = false;
 }, 3000);
 
-server.listen(8080);
-console.log("Multiplayer app listening on port 8080");
+server.listen(5000);
+console.log("Multiplayer app listening on port 5000");
