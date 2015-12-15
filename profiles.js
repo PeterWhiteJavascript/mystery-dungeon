@@ -754,7 +754,7 @@ RP.monsters={
         
         "exp":72,
         "types": [
-            "Ghost"
+            "Water"
         ],
         "baseStats":{
             "hp":5,
