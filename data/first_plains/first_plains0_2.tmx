@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<map version="1.0" orientation="orthogonal" renderorder="left-down" width="25" height="25" tilewidth="70" tileheight="70" nextobjectid="6">
+<map version="1.0" orientation="orthogonal" renderorder="left-down" width="25" height="25" tilewidth="70" tileheight="70" nextobjectid="10">
  <tileset firstgid="1" name="tiles" tilewidth="70" tileheight="70" tilecount="100">
   <image source="../../images/tiles.png" width="700" height="700"/>
   <tile id="1">
@@ -1693,11 +1693,6 @@
    <tile gid="4"/>
    <tile gid="4"/>
    <tile gid="4"/>
-   <tile gid="15"/>
-   <tile gid="15"/>
-   <tile gid="15"/>
-   <tile gid="15"/>
-   <tile gid="15"/>
    <tile gid="4"/>
    <tile gid="4"/>
    <tile gid="4"/>
@@ -1717,14 +1712,6 @@
    <tile gid="4"/>
    <tile gid="4"/>
    <tile gid="4"/>
-   <tile gid="15"/>
-   <tile gid="15"/>
-   <tile gid="15"/>
-   <tile gid="15"/>
-   <tile gid="15"/>
-   <tile gid="15"/>
-   <tile gid="15"/>
-   <tile gid="15"/>
    <tile gid="4"/>
    <tile gid="4"/>
    <tile gid="4"/>
@@ -1741,15 +1728,6 @@
    <tile gid="4"/>
    <tile gid="4"/>
    <tile gid="4"/>
-   <tile gid="15"/>
-   <tile gid="15"/>
-   <tile gid="15"/>
-   <tile gid="15"/>
-   <tile gid="15"/>
-   <tile gid="15"/>
-   <tile gid="15"/>
-   <tile gid="15"/>
-   <tile gid="15"/>
    <tile gid="4"/>
    <tile gid="4"/>
    <tile gid="4"/>
@@ -1766,15 +1744,37 @@
    <tile gid="4"/>
    <tile gid="4"/>
    <tile gid="4"/>
-   <tile gid="15"/>
-   <tile gid="15"/>
-   <tile gid="15"/>
-   <tile gid="15"/>
-   <tile gid="15"/>
-   <tile gid="15"/>
-   <tile gid="15"/>
-   <tile gid="15"/>
-   <tile gid="15"/>
+   <tile gid="4"/>
+   <tile gid="4"/>
+   <tile gid="4"/>
+   <tile gid="4"/>
+   <tile gid="4"/>
+   <tile gid="4"/>
+   <tile gid="4"/>
+   <tile gid="4"/>
+   <tile gid="4"/>
+   <tile gid="4"/>
+   <tile gid="4"/>
+   <tile gid="4"/>
+   <tile gid="4"/>
+   <tile gid="4"/>
+   <tile gid="4"/>
+   <tile gid="4"/>
+   <tile gid="4"/>
+   <tile gid="4"/>
+   <tile gid="4"/>
+   <tile gid="4"/>
+   <tile gid="4"/>
+   <tile gid="4"/>
+   <tile gid="4"/>
+   <tile gid="4"/>
+   <tile gid="4"/>
+   <tile gid="4"/>
+   <tile gid="4"/>
+   <tile gid="4"/>
+   <tile gid="4"/>
+   <tile gid="4"/>
+   <tile gid="4"/>
    <tile gid="4"/>
    <tile gid="4"/>
    <tile gid="4"/>
@@ -1787,7 +1787,9 @@
  </layer>
  <objectgroup name="objects"/>
  <objectgroup name="players">
-  <object id="5" gid="101" x="560" y="140" width="70" height="70">
+  <object id="7" gid="101" x="420" y="210" width="70" height="70"/>
+  <object id="8" gid="101" x="420" y="210" width="70" height="70"/>
+  <object id="9" gid="101" x="420" y="210" width="70" height="70">
    <properties>
     <property name="num" value="0"/>
    </properties>
