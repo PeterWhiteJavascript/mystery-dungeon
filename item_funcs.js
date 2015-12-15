@@ -1,4 +1,5 @@
 Quintus.ItemFuncs=function(Q){  
+   var  asdasd;
     RP.itemFuncs={
         stat:function(props,user){
             var keys = Object.keys(props.effect[1]);
