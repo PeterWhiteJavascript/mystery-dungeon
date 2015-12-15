@@ -14,7 +14,7 @@ Q.givePlayerProperties=function(stage){
 Q.Sprite.extend("Trigger",{
     init: function(p) {
         this._super(p, {
-            
+            p:45
         });
     },
     checkLocation:function(){
