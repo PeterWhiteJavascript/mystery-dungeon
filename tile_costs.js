@@ -237,8 +237,7 @@ Q.getMoveSpeed=function(tile,obj){
                 stepDelay=0.3;
             }
             if(type1==="Water"){
-                //stepDelay=0.2;
-                stepDelay=0.01;
+                stepDelay=0.2;
             }
             break;
         case "SPRITE_STORMYWATER":
