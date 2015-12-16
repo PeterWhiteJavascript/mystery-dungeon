@@ -552,9 +552,26 @@ Q.component("stepControls", {
 
             }
         }
+        p.socket.emit('update', { playerId: p.playerId, x: p.x, y: p.y, sheet: p.sheet});
         
     }
 });
+
+Q.Sprite.extend('Actor', {
+    init: function (p) {
+      this._super(p, {
+        update: true
+      });
+
+      var temp = this;
+      setInterval(function () {
+        if (!temp.p.update) {
+          temp.destroy();
+        }
+        temp.p.update = false;
+      }, 3000);
+    } 
+  });
 
 Q.Sprite.extend("dirTri",{
     init: function(p) {
@@ -1411,7 +1428,6 @@ Q.component("commonPlayer", {
                 this.initialize();
                 this.playStand(this.p.dir);
             }
-
         }
     }
 });
@@ -1598,8 +1614,7 @@ Q.Sprite.extend("Player",{
         this.add("commonPlayer,animations,attacker");
         this.on("step",this,"checkMenu");
         this.on("atDest",this,"checkTrigger");
-        
-        this.p.num=Q("Player").items.length;
+        this.p.num=0;
     },
     checkTrigger:function(){
         Q("Trigger").invoke("checkLocation");
@@ -1674,6 +1689,7 @@ Q.Sprite.extend("Player",{
         }
         //[x,y]
         this.p.location = this.setLocation();
+        this.addControls();
         this.p.initialize = false;
     },
     addControls:function(){

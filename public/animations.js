@@ -1,97 +1,25 @@
 Quintus.Animations = function(Q){
-var a;
 Q.setUpAnimations=function(){
-    Q.sheet("sprites",
-        "sprites.png",
+    var toSheet = [
+        ['sprites','sprites.png',96,96],
+        ['berries','berries.png',83,101],
+        
+        ['Aipom','Aipom60x60.png',60,60],
+        ['Totodile','Totodile60x60.png',60,60],
+        ['Chimchar','Aipom60x60.png',60,60],
+        ['Deino','Deino60x60.png',60,60],
+        ['Dratini','Dratini.png',70,70]
+    ];
+    for(j=0;j<toSheet.length;j++){
+        Q.sheet(toSheet[j][0],
+        "/images/"+toSheet[j][1],
         {
-            tilew:96,
-            tileh:96,
-            sx:0,
-            sy:0
+           tilew:toSheet[j][2],
+           tileh:toSheet[j][3],
+           sx:0,
+           sy:0
         });
-    Q.sheet("Aipom",
-        "Aipom60x60.png",
-        {
-            tilew:60,
-            tileh:60,
-            sx:0,
-            sy:0
-        });
-    
-    Q.sheet("Totodile",
-        "Totodile60x60.png",
-        {
-            tilew:60,
-            tileh:60,
-            sx:0,
-            sy:0
-        });
-    
-    Q.sheet("Chimchar",
-        "Aipom60x60.png",
-        {
-            tilew:60,
-            tileh:60,
-            sx:0,
-            sy:0
-        });
-    Q.sheet("Deino",
-        "Deino60x60.png",
-        {
-            tilew:60,
-            tileh:60,
-            sx:0,
-            sy:0
-        });
-    Q.sheet("Dratini",
-        "Dratini.png",
-        {
-            tilew:70,
-            tileh:70,
-            sx:0,
-            sy:0
-        });
-    Q.sheet("Riolu",
-        "Aipom60x60.png",
-        {
-            tilew:60,
-            tileh:60,
-            sx:0,
-            sy:0
-        });
-    Q.sheet("Piplup",
-        "Aipom60x60.png",
-        {
-            tilew:60,
-            tileh:60,
-            sx:0,
-            sy:0
-        });
-    Q.sheet("Spinarak",
-        "Aipom60x60.png",
-        {
-            tilew:60,
-            tileh:60,
-            sx:0,
-            sy:0
-        });
-    Q.sheet("Grimer",
-        "Aipom60x60.png",
-        {
-            tilew:60,
-            tileh:60,
-            sx:0,
-            sy:0
-        });
-    Q.sheet("berries",
-        "berries.png",
-        {
-            tilew:83,
-            tileh:101,
-            sx:0,
-            sy:0
-        });
-
+    };
 
     var standRate = 1/3;
     var walkRate = 1/6;

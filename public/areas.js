@@ -204,7 +204,7 @@ Q.addViewport=function(obj){
         if(stage.lists.TileLayer[1].p.h<Q.height){minY=-Q.height;maxY=stage.lists.TileLayer[1].p.h;};
         Q.stage(1).follow(obj,{x:true,y:true},{minX: minX, maxX: maxX, minY: minY,maxY:maxY});
     }
-}
+};
 Q.getPath = function(to){
     var path = "";
     var pathNumX="";
@@ -234,62 +234,6 @@ Q.getPath = function(to){
     pathNumX=parseInt(pathNumX);
     pathNumY=parseInt(pathNumY);
     return [path,[pathNumX,pathNumY]];
-};
-
-Q.goToStage = function(toDoor, whereTo, playerLoc){
-    var levels = Q.state.get("levelData");
-    var stageNum=1;
-    //If the player is not actually going to a scene that is being staged
-    //Stage it on num -100 which is behind the game and then clear it
-    if(toDoor<0){
-        stageNum=-100;
-    }
-    var currentPath = Q.getPath(whereTo);
-    //Check if the player has been to a level before
-    for(i=0;i<levels.length;i++){
-        if(levels[i].id===whereTo){
-            Q.stageScene(whereTo,stageNum,{toDoor:toDoor,path:currentPath[0],pathNum:currentPath[1],stageNum:stageNum,playerLoc:playerLoc});
-            return;
-        }
-    }
-    //CODE BELOW WON'T RUN IF THE PLAYER HAS BEEN TO THE STAGE BEFORE (FIRST TIME ONLY)
-    //If the level hasn't been gone to yet
-    Q.scene(""+whereTo,function(stage){
-        //Q.stageScene("background",0,{path:stage.options.path});
-        Q.stageTMX(""+stage.options.path+"/"+whereTo+".tmx",stage);
-        Q.stage(1).add("viewport");
-        if(stage.options.stageNum>=0){
-            //Q.getMusic(stage.options.path);
-            Q.givePlayerProperties(stage);
-            Q.getPlayers();
-            if(Q.state.get("phase")===1){
-                setTimeout(function(){
-                    Q.addViewport(Q.state.get("turnOrder")[0]);
-                    Q.state.get("turnOrder")[0].addControls();
-                    Q.state.get("turnOrder")[0].setMyTurn();
-                    //Q.stageScene("tophud",3,{chars:Q.state.get("turnOrder")});
-                    var events = Q.getEvents(whereTo);
-                    Q.setEvents(stage,events);
-                },10);
-            } 
-            else if(Q.state.get("phase")===2){
-                setTimeout(function(){
-                    Q.state.get("turnOrder")[0].turnStart();
-                    //Q.stageScene("tophud",3,{chars:Q.state.get("turnOrder")});
-                    var events = Q.getEvents(whereTo);
-                    Q.setEvents(stage,events);
-                },10);
-            }
-            
-            /*if(THIS STAGE IS A CAVE LEVEL)
-            Q.stageScene("fog",2);
-            */
-       }
-    });
-    Q.loadTMX(currentPath[0]+"/"+whereTo+".tmx",function(){
-        Q.stageScene(whereTo,stageNum,{toDoor:toDoor,path:currentPath[0],pathNum:currentPath[1],stageNum:stageNum,playerLoc:playerLoc});
-    });
-    
 };
 
 };

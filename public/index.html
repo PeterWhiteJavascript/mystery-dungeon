@@ -22,8 +22,13 @@ and open the template in the editor.
         <script src='lib/quintus_ui.js'></script>
         <script src='lib/quintus_audio.js'></script>
         
-        <script type="text/javascript" src="lib/astar.js"></script>
+        <script src="lib/astar.js"></script>
+        <script src="socket.io/socket.io.js"></script>
+    </head>
+    <body style="background-color:#B6B6CE">
+        <span id="players" class="players"></span>
         
+        <script src="lib/require.min.js"></script>
         <script src='profiles.js'></script>
         <script src='main.js'></script>
         <script src='gradient.js'></script>
@@ -36,8 +41,7 @@ and open the template in the editor.
         <script src='attack_funcs.js'></script>
         <script src='item_funcs.js'></script>
         <script src='events.js'></script>
-    </head>
-    <body style="background-color:#B6B6CE">
+        
         <div id="main">
             <canvas id="quintus" width="1150" height="770" style="
                 -webkit-box-shadow: 1px 0px 13px 9px rgba(209,229,235,0.5);

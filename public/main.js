@@ -26,8 +26,6 @@ Q.SPRITE_NPC= 16384;
 
 Q.gravityY=0;
 
-
-
 var colors = {
     Menu:"",
     MenuButton:'#AAFF33'
@@ -66,52 +64,6 @@ Q.menuButtons = {
         ['Play','startGame'],
         ['Instructions','showInstructions']
     ]
-};
-Q.startGame = function(){
-    Q.state.set({
-        //Stores all level data
-        levelData: [],
-        //The current stage that the player is on
-        currentStage:[],
-
-        //Which tunes have been loaded (so that we don't load music twice)
-        loadedMusic:[],
-        //The current music
-        currentMusic:"",
-        
-        startLevel:[0,"first_plains0_2"],
-        
-        playerMenuPos:"right",
-        
-        //playersConnected:["Saito","Estevan","Lan"],
-        playersConnected:["Estevan"],
-        //The objects for the players that are connected
-        playerObjs:[],
-        turnOrder:[],
-        currentCharacter:{},
-        currentCharacterTurn:0,//The current turn (position in turnOrder array
-        turnNumber:1,//The total number of rounds
-        
-        enemies:{},
-        
-        //The current events happening in this level
-        events:{},
-        //All completed events from all levels
-        completedEvents:{},
-        //Is set to true when there is a battle
-        //Is set to false when all enemies are defeated, and is checked after the dirTri is set
-        battle:true,
-        
-        //1 - Adventuring
-        //2 - Battle
-        //3 - Story
-        phase:1,
-        
-        //The speed at which the enemy ai text goes (actually, this is just used for all bottomtextbox cycling now)
-        //30-60-90
-        textSpeed:30
-    });
-    Q.goToStage(Q.state.get("startLevel")[0],Q.state.get("startLevel")[1]);
 };
 
 Q.scene('title',function(stage){
@@ -229,16 +181,166 @@ Q.scene('interactingMenu',function(stage){
     Q.inputs['interact']=false;
 });
 
+require(['socket.io/socket.io.js']);
 
-Q.load("Pokemon_Mystery_Dungeon_Logo.png,Aipom60x60.png,Dratini.png,Totodile60x60.png,Deino60x60.png\n\
-,sprites.png,berries.png,fog.png"
-    , function() {
-        
+var players = [];
+var socket = io.connect();
+var UiPlayers = document.getElementById("players");
+var selfId, player;
+
+var objectFiles = [
+  './objects'
+];
+
+require(objectFiles, function () {
+    function setUp(stage) {
+        socket.on('count', function (data) {
+            UiPlayers.innerHTML = 'Players: ' + data['playerCount'];
+        });
+
+        socket.on('connected', function (data) {
+            selfId = data['playerId'];
+            player = new Q.Player({ playerId: selfId, x: 735, y: 735, socket: socket });
+            player.p.character = "Estevan";
+            player.p.tagged = true;
+            stage.insert(player);
+            stage.add('viewport').follow(player);
+        });
+
+        socket.on('updated', function (data) {
+          var actor = players.filter(function (obj) {
+            return obj.playerId == data['playerId'];
+          })[0];
+          if (actor) {
+            actor.player.p.x = data['x'];
+            actor.player.p.y = data['y'];
+            actor.player.p.sheet = data['sheet'];
+            actor.player.p.update = true;
+          } else {
+            var temp = new Q.Actor({ playerId: data['playerId'], x: data['x'], y: data['y'], sheet: data['sheet']});
+            players.push({ player: temp, playerId: data['playerId'] });
+            stage.insert(temp);
+          }
+        });
+    };
+
+    //Define the image files to be loaded
+    var imageFiles = [
+        //Images
+        "Aipom60x60.png",
+        "Dratini.png",
+        "Deino60x60.png",
+        "Totodile60x60.png",
+        "sprites.png",
+        "berries.png",
+        "fog.png"
+    ];
+    for(i=0;i<imageFiles.length;i++){
+        imageFiles[i]="/images/"+imageFiles[i];
+    }
+    Q.load(imageFiles.join(','),function(){
         Q.setUpAnimations();
         //Stage the title scene
         //Q.stageScene('title', 0);
-        Q.startGame();
+        startGame();
         
+    });
+
+    var startGame = function(){
+        Q.state.set({
+            //Stores all level data
+            levelData: [],
+            //The current stage that the player is on
+            currentStage:[],
+
+            //Which tunes have been loaded (so that we don't load music twice)
+            loadedMusic:[],
+            //The current music
+            currentMusic:"",
+
+            startLevel:[0,"first_plains0_2"],
+
+            playerMenuPos:"right",
+
+            //playersConnected:["Saito","Estevan","Lan"],
+            playersConnected:["Estevan"],
+            //The objects for the players that are connected
+            playerObjs:[],
+            turnOrder:[],
+            currentCharacter:{},
+            currentCharacterTurn:0,//The current turn (position in turnOrder array
+            turnNumber:1,//The total number of rounds
+
+            enemies:{},
+
+            //The current events happening in this level
+            events:{},
+            //All completed events from all levels
+            completedEvents:{},
+            //Is set to true when there is a battle
+            //Is set to false when all enemies are defeated, and is checked after the dirTri is set
+            battle:true,
+
+            //1 - Adventuring
+            //2 - Battle
+            //3 - Story
+            phase:1,
+
+            //The speed at which the enemy ai text goes (actually, this is just used for all bottomtextbox cycling now)
+            //30-60-90
+            textSpeed:30
+        });
+        Q.goToStage(Q.state.get("startLevel")[0],Q.state.get("startLevel")[1]);
+    };
+    Q.goToStage = function(toDoor, whereTo, playerLoc){
+        var levels = Q.state.get("levelData");
+        var currentPath = Q.getPath(whereTo);
+        //Check if the player has been to a level before
+        for(i=0;i<levels.length;i++){
+            if(levels[i].id===whereTo){
+                Q.stageScene(whereTo,1,{toDoor:toDoor,path:currentPath[0],pathNum:currentPath[1],playerLoc:playerLoc});
+                return;
+            }
+        }
+        //CODE BELOW WON'T RUN IF THE PLAYER HAS BEEN TO THE STAGE BEFORE (FIRST TIME ONLY)
+        //If the level hasn't been gone to yet
+        Q.scene(""+whereTo,function(stage){
+            //Q.stageScene("background",0,{path:stage.options.path});
+            Q.stageTMX(""+stage.options.path+"/"+whereTo+".tmx",stage);
+            setUp(stage);
+            //Q.stage(1).add("viewport");
+            //Q.getMusic(stage.options.path);
+            //Q.givePlayerProperties(stage);
+            /*
+            Q.getPlayers();
+            if(Q.state.get("phase")===1){
+                setTimeout(function(){
+                    Q.addViewport(Q.state.get("turnOrder")[0]);
+                    Q.state.get("turnOrder")[0].addControls();
+                    Q.state.get("turnOrder")[0].setMyTurn();
+                    //Q.stageScene("tophud",3,{chars:Q.state.get("turnOrder")});
+                    var events = Q.getEvents(whereTo);
+                    Q.setEvents(stage,events);
+                },10);
+            } 
+            else if(Q.state.get("phase")===2){
+                setTimeout(function(){
+                    Q.state.get("turnOrder")[0].turnStart();
+                    //Q.stageScene("tophud",3,{chars:Q.state.get("turnOrder")});
+                    var events = Q.getEvents(whereTo);
+                    Q.setEvents(stage,events);
+                },10);
+            }*/
+
+            /*if(THIS STAGE IS A CAVE LEVEL)
+            Q.stageScene("fog",2);
+            */
+
+        });
+        Q.loadTMX(currentPath[0]+"/"+whereTo+".tmx",function(){
+            Q.stageScene(whereTo,1,{toDoor:toDoor,path:currentPath[0],pathNum:currentPath[1],playerLoc:playerLoc});
+        });
+    };
 });
 //Q.debug=true;
 });
