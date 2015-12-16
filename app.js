@@ -17,6 +17,7 @@ var tagged = false;
 io.on('connection', function (socket) {
   playerCount++;
   id++;
+  console.log(playerCount)
   setTimeout(function () {
     if (!tagged) {
       socket.emit('connected', { playerId: id, tagged: true });
