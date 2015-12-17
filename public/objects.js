@@ -552,26 +552,26 @@ Q.component("stepControls", {
 
             }
         }
-        p.socket.emit('update', { playerId: p.playerId, x: p.x, y: p.y, sheet: p.sheet});
+        p.socket.emit('update', { playerId: p.playerId, x: p.x, y: p.y, sheet: p.sheet,dir:p.dir, character:p.character});
         
     }
 });
 
-Q.Sprite.extend('Actor', {
-    init: function (p) {
-      this._super(p, {
-        update: true
-      });
+//Added to other player controlled characters
+Q.component('actor', {
+    added: function (p) {
+        this.entity.p.update=true;
 
-      var temp = this;
-      setInterval(function () {
-        if (!temp.p.update) {
-          temp.destroy();
-        }
-        temp.p.update = false;
-      }, 3000);
+        var temp = this.entity;
+        //Automatically destroys the actor if it has not moved in 10 seconds
+        setInterval(function () {
+            if (!temp.p.update) {
+              temp.destroy();
+            }
+            temp.p.update = false;
+        }, 3000);
     } 
-  });
+});
 
 Q.Sprite.extend("dirTri",{
     init: function(p) {
@@ -1689,7 +1689,6 @@ Q.Sprite.extend("Player",{
         }
         //[x,y]
         this.p.location = this.setLocation();
-        this.addControls();
         this.p.initialize = false;
     },
     addControls:function(){

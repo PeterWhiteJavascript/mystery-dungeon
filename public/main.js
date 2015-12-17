@@ -181,9 +181,28 @@ Q.scene('interactingMenu',function(stage){
     Q.inputs['interact']=false;
 });
 
+Q.setActor=function(actor){
+    //Check to see if we have actors to add
+    if(Q.stage(1)){
+        Q.stage(1).insert(actor);
+    } else {
+        var playersToAdd = Q.state.get("players");
+        playersToAdd.push(actor);
+    }
+};
+Q.addActors=function(stage){
+    var actors = Q.state.get("players");
+    for(i=0;i<actors.length;i++){
+        stage.insert(actors[i])
+    }
+    console.log(actors)
+    
+}
+
 require(['socket.io/socket.io.js']);
 
 var players = [];
+Q.state.set("players",players);
 var socket = io.connect();
 var UiPlayers = document.getElementById("players");
 var selfId, player;
@@ -193,34 +212,43 @@ var objectFiles = [
 ];
 
 require(objectFiles, function () {
-    function setUp(stage) {
+    function setUp() {
         socket.on('count', function (data) {
             UiPlayers.innerHTML = 'Players: ' + data['playerCount'];
         });
 
         socket.on('connected', function (data) {
             selfId = data['playerId'];
-            player = new Q.Player({ playerId: selfId, x: 735, y: 735, socket: socket });
-            player.p.character = "Estevan";
-            player.p.tagged = true;
-            stage.insert(player);
-            stage.add('viewport').follow(player);
+            Q.state.set("playerConnection",{id:selfId,socket:socket});
+            document.getElementById('login').style.display='block';
+        });
+        
+        socket.on("disconnected",function(data){
+            
         });
 
         socket.on('updated', function (data) {
-          var actor = players.filter(function (obj) {
-            return obj.playerId == data['playerId'];
-          })[0];
-          if (actor) {
-            actor.player.p.x = data['x'];
-            actor.player.p.y = data['y'];
-            actor.player.p.sheet = data['sheet'];
-            actor.player.p.update = true;
-          } else {
-            var temp = new Q.Actor({ playerId: data['playerId'], x: data['x'], y: data['y'], sheet: data['sheet']});
-            players.push({ player: temp, playerId: data['playerId'] });
-            stage.insert(temp);
-          }
+            var actor = players.filter(function (obj) {
+                return obj.playerId == data['playerId'];
+            })[0];
+            if (actor) {
+                var pl = actor.player;
+                if(pl.p.x!==data['x']||pl.p.y!==data['y']){
+                    pl.p.x = data['x'];
+                    pl.p.y = data['y'];
+                    pl.playWalk(data['dir']);
+                } else {
+                    pl.playStand(data['dir']);
+                }
+                pl.p.sheet = data['sheet'];
+                pl.p.dir = data['dir'];
+                pl.p.update = true;
+            } else {
+                var temp = new Q.Player({ playerId: data['playerId'], x: data['x'], y: data['y'], sheet: data['sheet'],character:data['character']});
+                temp.add("actor");
+                players.push({ player: temp, playerId: data['playerId'] });
+                Q.setActor(temp);
+            }
         });
     };
 
@@ -242,11 +270,15 @@ require(objectFiles, function () {
         Q.setUpAnimations();
         //Stage the title scene
         //Q.stageScene('title', 0);
-        startGame();
         
     });
 
-    var startGame = function(){
+    Q.startGame = function(name){
+        if(!RP.users[name]||!Q.state.get("playerConnection")){return alert("Please try again!");};
+        //Get rid of the login
+        var div = document.getElementById('login');
+        document.getElementById('main').removeChild(div);
+        
         Q.state.set({
             //Stores all level data
             levelData: [],
@@ -261,11 +293,8 @@ require(objectFiles, function () {
             startLevel:[0,"first_plains0_2"],
 
             playerMenuPos:"right",
-
-            //playersConnected:["Saito","Estevan","Lan"],
-            playersConnected:["Estevan"],
-            //The objects for the players that are connected
-            playerObjs:[],
+            character:name,
+            
             turnOrder:[],
             currentCharacter:{},
             currentCharacterTurn:0,//The current turn (position in turnOrder array
@@ -307,22 +336,24 @@ require(objectFiles, function () {
         Q.scene(""+whereTo,function(stage){
             //Q.stageScene("background",0,{path:stage.options.path});
             Q.stageTMX(""+stage.options.path+"/"+whereTo+".tmx",stage);
-            setUp(stage);
-            //Q.stage(1).add("viewport");
+            
+            Q.stage(1).add("viewport");
             //Q.getMusic(stage.options.path);
-            //Q.givePlayerProperties(stage);
-            /*
-            Q.getPlayers();
+            var player = Q.givePlayerProperties(stage);
+            
+            //Q.getPlayers();
+            //Adventuring Phase
             if(Q.state.get("phase")===1){
                 setTimeout(function(){
-                    Q.addViewport(Q.state.get("turnOrder")[0]);
-                    Q.state.get("turnOrder")[0].addControls();
-                    Q.state.get("turnOrder")[0].setMyTurn();
+                    Q.addViewport(player);
+                    player.setMyTurn();
                     //Q.stageScene("tophud",3,{chars:Q.state.get("turnOrder")});
                     var events = Q.getEvents(whereTo);
                     Q.setEvents(stage,events);
+                    
+                    Q.addActors(stage);
                 },10);
-            } 
+            } /*
             else if(Q.state.get("phase")===2){
                 setTimeout(function(){
                     Q.state.get("turnOrder")[0].turnStart();
@@ -341,6 +372,7 @@ require(objectFiles, function () {
             Q.stageScene(whereTo,1,{toDoor:toDoor,path:currentPath[0],pathNum:currentPath[1],playerLoc:playerLoc});
         });
     };
+    setUp();
 });
 //Q.debug=true;
 });

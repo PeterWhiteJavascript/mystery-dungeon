@@ -1,15 +1,14 @@
 Quintus.Areas = function(Q){
 //Right now this only works for one player. Modify when multiplayer is added
 Q.givePlayerProperties=function(stage){
+    var conn = Q.state.get("playerConnection")
     //Set the players' properties
-    var player;
-    //If the level designer did not put a player in the level, create a new instance
-    if(!Q("Player",1).first()){
-        player = stage.insert(new Q.Player({num:0,Class:"Player"}));
-    // else the player is the instance that was already created within the level.
-    } else {
-        player = Q("Player",1).first();
-    }
+    var player = stage.insert(new Q.Player({num:0,Class:"Player",playerId:conn.id,socket:conn.socket,character:Q.state.get("character")}));
+    //For now, set x and y here.
+    player.p.x=735;
+    player.p.y=735;
+    player.addControls();
+    return player;
 };
 Q.Sprite.extend("Trigger",{
     init: function(p) {
