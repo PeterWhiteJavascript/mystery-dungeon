@@ -9,21 +9,18 @@ app.get('/', function(req, res){
   res.render('/index.html');
 });
 
-var playerCount = 0;
 var id = 0;
 
 io.on('connection', function (socket) {
-  playerCount++;
   id++;
   setTimeout(function () {
     socket.emit('connected', { playerId: id});
-    io.emit('count', { playerCount: playerCount });
+    io.emit('count', { playerCount: io.engine.clientsCount});
   }, 1500);
   
   socket.on('disconnect', function () {
-    playerCount--;
     socket.emit('disconnected', { playerId: socket.id});
-    io.emit('count', { playerCount: playerCount });
+    io.emit('count', { playerCount: io.engine.clientsCount});
   });
   
   socket.on('update', function (data) {

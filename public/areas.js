@@ -1,9 +1,10 @@
 Quintus.Areas = function(Q){
-//Right now this only works for one player. Modify when multiplayer is added
 Q.givePlayerProperties=function(stage){
-    var conn = Q.state.get("playerConnection")
+    var conn = Q.state.get("playerConnection");
+    console.log(conn,Q.state.get("character"))
     //Set the players' properties
     var player = stage.insert(new Q.Player({num:0,Class:"Player",playerId:conn.id,socket:conn.socket,character:Q.state.get("character")}));
+    player.add("protagonist");
     //For now, set x and y here.
     player.p.x=735;
     player.p.y=735;

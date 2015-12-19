@@ -367,6 +367,7 @@ Q.component("stepControls", {
     step: function(dt) {
         var p = this.entity.p,
             moved = false;
+        p.socket.emit('update', { playerId: p.playerId, x: p.x, y: p.y, dir:p.dir, sheet:p.sheet, character:p.character});
         if(p.canMove){
             p.stepWait -= dt;
             if(p.stepping) {
@@ -552,8 +553,14 @@ Q.component("stepControls", {
 
             }
         }
+    }
+});
+
+//Added to other player controlled characters
+Q.component('protagonist', {
+    added: function (p) {
+        var p = this.entity.p;
         p.socket.emit('update', { playerId: p.playerId, x: p.x, y: p.y, sheet: p.sheet,dir:p.dir, character:p.character});
-        
     }
 });
 
@@ -572,6 +579,8 @@ Q.component('actor', {
         }, 3000);
     } 
 });
+
+
 
 Q.Sprite.extend("dirTri",{
     init: function(p) {
@@ -1689,6 +1698,9 @@ Q.Sprite.extend("Player",{
         }
         //[x,y]
         this.p.location = this.setLocation();
+        var socket = Q.state.get("playerConnection").socket;
+        socket.emit('update', { playerId: this.p.playerId, x: this.p.x, y: this.p.y, dir:this.p.dir, sheet:this.p.sheet, character:this.p.character});
+        
         this.p.initialize = false;
     },
     addControls:function(){

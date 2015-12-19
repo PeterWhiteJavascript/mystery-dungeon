@@ -181,31 +181,31 @@ Q.scene('interactingMenu',function(stage){
     Q.inputs['interact']=false;
 });
 
-Q.setActor=function(actor){
-    //Check to see if we have actors to add
+Q.checkAddActors=function(temp){
     if(Q.stage(1)){
-        Q.stage(1).insert(actor);
-    } else {
-        var playersToAdd = Q.state.get("players");
-        playersToAdd.push(actor);
+        //Only add this player to the stage if he's on the right level.
+        if(Q.stage(1).scene.name===RP.users[temp.p.character].startLevel[1]){
+            Q.stage(1).insert(temp);
+        }
+        return true;
+    }
+    return false;
+};
+
+Q.addActors=function(stage){
+    for(i=0;i<playersToAdd.length;i++){
+        stage.insert(playersToAdd[i]);
+        playersToAdd.splice(i,1);
     }
 };
-Q.addActors=function(stage){
-    var actors = Q.state.get("players");
-    for(i=0;i<actors.length;i++){
-        stage.insert(actors[i])
-    }
-    console.log(actors)
-    
-}
 
 require(['socket.io/socket.io.js']);
 
 var players = [];
-Q.state.set("players",players);
 var socket = io.connect();
 var UiPlayers = document.getElementById("players");
 var selfId, player;
+var playersToAdd=[];
 
 var objectFiles = [
   './objects'
@@ -217,20 +217,22 @@ require(objectFiles, function () {
             UiPlayers.innerHTML = 'Players: ' + data['playerCount'];
         });
 
-        socket.on('connected', function (data) {
+        socket.on('connected', function (data) {console.log("hi")
             selfId = data['playerId'];
+            //This connection's character
             Q.state.set("playerConnection",{id:selfId,socket:socket});
             document.getElementById('login').style.display='block';
         });
         
         socket.on("disconnected",function(data){
-            
+            console.log(data)
         });
 
         socket.on('updated', function (data) {
             var actor = players.filter(function (obj) {
                 return obj.playerId == data['playerId'];
             })[0];
+            //After the player has connected
             if (actor) {
                 var pl = actor.player;
                 if(pl.p.x!==data['x']||pl.p.y!==data['y']){
@@ -240,14 +242,17 @@ require(objectFiles, function () {
                 } else {
                     pl.playStand(data['dir']);
                 }
-                pl.p.sheet = data['sheet'];
                 pl.p.dir = data['dir'];
                 pl.p.update = true;
+            //Do this when a player connects
             } else {
                 var temp = new Q.Player({ playerId: data['playerId'], x: data['x'], y: data['y'], sheet: data['sheet'],character:data['character']});
                 temp.add("actor");
                 players.push({ player: temp, playerId: data['playerId'] });
-                Q.setActor(temp);
+                if(!Q.checkAddActors(temp)){;
+                    playersToAdd.push(temp);
+                }
+                
             }
         });
     };
@@ -290,8 +295,6 @@ require(objectFiles, function () {
             //The current music
             currentMusic:"",
 
-            startLevel:[0,"first_plains0_2"],
-
             playerMenuPos:"right",
             character:name,
             
@@ -319,7 +322,8 @@ require(objectFiles, function () {
             //30-60-90
             textSpeed:30
         });
-        Q.goToStage(Q.state.get("startLevel")[0],Q.state.get("startLevel")[1]);
+        var startLevel = RP.users[Q.state.get("character")].startLevel;
+        Q.goToStage(startLevel[0],startLevel[1]);
     };
     Q.goToStage = function(toDoor, whereTo, playerLoc){
         var levels = Q.state.get("levelData");
