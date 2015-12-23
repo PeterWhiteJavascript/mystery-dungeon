@@ -181,22 +181,21 @@ Q.scene('interactingMenu',function(stage){
     Q.inputs['interact']=false;
 });
 
-Q.checkAddActors=function(temp){
+Q.addActor=function(actor){
+    if(actor.playerId!==Q.state.get("playerConnection").playerId){
+        Q.stage(1).insert(actor);
+        console.log("Inserted "+actor.p.character+". #"+actor.playerId)
+    }
+};
+
+Q.checkSameStage=function(actor){
     if(Q.stage(1)){
-        //Only add this player to the stage if he's on the right level.
-        if(Q.stage(1).scene.name===RP.users[temp.p.character].startLevel[1]){
-            Q.stage(1).insert(temp);
-        }
+    console.log(actor.currentStage[1],Q.stage(1).scene.name)
+    }
+    if(Q.stage(1)&&actor.currentStage[1]===Q.stage(1).scene.name){
         return true;
     }
     return false;
-};
-
-Q.addActors=function(stage){
-    for(i=0;i<playersToAdd.length;i++){
-        stage.insert(playersToAdd[i]);
-        playersToAdd.splice(i,1);
-    }
 };
 
 require(['socket.io/socket.io.js']);
@@ -204,8 +203,7 @@ require(['socket.io/socket.io.js']);
 var players = [];
 var socket = io.connect();
 var UiPlayers = document.getElementById("players");
-var selfId, player;
-var playersToAdd=[];
+var selfId;
 
 var objectFiles = [
   './objects'
@@ -217,24 +215,38 @@ require(objectFiles, function () {
             UiPlayers.innerHTML = 'Players: ' + data['playerCount'];
         });
 
-        socket.on('connected', function (data) {console.log("hi")
+        socket.on('connected', function (data) {
             selfId = data['playerId'];
             //This connection's character
             Q.state.set("playerConnection",{id:selfId,socket:socket});
             document.getElementById('login').style.display='block';
+            console.log("I am "+selfId);
         });
         
         socket.on("disconnected",function(data){
-            console.log(data)
+            for(i=0;i<players.length;i++){
+                if(players[i].playerId===data.playerId){
+                    players.splice(i,1);
+                    if(Q.stage(1)){
+                        var items = Q("Player",1).items;
+                        for(jj=0;jj<items.length;jj++){
+                            if(items[jj].p.playerId===data.playerId){
+                                items[jj].destroy();
+                                return;
+                            }
+                        }
+                    }
+                }
+            }
         });
 
         socket.on('updated', function (data) {
             var actor = players.filter(function (obj) {
-                return obj.playerId == data['playerId'];
+                return obj.p.playerId == data['playerId'];
             })[0];
             //After the player has connected
             if (actor) {
-                var pl = actor.player;
+                var pl = actor;
                 if(pl.p.x!==data['x']||pl.p.y!==data['y']){
                     pl.p.x = data['x'];
                     pl.p.y = data['y'];
@@ -246,13 +258,22 @@ require(objectFiles, function () {
                 pl.p.update = true;
             //Do this when a player connects
             } else {
-                var temp = new Q.Player({ playerId: data['playerId'], x: data['x'], y: data['y'], sheet: data['sheet'],character:data['character']});
-                temp.add("actor");
-                players.push({ player: temp, playerId: data['playerId'] });
-                if(!Q.checkAddActors(temp)){;
-                    playersToAdd.push(temp);
+                if(data['playerId']!==selfId){console.log(data['character']+" connected. id#"+ data['playerId'])
+                    var temp = new Q.Player({ playerId: data['playerId'], x: data['x'], y: data['y'], sheet: data['sheet'],character:data['character']});
+                    temp.add("actor");
+                    temp.currentStage = RP.users[data['character']].startLevel;
+                    temp.playerId=data['playerId'];
+                    players.push(temp);
+                    if(Q.checkSameStage(temp)){
+                        Q.addActor(temp);
+                    }
                 }
                 
+            }
+        });
+        socket.on("changedArea",function(data){
+            if(Q.checkSameStage(data)){
+                Q.addActor(new Q.Player(data));
             }
         });
     };
@@ -354,8 +375,12 @@ require(objectFiles, function () {
                     //Q.stageScene("tophud",3,{chars:Q.state.get("turnOrder")});
                     var events = Q.getEvents(whereTo);
                     Q.setEvents(stage,events);
-                    
-                    Q.addActors(stage);
+                    for(ii=0;ii<players.length;ii++){
+                        if(Q.checkSameStage(players[ii])){
+                            Q.addActor(players[ii]);
+                        }
+                    }
+                    Q.state.get("playerConnection").socket.emit('changeArea', { playerId: player.p.playerId, dir:player.p.dir, playerLoc:playerLoc,sheet:player.p.sheet,currentStage:[0,whereTo], character:player.p.character});
                 },10);
             } /*
             else if(Q.state.get("phase")===2){
@@ -370,7 +395,7 @@ require(objectFiles, function () {
             /*if(THIS STAGE IS A CAVE LEVEL)
             Q.stageScene("fog",2);
             */
-
+           
         });
         Q.loadTMX(currentPath[0]+"/"+whereTo+".tmx",function(){
             Q.stageScene(whereTo,1,{toDoor:toDoor,path:currentPath[0],pathNum:currentPath[1],playerLoc:playerLoc});

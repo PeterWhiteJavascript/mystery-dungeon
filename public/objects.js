@@ -361,7 +361,8 @@ Q.component("stepControls", {
                 playerLoc[1]="y";
                 break;
         }
-        Q.goToStage(0,level+newPathNum[0]+"_"+newPathNum[1],playerLoc);
+        var newArea = level+newPathNum[0]+"_"+newPathNum[1];
+        Q.goToStage(0,newArea,playerLoc);
     },
     
     step: function(dt) {
@@ -495,7 +496,7 @@ Q.component("stepControls", {
                     p.stepping=false;
                 }
                 //Add the viewport after one movement
-                if(Q.stage(1).viewport.following.p.name!==this.entity.p.name){
+                if(!Q.stage(1).viewport.following||Q.stage(1).viewport.following.p.name!==this.entity.p.name){
                     Q.addViewport(this.entity);
                 }
                 this.entity.playWalk(p.dir);
@@ -1423,7 +1424,7 @@ Q.component("commonPlayer", {
         },
         interact:function(player){
             //Show Player Text
-            Q.stageScene("bottomhud",3,{text:player.p.text,player:player,obj:this});
+            Q.stageScene("bottomhud",3,{text:[player.p.text[0]+" Id #"+player.p.playerId],player:player,obj:this});
             Q.inputs['interact']=false;
         },
         setLocation:function(){
@@ -1631,6 +1632,7 @@ Q.Sprite.extend("Player",{
     initialize:function(){
         //Get the user data
         var data = RP.users[this.p.character];
+        
         this.p.species = data.species;
         var sData = RP.monsters[this.p.species];
         this.p.name = data.name;

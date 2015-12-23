@@ -40,7 +40,7 @@ Quintus.Events=function(Q){
         first_plains4_0:[
             
         ],
-        first_plains0_1:[
+        first_plains0_1:[/*
             {
                 eventId:"a",
                 trigger:{type:"enter"},
@@ -54,7 +54,7 @@ Quintus.Events=function(Q){
                     {location:[12,20],opts:{gender:'M',level:5},character:"Spinarak"}
                 ],
                 completed:"doneBattle"
-            },
+            },*/
         ],
         first_plains1_1:[
             

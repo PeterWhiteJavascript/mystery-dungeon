@@ -135,7 +135,7 @@ var RP = {
             "text": [
                 "Hello, I'm Estevan!"
             ],
-            "startLevel":[0,"first_plains0_2"]
+            "startLevel":[0,"first_plains0_1"]
         },
         "Lan": {
             "name": "Lan",

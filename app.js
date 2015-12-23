@@ -10,22 +10,27 @@ app.get('/', function(req, res){
 });
 
 var id = 0;
-
 io.on('connection', function (socket) {
-  id++;
-  setTimeout(function () {
-    socket.emit('connected', { playerId: id});
-    io.emit('count', { playerCount: io.engine.clientsCount});
-  }, 1500);
-  
-  socket.on('disconnect', function () {
-    socket.emit('disconnected', { playerId: socket.id});
-    io.emit('count', { playerCount: io.engine.clientsCount});
-  });
-  
-  socket.on('update', function (data) {
-    socket.broadcast.emit('updated', data);
-  });
+    id++;
+    var userId;
+    setTimeout(function () {
+        socket.emit('connected', { playerId: id});
+        io.emit('count', { playerCount: io.engine.clientsCount});
+        userId = id;
+    }, 1500);
+
+    socket.on('disconnect', function () {
+        io.emit('count', { playerCount: io.engine.clientsCount});
+        io.emit('disconnected', { playerId: userId});
+    });
+
+    socket.on('update', function (data) {
+        socket.broadcast.emit('updated', data);
+    });
+
+    socket.on('changeArea',function(data){
+        socket.broadcast.emit('changedArea', data);
+    });
   
 });
 
