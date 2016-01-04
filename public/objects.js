@@ -344,7 +344,7 @@ Q.component("stepControls", {
                 break;
             case x<0:
                 //This string means that we need to figure out the maxX of the tilelayer on the next stage.
-                playerLoc[0]="x";
+                playerLoc[0]=24//"x";
                 break;
         }
         switch(true){
@@ -358,11 +358,11 @@ Q.component("stepControls", {
                 break;
             case y<0:
                 //This string means that we need to figure out the maxY of the tilelayer on the next stage.
-                playerLoc[1]="y";
+                playerLoc[1]=24//"y";
                 break;
         }
         var newArea = level+newPathNum[0]+"_"+newPathNum[1];
-        Q.goToStage(0,newArea,playerLoc);
+        Q.goToStage(newArea,playerLoc);
     },
     
     step: function(dt) {
@@ -560,8 +560,8 @@ Q.component("stepControls", {
 //Added to other player controlled characters
 Q.component('protagonist', {
     added: function (p) {
-        var p = this.entity.p;
-        p.socket.emit('update', { playerId: p.playerId, x: p.x, y: p.y, sheet: p.sheet,dir:p.dir, character:p.character});
+        var player = this.entity;
+        Q.state.get("playerConnection").socket.emit('changeArea', { playerId:Q.state.get("playerConnection").id, dir:player.p.dir, playerLoc:player.p.loc,sheet:player.p.sheet,currentStage:player.p.currentStage, character:player.p.character});
     }
 });
 
@@ -569,7 +569,6 @@ Q.component('protagonist', {
 Q.component('actor', {
     added: function (p) {
         this.entity.p.update=true;
-
         var temp = this.entity;
         //Automatically destroys the actor if it has not moved in 10 seconds
         setInterval(function () {
@@ -718,7 +717,7 @@ Q.component("directionControls", {
 Q.component("animations", {
     added:function(){
         this.entity.on("playStand");  
-        this.entity.on("fainted")
+        this.entity.on("fainted");
     },
     extend:{
         checkPlayDir:function(dir){
@@ -1700,8 +1699,6 @@ Q.Sprite.extend("Player",{
         }
         //[x,y]
         this.p.location = this.setLocation();
-        var socket = Q.state.get("playerConnection").socket;
-        socket.emit('update', { playerId: this.p.playerId, x: this.p.x, y: this.p.y, dir:this.p.dir, sheet:this.p.sheet, character:this.p.character});
         
         this.p.initialize = false;
     },

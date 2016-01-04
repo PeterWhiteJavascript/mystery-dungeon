@@ -1,12 +1,14 @@
 Quintus.Areas = function(Q){
-Q.givePlayerProperties=function(stage){
+Q.givePlayerProperties=function(stage,loc){
     var conn = Q.state.get("playerConnection");
     //Set the players' properties
     var player = stage.insert(new Q.Player({num:0,Class:"Player",playerId:conn.id,socket:conn.socket,character:Q.state.get("character")}));
-    player.add("protagonist");
     //For now, set x and y here.
-    player.p.x=735;
-    player.p.y=35;
+    player.p.x=loc[0]*70+35;
+    player.p.y=loc[1]*70+35;
+    player.p.loc=loc;
+    player.p.currentStage=stage.scene.name;
+    player.add("protagonist");
     player.addControls();
     return player;
 };

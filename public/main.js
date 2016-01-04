@@ -182,22 +182,35 @@ Q.scene('interactingMenu',function(stage){
 });
 
 Q.addActor=function(actor){
-    if(actor.playerId!==Q.state.get("playerConnection").playerId){
+    if(actor.playerId!==Q.state.get("playerConnection").id){
         Q.stage(1).insert(actor);
         console.log("Inserted "+actor.p.character+". #"+actor.playerId)
     }
 };
 
-Q.checkSameStage=function(actor){
+Q.checkSameStage=function(actorStage){
     if(Q.stage(1)){
-    console.log(actor.currentStage[1],Q.stage(1).scene.name)
+        console.log("Other's stage"+actorStage);
+        console.log("My stage"+Q.stage(1).scene.name);
     }
-    if(Q.stage(1)&&actor.currentStage[1]===Q.stage(1).scene.name){
+    if(Q.stage(1)&&actorStage===Q.stage(1).scene.name){
         return true;
     }
     return false;
 };
-
+//This function is run after a player changes area.
+//When a player goes to another area, 
+Q.updatePlayersArea=function(data){
+    for(i=0;i<players.length;i++){
+        if(data.playerId===players[i].p.playerId){
+            var keys = Object.keys(data);
+            for(j=0;j<keys.length;j++){
+                players[i].p[keys[j]]=data[keys[j]];
+            }
+            players[i].currentStage=data['currentStage'];
+        }
+    }
+}
 require(['socket.io/socket.io.js']);
 
 var players = [];
@@ -258,13 +271,13 @@ require(objectFiles, function () {
                 pl.p.update = true;
             //Do this when a player connects
             } else {
-                if(data['playerId']!==selfId){console.log(data['character']+" connected. id#"+ data['playerId'])
-                    var temp = new Q.Player({ playerId: data['playerId'], x: data['x'], y: data['y'], sheet: data['sheet'],character:data['character']});
+                if(data['playerId']!==selfId){
+                    var startArea = RP.users[data['character']].startArea;
+                    var temp = new Q.Player({ playerId: data['playerId'], x: startArea[1], y: startArea[2], sheet: data['sheet'],character:data['character']});
                     temp.add("actor");
-                    temp.currentStage = RP.users[data['character']].startLevel;
-                    temp.playerId=data['playerId'];
+                    temp.playerId = data['playerId'];
                     players.push(temp);
-                    if(Q.checkSameStage(temp)){
+                    if(Q.checkSameStage(startArea[0])){
                         Q.addActor(temp);
                     }
                 }
@@ -272,9 +285,12 @@ require(objectFiles, function () {
             }
         });
         socket.on("changedArea",function(data){
-            if(Q.checkSameStage(data)){
-                Q.addActor(new Q.Player(data));
-            }
+            Q.updatePlayersArea(data);
+            /*if(Q.checkSameStage(data)){
+                var player = new Q.Player(data);
+                player.playerId=data['playerId'];
+                Q.addActor(player);
+            }*/
         });
     };
 
@@ -343,16 +359,17 @@ require(objectFiles, function () {
             //30-60-90
             textSpeed:30
         });
-        var startLevel = RP.users[Q.state.get("character")].startLevel;
-        Q.goToStage(startLevel[0],startLevel[1]);
+        //[whereTo, x , y]
+        var startLevel = RP.users[Q.state.get("character")].startArea;
+        Q.goToStage(startLevel[0],[startLevel[1],startLevel[2]]);
     };
-    Q.goToStage = function(toDoor, whereTo, playerLoc){
+    Q.goToStage = function(whereTo, playerLoc){
         var levels = Q.state.get("levelData");
         var currentPath = Q.getPath(whereTo);
         //Check if the player has been to a level before
         for(i=0;i<levels.length;i++){
             if(levels[i].id===whereTo){
-                Q.stageScene(whereTo,1,{toDoor:toDoor,path:currentPath[0],pathNum:currentPath[1],playerLoc:playerLoc});
+                Q.stageScene(whereTo,1,{path:currentPath[0],pathNum:currentPath[1],playerLoc:playerLoc});
                 return;
             }
         }
@@ -361,11 +378,10 @@ require(objectFiles, function () {
         Q.scene(""+whereTo,function(stage){
             //Q.stageScene("background",0,{path:stage.options.path});
             Q.stageTMX(""+stage.options.path+"/"+whereTo+".tmx",stage);
-            
             Q.stage(1).add("viewport");
             //Q.getMusic(stage.options.path);
-            var player = Q.givePlayerProperties(stage);
-            
+            var player = Q.givePlayerProperties(stage,stage.options.playerLoc);
+            player.p.currentStage=whereTo;
             //Q.getPlayers();
             //Adventuring Phase
             if(Q.state.get("phase")===1){
@@ -375,12 +391,13 @@ require(objectFiles, function () {
                     //Q.stageScene("tophud",3,{chars:Q.state.get("turnOrder")});
                     var events = Q.getEvents(whereTo);
                     Q.setEvents(stage,events);
+                    //Here, get all players that are in this area and insert them.
                     for(ii=0;ii<players.length;ii++){
-                        if(Q.checkSameStage(players[ii])){
+                        if(Q.checkSameStage(player.p.currentStage)){
                             Q.addActor(players[ii]);
                         }
                     }
-                    Q.state.get("playerConnection").socket.emit('changeArea', { playerId: player.p.playerId, dir:player.p.dir, playerLoc:playerLoc,sheet:player.p.sheet,currentStage:[0,whereTo], character:player.p.character});
+                    
                 },10);
             } /*
             else if(Q.state.get("phase")===2){
@@ -398,7 +415,7 @@ require(objectFiles, function () {
            
         });
         Q.loadTMX(currentPath[0]+"/"+whereTo+".tmx",function(){
-            Q.stageScene(whereTo,1,{toDoor:toDoor,path:currentPath[0],pathNum:currentPath[1],playerLoc:playerLoc});
+            Q.stageScene(whereTo,1,{path:currentPath[0],pathNum:currentPath[1],playerLoc:playerLoc});
         });
     };
     setUp();
