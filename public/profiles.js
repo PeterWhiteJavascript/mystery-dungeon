@@ -135,7 +135,7 @@ var RP = {
             "text": [
                 "Hello, I'm Estevan!"
             ],
-            "startArea":["first_plains0_1",10,0]
+            "startArea":["first_plains0_1",735,735]
         },
         "Lan": {
             "name": "Lan",

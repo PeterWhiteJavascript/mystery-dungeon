@@ -344,7 +344,7 @@ Q.component("stepControls", {
                 break;
             case x<0:
                 //This string means that we need to figure out the maxX of the tilelayer on the next stage.
-                playerLoc[0]=24//"x";
+                playerLoc[0]="x";
                 break;
         }
         switch(true){
@@ -358,11 +358,13 @@ Q.component("stepControls", {
                 break;
             case y<0:
                 //This string means that we need to figure out the maxY of the tilelayer on the next stage.
-                playerLoc[1]=24//"y";
+                playerLoc[1]="y";
                 break;
         }
         var newArea = level+newPathNum[0]+"_"+newPathNum[1];
         Q.goToStage(newArea,playerLoc);
+        var player = this.entity;
+        Q.state.get("playerConnection").socket.emit('changeArea', { playerId:Q.state.get("playerConnection").id, dir:player.p.dir, playerLoc:playerLoc,sheet:player.p.sheet,currentStage:newArea, character:player.p.character});
     },
     
     step: function(dt) {
@@ -560,8 +562,7 @@ Q.component("stepControls", {
 //Added to other player controlled characters
 Q.component('protagonist', {
     added: function (p) {
-        var player = this.entity;
-        Q.state.get("playerConnection").socket.emit('changeArea', { playerId:Q.state.get("playerConnection").id, dir:player.p.dir, playerLoc:player.p.loc,sheet:player.p.sheet,currentStage:player.p.currentStage, character:player.p.character});
+        
     }
 });
 
@@ -1115,6 +1116,13 @@ Q.component("attacker",{
 
 Q.component("commonPlayer", {
     extend:{
+        confirmLocation:function(loc){
+            while(Q.stage(1).locate(loc[0]*70+35,loc[1]*70+35,Q.SPRITE_INTERACTABLE)){
+                var newLoc = [loc[0]+Math.floor(Math.random()*3)-1,loc[1]+Math.floor(Math.random()*3)-1];
+                loc=newLoc;
+            }
+            return loc;
+        },
         faint:function(){
             this.playFainting();
             if(this.p.Class==="Enemy"){
@@ -1559,13 +1567,7 @@ Q.Sprite.extend("Enemy",{
             Q.eventCompleted(this.p.eventId,this.p.completed)
         }
     },
-    confirmLocation:function(loc){
-        while(Q.stage(1).locate(loc[0]*70+35,loc[1]*70+35,Q.SPRITE_INTERACTABLE)){
-            var newLoc = [loc[0]+Math.floor(Math.random()*3)-1,loc[1]+Math.floor(Math.random()*3)-1];
-            loc=newLoc;
-        }
-        return loc;
-    },
+    
     turnStart:function(){
         Q.addViewport(this);
         this.p.myTurn=true;
@@ -1678,27 +1680,8 @@ Q.Sprite.extend("Player",{
         this.p.sheet=this.p.species;
         
         this.p.graphWithWeight = new Graph(this.getWalkMatrix(true));
-        
-        var loc = Q.stage(1).options.playerLoc;
-        if(loc){
-            if(loc[0]==='x'){
-                loc[0]=Q("TileLayer").items[0].p.tiles[0].length-1;
-                this.p.x=loc[0]*70+35;
-                this.p.y=loc[1]*70-35;
-            } else if(loc[1]==='y'){
-                loc[1]=Q("TileLayer").items[0].p.tiles.length-1;
-                this.p.x=loc[0]*70-35;
-                this.p.y=loc[1]*70+35;
-            } else if(loc[0]===0){
-                this.p.x=loc[0]*70+35;
-                this.p.y=loc[1]*70-35;
-            } else if(loc[1]===0){
-                this.p.x=loc[0]*70-35;
-                this.p.y=loc[1]*70+35;
-            }
-        }
         //[x,y]
-        this.p.location = this.setLocation();
+        this.p.location = this.p.loc;
         
         this.p.initialize = false;
     },

@@ -14,9 +14,10 @@ io.on('connection', function (socket) {
     id++;
     var userId;
     setTimeout(function () {
-        socket.emit('connected', { playerId: id});
-        io.emit('count', { playerCount: io.engine.clientsCount});
         userId = id;
+        socket.emit('connected', { playerId: userId});
+        io.emit('count', { playerCount: io.engine.clientsCount});
+       
     }, 1500);
 
     socket.on('disconnect', function () {

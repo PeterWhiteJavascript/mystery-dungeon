@@ -182,17 +182,14 @@ Q.scene('interactingMenu',function(stage){
 });
 
 Q.addActor=function(actor){
-    if(actor.playerId!==Q.state.get("playerConnection").id){
-        Q.stage(1).insert(actor);
-        console.log("Inserted "+actor.p.character+". #"+actor.playerId)
+    if(actor.p.playerId!==Q.state.get("playerConnection").id){
+        var obj = Q.stage(1).insert(actor);
+        obj.add("actor");
+        //console.log("Inserted "+actor.p.character+". #"+actor.p.playerId)
     }
 };
 
 Q.checkSameStage=function(actorStage){
-    if(Q.stage(1)){
-        console.log("Other's stage"+actorStage);
-        console.log("My stage"+Q.stage(1).scene.name);
-    }
     if(Q.stage(1)&&actorStage===Q.stage(1).scene.name){
         return true;
     }
@@ -203,14 +200,19 @@ Q.checkSameStage=function(actorStage){
 Q.updatePlayersArea=function(data){
     for(i=0;i<players.length;i++){
         if(data.playerId===players[i].p.playerId){
+            if(data.currentStage!==Q.stage(1).scene.name){players[i].destroy();};
+            players.splice(i,1);
+            var player = new Q.Player();
             var keys = Object.keys(data);
             for(j=0;j<keys.length;j++){
-                players[i].p[keys[j]]=data[keys[j]];
+                player.p[keys[j]]=data[keys[j]];
             }
-            players[i].currentStage=data['currentStage'];
+            players.push(player);
+            return player;
         }
     }
-}
+    
+};
 require(['socket.io/socket.io.js']);
 
 var players = [];
@@ -269,12 +271,12 @@ require(objectFiles, function () {
                 }
                 pl.p.dir = data['dir'];
                 pl.p.update = true;
+                
             //Do this when a player connects
             } else {
                 if(data['playerId']!==selfId){
                     var startArea = RP.users[data['character']].startArea;
-                    var temp = new Q.Player({ playerId: data['playerId'], x: startArea[1], y: startArea[2], sheet: data['sheet'],character:data['character']});
-                    temp.add("actor");
+                    var temp = new Q.Player({ playerId: data['playerId'], x: startArea[1], y: startArea[2], sheet: data['sheet'],character:data['character'],currentStage:startArea[0]});
                     temp.playerId = data['playerId'];
                     players.push(temp);
                     if(Q.checkSameStage(startArea[0])){
@@ -284,13 +286,32 @@ require(objectFiles, function () {
                 
             }
         });
-        socket.on("changedArea",function(data){
-            Q.updatePlayersArea(data);
-            /*if(Q.checkSameStage(data)){
-                var player = new Q.Player(data);
+        socket.on("changedArea",function(data){console.log("Changed to "+data['currentStage'])
+            var player = Q.updatePlayersArea(data);
+            if(Q.checkSameStage(data.currentStage)){
+                var loc = data['playerLoc'];
+                if(loc){
+                    if(loc[0]==='x'){
+                        loc[0]=Q.stage(1).items[0].p.tiles[0].length-1;
+                        player.p.x=loc[0]*70+35;
+                        player.p.y=loc[1]*70-35;
+                    } else if(loc[1]==='y'){
+                        loc[1]=Q.stage(1).items[0].p.tiles.length-1;
+                        player.p.x=loc[0]*70-35;
+                        player.p.y=loc[1]*70+35;
+                    } else if(loc[0]===0){
+                        player.p.x=loc[0]*70+35;
+                        player.p.y=loc[1]*70-35;
+                    } else if(loc[1]===0){
+                        player.p.x=loc[0]*70-35;
+                        player.p.y=loc[1]*70+35;
+                    }
+                }
+                player.p.loc=loc;
+                player.p.playerId=data['playerId'];
                 player.playerId=data['playerId'];
                 Q.addActor(player);
-            }*/
+            }
         });
     };
 
@@ -380,23 +401,26 @@ require(objectFiles, function () {
             Q.stageTMX(""+stage.options.path+"/"+whereTo+".tmx",stage);
             Q.stage(1).add("viewport");
             //Q.getMusic(stage.options.path);
+            //Here, get all players that are in this area and insert them.
+            for(ii=0;ii<players.length;ii++){
+                if(Q.checkSameStage(players[ii].p.currentStage)){
+                    Q.addActor(players[ii]);
+                }
+            }
+            //Insert the protagonist
             var player = Q.givePlayerProperties(stage,stage.options.playerLoc);
             player.p.currentStage=whereTo;
             //Q.getPlayers();
+            
             //Adventuring Phase
             if(Q.state.get("phase")===1){
                 setTimeout(function(){
                     Q.addViewport(player);
                     player.setMyTurn();
                     //Q.stageScene("tophud",3,{chars:Q.state.get("turnOrder")});
-                    var events = Q.getEvents(whereTo);
-                    Q.setEvents(stage,events);
-                    //Here, get all players that are in this area and insert them.
-                    for(ii=0;ii<players.length;ii++){
-                        if(Q.checkSameStage(player.p.currentStage)){
-                            Q.addActor(players[ii]);
-                        }
-                    }
+                    //var events = Q.getEvents(whereTo);
+                    //Q.setEvents(stage,events);
+                    
                     
                 },10);
             } /*

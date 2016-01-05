@@ -1,12 +1,38 @@
 Quintus.Areas = function(Q){
 Q.givePlayerProperties=function(stage,loc){
+    var setPosition = function(loc){
+        if(loc[0]==='x'){
+            loc[0]=Q("TileLayer").items[0].p.tiles[0].length-1;
+            player.p.x=loc[0]*70+35;
+            player.p.y=loc[1]*70-35;
+        } else if(loc[1]==='y'){
+            loc[1]=Q("TileLayer").items[0].p.tiles.length-1;
+            player.p.x=loc[0]*70-35;
+            player.p.y=loc[1]*70+35;
+        } else if(loc[0]===0){
+            player.p.x=loc[0]*70+35;
+            player.p.y=loc[1]*70-35;
+        } else if(loc[1]===0){
+            player.p.x=loc[0]*70-35;
+            player.p.y=loc[1]*70+35;
+        //This is a special case on spawning from not the side of the map
+        } else {
+            player.p.x=loc[0];
+            player.p.y=loc[1];
+            loc = [(loc[0]-35)/70,[loc[1]-35]/70];
+        }
+    };
     var conn = Q.state.get("playerConnection");
     //Set the players' properties
     var player = stage.insert(new Q.Player({num:0,Class:"Player",playerId:conn.id,socket:conn.socket,character:Q.state.get("character")}));
-    //For now, set x and y here.
-    player.p.x=loc[0]*70+35;
-    player.p.y=loc[1]*70+35;
-    player.p.loc=loc;
+    if(loc){
+        setPosition(loc);
+    }
+    
+    player.p.location=player.confirmLocation(loc);
+    if(loc&&loc!==player.p.location){
+        setPosition([player.p.location[0]*70+35,player.p.location[1]*70+35]);
+    }
     player.p.currentStage=stage.scene.name;
     player.add("protagonist");
     player.addControls();
