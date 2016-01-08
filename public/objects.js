@@ -370,7 +370,7 @@ Q.component("stepControls", {
     step: function(dt) {
         var p = this.entity.p,
             moved = false;
-        p.socket.emit('update', { playerId: p.playerId, x: p.x, y: p.y, dir:p.dir, sheet:p.sheet, character:p.character});
+        p.socket.emit('update', { playerId: p.playerId, x: p.x, y: p.y, dir:p.dir, sheet:p.sheet, character:p.character,currentStage:p.currentStage});
         if(p.canMove){
             p.stepWait -= dt;
             if(p.stepping) {
@@ -1336,7 +1336,7 @@ Q.component("commonPlayer", {
             }
         },
 
-        getRange:function(){
+        getRange:function(){console.log(this)
             var mov = this.p.myTurnTiles;
             var loc = this.p.location;
             this.p.movTiles=[];
@@ -1482,6 +1482,7 @@ Q.Sprite.extend("Enemy",{
         this.add("commonPlayer,animations,attacker");
     },
     initialize:function(){
+        console.log(this)
         //Make sure that there's nothing standing on the spawn point, else move this enemy
         this.p.location = this.confirmLocation(this.p.location);
         this.p.x=this.p.location[0]*70+35;

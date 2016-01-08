@@ -78,7 +78,7 @@ var RP = {
             "text": [
                 "Hello, I'm Saito!"
             ],
-            "startArea":["first_plains0_2",10,0]
+            "startArea":["first_plains2_0",13*70+35,13*70+35]
         },
         "Estevan": {
             "name": "Estevan",
@@ -135,7 +135,7 @@ var RP = {
             "text": [
                 "Hello, I'm Estevan!"
             ],
-            "startArea":["first_plains0_1",735,735]
+            "startArea":["first_plains2_0",13*70+35,11*70+35]
         },
         "Lan": {
             "name": "Lan",

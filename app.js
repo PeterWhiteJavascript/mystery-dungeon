@@ -10,6 +10,32 @@ app.get('/', function(req, res){
 });
 
 var id = 0;
+
+//Holds all events
+//events:{
+//  stageName:{
+//      completed:bool,
+//      eventId:String
+//  }
+//}
+var events = {};
+//The event class
+function eventObj(data){
+    this.complete = false;
+    this.eventId = data['event']['eventId'];
+    this.stageName = data['stageName'];
+};
+function addEvent(event){
+    if(!events[event.stageName]){
+        events[event.stageName]={};
+    }
+    if(!events[event.stageName][event.eventId]){
+        events[event.stageName][event.eventId]={complete:false};
+    }
+}
+function completeEvent(event){
+    events[event.stageName][event.eventId].complete=true;
+}
 io.on('connection', function (socket) {
     id++;
     var userId;
@@ -32,7 +58,19 @@ io.on('connection', function (socket) {
     socket.on('changeArea',function(data){
         socket.broadcast.emit('changedArea', data);
     });
-  
+    
+    socket.on('triggerEvent',function(data){
+        var ev = new eventObj(data);
+        addEvent(ev);
+        io.emit('triggeredEvent', ev);
+    });
+    
+    socket.on('completeEvent',function(data){
+        completeEvent(data.event);
+        io.emit('completedEvent',data.event);
+    });
+    
+    
 });
 
 server.listen(process.env.PORT || 5000);

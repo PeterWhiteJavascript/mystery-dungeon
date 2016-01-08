@@ -46,16 +46,9 @@ Q.Sprite.extend("Trigger",{
     },
     checkLocation:function(){
         var obj = Q.stage(1).locate(this.p.location[0]*70+35,this.p.location[1]*70+35,Q.SPRITE_INTERACTABLE);
-        if(obj&&obj.p.Class==="Player"){
-            Q.eventFuncs[this.p.event](this);
-            var triggers = Q("Trigger",1).items;
-            
-            for(j=0;j<triggers.length;j++){
-                if(triggers[j].p.eventId===this.p.eventId&triggers[j].p.id!==this.p.id){
-                    triggers[j].destroy();
-                }
-            }
-            this.destroy();
+        if(obj&&obj.has('protagonist')){
+            //Tell all players that this event is running now
+            Q.state.get("playerConnection").socket.emit('triggerEvent', {event:this.p.eventObj,stageName:Q.stage(1).scene.name});
         }
     }
 });
@@ -98,25 +91,28 @@ Q.eventCompleted=function(eventId,onComplete){
 };
 Q.eventFuncs= {
     spawnEnemies:function(obj){
-        var enemies = obj.p.enemies;
-        var stage = obj.stage;
+        var enemies = obj.enemies;
+        var stage = Q.stage(1);
         var enm = Q.state.get("enemies");
-        enm[obj.p.eventId]=[];
+        enm[obj.eventId]=[];
         for(j=0;j<enemies.length;j++){
-            enm[obj.p.eventId].push(stage.insert(new Q.Enemy({eventId:obj.p.eventId,location:enemies[j].location,opts:{gender:enemies[j].opts.gender,level:enemies[j].opts.level},character:enemies[j].character,completed:obj.p.completed})));
+            enm[obj.eventId].push(stage.insert(new Q.Enemy({eventId:obj.eventId,location:enemies[j].location,opts:{gender:enemies[j].opts.gender,level:enemies[j].opts.level},character:enemies[j].character,onCompleted:obj.onCompleted})));
         }
         if(Q.state.get("phase")!==2){
-            Q.setPhase(2);
             Q.state.set("battle",true);
+            Q.setPhase(2);
             Q.getPlayers();
         } else {
-            Q.state.set("turnOrder",Q.generateTurnOrder(Q.state.get("turnOrder"),enm[obj.p.eventId]));
+            Q.state.set("turnOrder",Q.generateTurnOrder(Q.state.get("turnOrder"),enm[obj.eventId]));
         }
     }
 };
 Q.setEvents=function(stage,events){
-    for(iE=0;iE<events.length;iE++){
-        var event = events[iE];
+    console.log(events)
+    var keys = Object.keys(events)
+    for(iE=0;iE<keys.length;iE++){
+        var event = events[keys[iE]];
+        event.eventId = keys[iE];
         switch(event.event){
             case "spawnEnemies":
                 var enemies = event.enemies;
@@ -129,7 +125,7 @@ Q.setEvents=function(stage,events){
                 break;
             case "onLocation":
                 for(iL=0;iL<event.locations.length;iL++){
-                    stage.insert(new Q.Trigger({eventId:event.eventId,location:event.locations[iL],event:event.event,enemies:enemies,completed:event.completed}));
+                    stage.insert(new Q.Trigger({eventObj:event,eventId:event.eventId,location:event.locations[iL],event:event.event,enemies:enemies,completed:event.completed}));
                 }
                 break;
             
@@ -143,7 +139,6 @@ Q.getEvents=function(whereTo){
 Q.setPhase=function(phase){
     Q.state.set("phase",phase);
     Q("Player",1).invoke("changeControls");
-    Q.state.get("turnOrder")[0].turnStart();
     Q.inputs['left']=false;
     Q.inputs['right']=false;
     Q.inputs['up']=false;
@@ -192,26 +187,12 @@ Q.generateTurnOrder=function(players,enemies){
 };
 
 Q.getPlayers=function(){
-    var plC = Q.state.get("playersConnected");
-    var playerObjs = Q("Player",1).items;
-    var players = [];
-    for(i=0;i<playerObjs.length;i++){
-        //If we have this many players connected, push them into the array
-        if(playerObjs[i].p.num<plC.length){
-            //Set the character
-            playerObjs[i].p.character=plC[playerObjs[i].p.num];
-            players.push(playerObjs[i]);
-        //If this player is not connected, destroy it
-        } else {
-            playerObjs[i].p.initialize=false;
-            playerObjs[i].destroy();
-        }
-    }
     var enemies = Q("Enemy",1).items;
-    Q.state.set("turnOrder",Q.generateTurnOrder(players,enemies));
-    Q.state.set("playerObjs",players);
+    var player = Q.state.get("player");
+   // var connPlayers = 
+    Q.state.set("turnOrder",Q.generateTurnOrder());
     Q.state.set("currentCharacter",Q.state.get("turnOrder")[0]);
-    
+    Q.state.get("turnOrder")[0].turnStart()
 };
 
 Q.scene("fog",function(stage){

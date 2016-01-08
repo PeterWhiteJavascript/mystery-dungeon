@@ -125,7 +125,7 @@ Quintus.HUD = function(Q){
                 
                 name:"Pointer"
             });
-            if(!this.p.player){this.p.player=Q.state.get("currentCharacter");};
+            if(!this.p.player){this.p.player=Q.state.get("player");};
             this.p.x=this.p.player.p.x;
             this.p.y=this.p.player.p.y;
             
