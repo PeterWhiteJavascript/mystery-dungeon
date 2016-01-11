@@ -1,41 +1,60 @@
 Quintus.Areas = function(Q){
-Q.givePlayerProperties=function(stage,loc){
-    var setPosition = function(loc){
-        if(loc[0]==='x'){
-            loc[0]=Q("TileLayer").items[0].p.tiles[0].length-1;
-            player.p.x=loc[0]*70+35;
-            player.p.y=loc[1]*70-35;
-        } else if(loc[1]==='y'){
-            loc[1]=Q("TileLayer").items[0].p.tiles.length-1;
-            player.p.x=loc[0]*70-35;
-            player.p.y=loc[1]*70+35;
-        } else if(loc[0]===0){
-            player.p.x=loc[0]*70+35;
-            player.p.y=loc[1]*70-35;
-        } else if(loc[1]===0){
-            player.p.x=loc[0]*70-35;
-            player.p.y=loc[1]*70+35;
-        //This is a special case on spawning from not the side of the map
-        } else {
-            player.p.x=loc[0];
-            player.p.y=loc[1];
-            loc = [(loc[0]-35)/70,[loc[1]-35]/70];
-        }
-    };
-    var conn = Q.state.get("playerConnection");
-    //Set the players' properties
-    var player = stage.insert(new Q.Player({num:0,Class:"Player",playerId:conn.id,socket:conn.socket,character:Q.state.get("character")}));
-    if(loc){
-        setPosition(loc);
+Q.setPosition = function(player,loc){console.log(loc)
+    if(loc[0]==='x'){
+        loc[0]=Q("TileLayer").items[0].p.tiles[0].length-1;
+        player.p.x=loc[0]*70+35;
+        player.p.y=loc[1]*70-35;
+    } else if(loc[1]==='y'){
+        loc[1]=Q("TileLayer").items[0].p.tiles.length-1;
+        player.p.x=loc[0]*70-35;
+        player.p.y=loc[1]*70+35;
+    } else if(loc[0]===0){
+        player.p.x=loc[0]*70+35;
+        player.p.y=loc[1]*70-35;
+    } else if(loc[1]===0){
+        player.p.x=loc[0]*70-35;
+        player.p.y=loc[1]*70+35;
+    //This is a special case on spawning from not the side of the map
+    } else {
+        player.p.x=loc[0]*70+35;
+        player.p.y=loc[1]*70+35;
     }
     
-    player.p.location=player.confirmLocation(loc);
-    if(loc&&loc!==player.p.location){
-        setPosition([player.p.location[0]*70+35,player.p.location[1]*70+35]);
+    return player;
+};
+Q.givePlayerProperties=function(stage,loc){
+    var conn = Q.state.get("playerConnection");
+    //Set the players' properties
+    var player = stage.insert(new Q.Player({num:0,Class:"Player",playerId:conn.id,socket:conn.socket,character:Q.state.get("character"),data:Q.state.get("player")}));
+    if(loc){
+        Q.setPosition(player,loc);
+    }
+    player.p.loc=player.confirmLocation(loc);
+    if(loc&&loc!==player.p.loc){
+        player = Q.setPosition(player,[player.p.loc[0]*70+35,player.p.loc[1]*70+35]);
     }
     player.p.currentStage=stage.scene.name;
     player.add("protagonist");
     player.addControls();
+    setInterval(function(){
+        conn.socket.emit('update',{
+            inputs:{
+                left:Q.inputs['left'],
+                right:Q.inputs['right'],
+                up:Q.inputs['up'],
+                down:Q.inputs['down']
+            },
+            playerId:conn.id,
+            props:{
+                x:player.p.x,
+                y:player.p.y,
+                dir:player.p.dir,
+                loc:player.p.loc,
+                animation:player.p.animation,
+                inMenu:player.p.inMenu
+            }
+        });
+    },50);
     return player;
 };
 Q.Sprite.extend("Trigger",{
@@ -45,10 +64,10 @@ Q.Sprite.extend("Trigger",{
         });
     },
     checkLocation:function(){
-        var obj = Q.stage(1).locate(this.p.location[0]*70+35,this.p.location[1]*70+35,Q.SPRITE_INTERACTABLE);
+        var obj = Q.stage(1).locate(this.p.loc[0]*70+35,this.p.loc[1]*70+35,Q.SPRITE_INTERACTABLE);
         if(obj&&obj.has('protagonist')){
             //Tell all players that this event is running now
-            Q.state.get("playerConnection").socket.emit('triggerEvent', {event:this.p.eventObj,stageName:Q.stage(1).scene.name});
+            Q.state.get("playerConnection").socket.emit('triggerEvent', {eventId:this.p.eventObj.eventId,stageName:Q.stage(1).scene.name});
         }
     }
 });
@@ -90,26 +109,27 @@ Q.eventCompleted=function(eventId,onComplete){
     
 };
 Q.eventFuncs= {
-    spawnEnemies:function(obj){
-        var enemies = obj.enemies;
+    spawnEnemies:function(event){
+        var enemies = event.enemies;
         var stage = Q.stage(1);
         var enm = Q.state.get("enemies");
-        enm[obj.eventId]=[];
+        enm[event.eventId]=[];
         for(j=0;j<enemies.length;j++){
-            enm[obj.eventId].push(stage.insert(new Q.Enemy({eventId:obj.eventId,location:enemies[j].location,opts:{gender:enemies[j].opts.gender,level:enemies[j].opts.level},character:enemies[j].character,onCompleted:obj.onCompleted})));
+            enm[event.eventId].push(stage.insert(new Q.Enemy({eventId:event.eventId,loc:enemies[j].loc,opts:{gender:enemies[j].opts.gender,level:enemies[j].opts.level},character:enemies[j].character,onCompleted:event.onCompleted})));
         }
+        Q.state.get("playerConnection").socket.emit('partOfBattle', {eventId:event.eventId,stageName:Q.stage(1).scene.name,playerId:Q.state.get("playerConnection").id});
+        
         if(Q.state.get("phase")!==2){
             Q.state.set("battle",true);
             Q.setPhase(2);
             Q.getPlayers();
         } else {
-            Q.state.set("turnOrder",Q.generateTurnOrder(Q.state.get("turnOrder"),enm[obj.eventId]));
+            Q.state.set("turnOrder",Q.generateTurnOrder(Q.state.get("turnOrder"),enm[event.eventId]));
         }
     }
 };
 Q.setEvents=function(stage,events){
-    console.log(events)
-    var keys = Object.keys(events)
+    var keys = Object.keys(events);
     for(iE=0;iE<keys.length;iE++){
         var event = events[keys[iE]];
         event.eventId = keys[iE];
@@ -125,16 +145,12 @@ Q.setEvents=function(stage,events){
                 break;
             case "onLocation":
                 for(iL=0;iL<event.locations.length;iL++){
-                    stage.insert(new Q.Trigger({eventObj:event,eventId:event.eventId,location:event.locations[iL],event:event.event,enemies:enemies,completed:event.completed}));
+                    stage.insert(new Q.Trigger({eventObj:event,eventId:event.eventId,loc:event.locations[iL],event:event.event,enemies:enemies,completed:event.completed}));
                 }
                 break;
             
         }
     }
-};
-Q.getEvents=function(whereTo){
-    var events = Q.events[whereTo];
-    return events;
 };
 Q.setPhase=function(phase){
     Q.state.set("phase",phase);
@@ -181,18 +197,18 @@ Q.afterDir=function(){
     
 };
 
-Q.generateTurnOrder=function(players,enemies){
+Q.generateTurnOrder=function(player,connPlayers,enemies){
     //For now, just put the order chronologically
-    return players.concat(enemies);
+    return player.concat(connPlayers).concat(enemies);
 };
 
 Q.getPlayers=function(){
-    var enemies = Q("Enemy",1).items;
     var player = Q.state.get("player");
-   // var connPlayers = 
-    Q.state.set("turnOrder",Q.generateTurnOrder());
+    var connPlayers = Q.players;
+    var enemies = Q("Enemy",1).items;
+    Q.state.set("turnOrder",Q.generateTurnOrder([player],connPlayers,enemies));
     Q.state.set("currentCharacter",Q.state.get("turnOrder")[0]);
-    Q.state.get("turnOrder")[0].turnStart()
+    Q.state.get("turnOrder")[0].turnStart();
 };
 
 Q.scene("fog",function(stage){

@@ -60,7 +60,7 @@ Q.component("AI", {
     moveToTarget:function(target){
         if(!target){alert("You lost :)"); return};
         var p = this.entity.p;
-        p.AITo=target.p.location;
+        p.AITo=target.p.loc;
         p.target=target;
         p.AIAtDest="attackTarget";
     },
@@ -123,7 +123,7 @@ Q.component("autoMove", {
 
     atDest:function(){
         var p = this.entity.p;
-        p.location=[(p.x-p.w/2)/p.tileSize,(p.y-p.h/2)/p.tileSize];
+        p.loc=[(p.x-p.w/2)/p.tileSize,(p.y-p.h/2)/p.tileSize];
         this.entity.getTileLocation();
         
         this.entity.clearGuide();
@@ -144,7 +144,7 @@ Q.component("autoMove", {
         var phase = Q.state.get("phase");
         var walkPath=[];
         p.costPath=[];
-        var curLoc = {x:p.location[0],y:p.location[1]};
+        var curLoc = {x:p.loc[0],y:p.loc[1]};
         var going = to.length;
         if(going>p.myTurnTiles){ 
             going=p.myTurnTiles;
@@ -273,58 +273,31 @@ Q.component("autoMove", {
 //Used in adventuring phase (1)
 Q.component("stepControls", {
     added: function() {
-      var p = this.entity.p;
-      if(!p.stepDistance) { p.stepDistance = 70; }
-      if(!p.stepDelay) { p.stepDelay = 0.3; }
-      p.stepWait = 0;
-      p.canMove=true;
-      this.entity.on("step",this,"step");
-      p.maxXLocation = (Q.stage(1).width-35)/70;
-      p.maxYLocation = (Q.stage(1).height-35)/70;
+        var p = this.entity.p;
+        if(!p.stepDistance) { p.stepDistance = 70; }
+        if(!p.stepDelay) { p.stepDelay = 0.3; }
+        p.stepWait = 0;
+        p.canMove=true;
+        p.canInput=true;
+        p.diffX = 0;
+        p.diffY = 0;
+        this.entity.on("step",this,"step");
+        p.maxXLocation = (Q.stage(1).width-35)/70;
+        p.maxYLocation = (Q.stage(1).height-35)/70;
+        this.entity.on("acceptInput",this,"acceptInputted");
     },
     //When at the tile that you were moving to
     atDest:function(){
         var p = this.entity.p;
-        p.location=[(p.x-p.w/2)/p.tileSize,(p.y-p.h/2)/p.tileSize];
-        this.entity.getTileLocation();
-        //Q.setFog(this.entity.stage);
+        p.diffX = 0;
+        p.diffY = 0;
         p.stepped=false;
         p.stepping=false;
+        p.canInput=true;
+        //Check for triggers
         this.entity.trigger("atDest");
-    },
-    
-    
-    checkDiag:function(dir,x,y){
-        var p = this.entity.p;
-        var obj1 = Q.stage(1).locate(p.x+x,p.y,Q.SPRITE_INTERACTABLE);
-        var obj2 = Q.stage(1).locate(p.x,p.y+y,Q.SPRITE_INTERACTABLE);
-        var tiles = this.entity.stage.lists.TileLayer[1].p.tiles;
-        var tile1 = true,
-            tile2 = true;
-        switch(dir){
-            case "UpLeft":
-                tile1 = Q.processTileTo(this.entity.stage.lists.TileLayer[1].tileCollisionObjects[tiles[p.location[1]-1][p.location[0]]].p.type,this.entity);
-                tile2 = Q.processTileTo(this.entity.stage.lists.TileLayer[1].tileCollisionObjects[tiles[p.location[1]][p.location[0]-1]].p.type,this.entity);
-                break;
-            case "UpRight":
-                tile1 = Q.processTileTo(this.entity.stage.lists.TileLayer[1].tileCollisionObjects[tiles[p.location[1]-1][p.location[0]]].p.type,this.entity);
-                tile2 = Q.processTileTo(this.entity.stage.lists.TileLayer[1].tileCollisionObjects[tiles[p.location[1]][p.location[0]+1]].p.type,this.entity);
-                break;
-            case "DownRight":
-                tile1 = Q.processTileTo(this.entity.stage.lists.TileLayer[1].tileCollisionObjects[tiles[p.location[1]+1][p.location[0]]].p.type,this.entity);
-                tile2 = Q.processTileTo(this.entity.stage.lists.TileLayer[1].tileCollisionObjects[tiles[p.location[1]][p.location[0]+1]].p.type,this.entity);
-                break;
-            case "DownLeft":
-                tile1 = Q.processTileTo(this.entity.stage.lists.TileLayer[1].tileCollisionObjects[tiles[p.location[1]+1][p.location[0]]].p.type,this.entity);
-                tile2 = Q.processTileTo(this.entity.stage.lists.TileLayer[1].tileCollisionObjects[tiles[p.location[1]][p.location[0]-1]].p.type,this.entity);
-                break;
-            default:
-                obj1=false;
-                obj2=false;
-            break;
-        }
-        if(obj1||obj2||!tile1||!tile2){return true;}
-        else {return false;};
+        //Run this function to see if we keep moving
+        this.trigger("acceptInput");
     },
     
     goOffscreen:function(x,y){
@@ -362,15 +335,109 @@ Q.component("stepControls", {
                 break;
         }
         var newArea = level+newPathNum[0]+"_"+newPathNum[1];
-        Q.goToStage(newArea,playerLoc);
         var player = this.entity;
-        Q.state.get("playerConnection").socket.emit('changeArea', { playerId:Q.state.get("playerConnection").id, dir:player.p.dir, playerLoc:playerLoc,sheet:player.p.sheet,currentStage:newArea, character:player.p.character});
+        Q.state.get("playerConnection").socket.emit('changeArea', {player:player,playerLoc:playerLoc,newArea:newArea});
+    },
+    
+    checkOffscreen:function(locTo,tiles){
+        switch(true){
+            case locTo[0]<0:
+                return this.goOffscreen(-1,0);
+                break;
+            case locTo[0]>=tiles.length:
+                return this.goOffscreen(1,0);
+                break;
+            case locTo[1]<0:
+                return this.goOffscreen(0,-1);
+                break;
+            case locTo[1]>=tiles[0].length:
+                return this.goOffscreen(0,1);
+                break;
+        }
+    },
+    
+    acceptInputted:function(){
+        var p = this.entity.p;
+        var inputted=p.inputted;
+        if(p.canInput){
+            if(inputted.left) {
+                p.diffX = -p.stepDistance;
+                p.dir='Left';
+                p.canInput=false;
+            } else if(inputted.right) {
+                p.diffX = p.stepDistance;
+                p.dir='Right';
+                p.canInput=false;
+            } else if(inputted.up) {
+                p.diffY = -p.stepDistance;
+                p.dir='Up';
+                p.canInput=false;
+            } else if(inputted.down) {
+                p.diffY = p.stepDistance;
+                p.dir='Down';
+                p.canInput=false;   
+            } else {
+                this.entity.playStand(p.dir);
+            }
+            //If we have pressed an input, this will be false
+            if(!p.canInput){
+                //Set the destination positions
+                p.destX = p.x + p.diffX;
+                p.destY = p.y + p.diffY;
+                //Set the destination location
+                var locTo=[(p.destX-(p.h/2))/70,(p.destY-(p.w/2))/70];
+                //Get the tiles
+                var tiles = this.entity.stage.lists.TileLayer[1].p.tiles;
+                //Check to make sure locTo to is on this stage
+                this.checkOffscreen(locTo,tiles);
+                //Make sure we aren't going to crash into an interactable
+                //Don't collide with players
+                //THIS NEEDS TO BE CHANGED TO CHECK THE LOCATION AND NOT XY POSITION
+                if(obj = Q.stage(1).locate(p.x+p.diffX,p.y+p.diffY,Q.SPRITE_INTERACTABLE)){
+                    this.entity.playWalk(p.dir);
+                    this.atDest();
+                    return;
+                }
+                var pls = Q("Player",1).items;
+                var invalid = false;
+                for(i=0;i<pls.length;i++){
+                    if(locTo[0]===pls[i].p.loc[0]&&locTo[1]===pls[i].p.loc[1]){
+                        invalid = true;
+                    }
+                }
+                if(invalid){
+                    this.entity.playWalk(p.dir);
+                    this.atDest();
+                    return;
+                }
+                //Set the tile type that this player is going to
+                p.tileTo = this.entity.stage.lists.TileLayer[1].tileCollisionObjects[tiles[locTo[1]][locTo[0]]].p.type;
+                //Calculate how fast the player moves on this tile
+                p.stepDelay = Q.getMoveSpeed(p.tileTo,this.entity);
+                //Check if we can't go to that tile and make sure we can actually walk
+                //This func is stored in tile_costs.js and just checks the next tile's type to see if the tile is walkable by this type of player
+                if(!Q.processTileTo(p.tileTo,this.entity)){
+                    this.entity.playWalk(p.dir);
+                    this.atDest();
+                    return;
+                }
+                //Now that we're sure that we can go to that tile, actually move there.
+                //Setting these properties enables certain feautres in this step function
+                p.stepping = true;
+                p.origX = p.x;
+                p.origY = p.y;
+                p.stepWait = p.stepDelay;
+                p.stepped=true;
+                p.loc=locTo;
+                //Play the walking animation
+                this.entity.playWalk(p.dir);
+            }
+        }
     },
     
     step: function(dt) {
-        var p = this.entity.p,
-            moved = false;
-        p.socket.emit('update', { playerId: p.playerId, x: p.x, y: p.y, dir:p.dir, sheet:p.sheet, character:p.character,currentStage:p.currentStage});
+        var p = this.entity.p;
+            
         if(p.canMove){
             p.stepWait -= dt;
             if(p.stepping) {
@@ -387,151 +454,20 @@ Q.component("stepControls", {
             }
             p.stepping = false;
 
-            p.diffX = 0;
-            p.diffY = 0;
-
-            if(Q.inputs['left']) {
-                p.diffX = -p.stepDistance;
-                p.dir='Left';
-                if(Q.inputs['diagMove']){
-                    p.diffY = -p.stepDistance;
-                    p.dir="UpLeft";
-                }
-            } else if(Q.inputs['right']) {
-                p.diffX = p.stepDistance;
-                p.dir='Right';
-                if(Q.inputs['diagMove']){
-                    p.diffY = p.stepDistance;
-                    p.dir="DownRight";
-                }
-            }
-
-            if(Q.inputs['up']) {
-                p.diffY = -p.stepDistance;
-                if(Q.inputs['left']){
-                    p.dir="UpLeft";
-                } else if(Q.inputs['right']){
-                    p.dir="UpRight";
-                } else {
-                    p.dir='Up';
-                    if(Q.inputs['diagMove']){
-                        p.diffX = p.stepDistance;
-                        p.dir="UpRight";
-                    }
-                }
-            } else if(Q.inputs['down']) {
-                p.diffY = p.stepDistance;
-                if(Q.inputs['left']){
-                    p.dir="DownLeft";
-                } else if(Q.inputs['right']){
-                    p.dir="DownRight";
-                } else {
-                    p.dir='Down';
-                    if(Q.inputs['diagMove']){
-                        p.diffX = -p.stepDistance;
-                        p.dir="DownLeft";
-                    }
-                }
-            }
-            
-            //Run the first time
-            if(p.diffX || p.diffY ) {
-                
-                
-                p.destX = p.x + p.diffX;
-                p.destY = p.y + p.diffY;
-
-                var locTo=[(p.destX-(p.h/2))/70,(p.destY-(p.w/2))/70];
-                var tiles = this.entity.stage.lists.TileLayer[1].p.tiles;
-                //Check to make sure locTo to is on this stage
-                switch(true){
-                    case locTo[0]<0:
-                        this.goOffscreen(-1,0);
-                        return;
-                        break;
-                    case locTo[0]>=tiles.length:
-                        this.goOffscreen(1,0);
-                        return;
-                        break;
-                    case locTo[1]<0:
-                        this.goOffscreen(0,-1);
-                        return;
-                        break;
-                    case locTo[1]>=tiles[0].length:
-                        this.goOffscreen(0,1);
-                        return;
-                        break;
-                }
-                //Not allowed to move like this if it's not adventure phase
-                if(this.checkDiag(p.dir,p.diffX,p.diffY)){
-                    p.diffX=0;
-                    p.diffY=0;
-                }
-                //Make sure we aren't going to crash into an interactable
-                //Don't collide with players
-                if(obj = Q.stage().locate(p.x+p.diffX,p.y+p.diffY,Q.SPRITE_INTERACTABLE)){
-                    this.entity.playWalk(p.dir);
-                    this.atDest();
-                    return;
-
-                }
-                p.tileTo = this.entity.stage.lists.TileLayer[1].tileCollisionObjects[tiles[locTo[1]][locTo[0]]].p.type;
-                //Calculate how fast the player moves on this tile
-                p.stepDelay = Q.getMoveSpeed(p.tileTo,this.entity);
-
-                //Make sure the player doesn't walk off of the map!
-                if(locTo[0]<0||locTo[1]<0||locTo[0]>this.entity.stage.lists.TileLayer[1].p.tiles[0].length-1||locTo[1]>this.entity.stage.lists.TileLayer[1].p.tiles.length-1){
-                    p.stepping = false;
-                    this.atDest();
-                    return;
-                }
-                p.stepping = true;
-                p.origX = p.x;
-                p.origY = p.y;
-
-                p.stepWait = p.stepDelay;
-                p.stepped=true;
-
-                //Check if we can't go to that tile and..
-                //Make sure we can actually walk
-                if(!Q.processTileTo(p.tileTo,this.entity)){
-                    p.stepping=false;
-                }
-                //Add the viewport after one movement
-                if(!Q.stage(1).viewport.following||Q.stage(1).viewport.following.p.name!==this.entity.p.name){
-                    Q.addViewport(this.entity);
-                }
-                this.entity.playWalk(p.dir);
-            //If not moving
-            } else {
-                this.entity.playStand(p.dir);
-            }
             if(Q.inputs['interact']&&!p.stepping){
                 var obj;
                 switch(p.dir){
                     case "Left":
                         obj = Q.stage().locate(p.x-p.tileSize,p.y,Q.SPRITE_INTERACTABLE);
                         break;
-                    case "UpLeft":
-                        obj = Q.stage().locate(p.x-p.tileSize,p.y-p.tileSize,Q.SPRITE_INTERACTABLE);
-                        break;
                     case "Up":
                         obj = Q.stage().locate(p.x,p.y-p.tileSize,Q.SPRITE_INTERACTABLE);
-                        break;
-                    case "UpRight":
-                        obj = Q.stage().locate(p.x+p.tileSize,p.y-p.tileSize,Q.SPRITE_INTERACTABLE);
                         break;
                     case "Right":
                         obj = Q.stage().locate(p.x+p.tileSize,p.y,Q.SPRITE_INTERACTABLE);
                         break;
-                    case "DownRight":
-                        obj = Q.stage().locate(p.x+p.tileSize,p.y+p.tileSize,Q.SPRITE_INTERACTABLE);
-                        break;
                     case "Down":
                         obj = Q.stage().locate(p.x,p.y+p.tileSize,Q.SPRITE_INTERACTABLE);
-                        break;
-                    case "DownLeft":
-                        obj = Q.stage().locate(p.x-p.tileSize,p.y+p.tileSize,Q.SPRITE_INTERACTABLE);
                         break;
                 }
                 //If there's nothing in front, check below
@@ -553,9 +489,8 @@ Q.component("stepControls", {
                 //Delete the step controls (added after the text is done);
                 this.entity.disableControls();
                 Q.inputs['interact']=false;
-
             }
-        }
+        }  
     }
 });
 
@@ -790,7 +725,7 @@ Q.component("attacker",{
                 }
             };
             var mov = attack.range;
-            var loc = this.p.location;
+            var loc = this.p.loc;
             this.clearGuide();
 
             var minTile = 0;
@@ -930,7 +865,7 @@ Q.component("attacker",{
         },
         faceTarget:function(target){
             var tLoc = [(target.p.x-35)/70,(target.p.y-35)/70];
-            var pLoc = this.p.location;
+            var pLoc = this.p.loc;
             var xDif = tLoc[0]-pLoc[0];
             var yDif = tLoc[1]-pLoc[1];
             if(xDif===0&&yDif===0){return this.p.dir;};
@@ -1206,7 +1141,7 @@ Q.component("commonPlayer", {
         },
         
         getTileLocation:function(){
-            var loc = this.p.location;
+            var loc = this.p.loc;
             var tiles = this.stage.lists.TileLayer[1].p.tiles;
             return this.stage.lists.TileLayer[1].tileCollisionObjects[tiles[loc[1]][loc[0]]].p.type;
         },
@@ -1286,7 +1221,7 @@ Q.component("commonPlayer", {
         },
         getSightRange:function(){
             var sight = this.p.sightRange;
-            var loc = this.p.location;
+            var loc = this.p.loc;
             this.p.sightTiles=[];
 
             var minTile = 0;
@@ -1336,9 +1271,9 @@ Q.component("commonPlayer", {
             }
         },
 
-        getRange:function(){console.log(this)
+        getRange:function(){
             var mov = this.p.myTurnTiles;
-            var loc = this.p.location;
+            var loc = this.p.loc;
             this.p.movTiles=[];
             this.clearGuide();
 
@@ -1482,11 +1417,10 @@ Q.Sprite.extend("Enemy",{
         this.add("commonPlayer,animations,attacker");
     },
     initialize:function(){
-        console.log(this)
         //Make sure that there's nothing standing on the spawn point, else move this enemy
-        this.p.location = this.confirmLocation(this.p.location);
-        this.p.x=this.p.location[0]*70+35;
-        this.p.y=this.p.location[1]*70+35;
+        this.p.loc = this.confirmLocation(this.p.loc);
+        this.p.x=this.p.loc[0]*70+35;
+        this.p.y=this.p.loc[1]*70+35;
         var data = RP.monsters[this.p.character];
         var opts = this.p.opts;
         this.p.name = this.p.character;
@@ -1565,7 +1499,7 @@ Q.Sprite.extend("Enemy",{
             }
         }
         if(enm[this.p.eventId].length===0){
-            Q.eventCompleted(this.p.eventId,this.p.completed)
+            Q.eventCompleted(this.p.eventId,this.p.onCompleted);
         }
     },
     
@@ -1573,7 +1507,7 @@ Q.Sprite.extend("Enemy",{
         Q.addViewport(this);
         this.p.myTurn=true;
         this.p.myTurnTiles=this.p.stats.other.stamina;
-        this.p.startLocation=this.p.location;
+        this.p.startLocation=this.p.loc;
         
         this.add("AI");
         
@@ -1627,14 +1561,15 @@ Q.Sprite.extend("Player",{
         this.on("step",this,"checkMenu");
         this.on("atDest",this,"checkTrigger");
         this.p.num=0;
+        
     },
     checkTrigger:function(){
-        Q("Trigger").invoke("checkLocation");
+        Q("Trigger",1).invoke("checkLocation");
     },
     initialize:function(){
         //Get the user data
-        var data = RP.users[this.p.character];
-        
+        //var data = RP.users[this.p.character];
+        var data = this.p.data.p;
         this.p.species = data.species;
         var sData = RP.monsters[this.p.species];
         this.p.name = data.name;
@@ -1682,7 +1617,7 @@ Q.Sprite.extend("Player",{
         
         this.p.graphWithWeight = new Graph(this.getWalkMatrix(true));
         //[x,y]
-        this.p.location = this.p.loc;
+        this.p.loc = data.loc;
         
         this.p.initialize = false;
     },
@@ -1724,7 +1659,7 @@ Q.Sprite.extend("Player",{
         this.createMenu();
         this.p.myTurn=true;
         this.p.myTurnTiles=this.p.stats.other.stamina;
-        this.p.startLocation=this.p.location;
+        this.p.startLocation=this.p.loc;
         this.p.canRedo=true;
         
         this.p.graphWithWeight = new Graph(this.getWalkMatrix(true));
@@ -1749,7 +1684,7 @@ Q.Sprite.extend("Player",{
         if(this.p.canRedo){
             this.p.x=this.p.w/2+this.p.startLocation[0]*70;
             this.p.y=this.p.h/2+this.p.startLocation[1]*70;
-            this.p.location = [(this.p.x-this.p.w/2)/70,(this.p.y-this.p.h/2)/70];
+            this.p.loc = [(this.p.x-this.p.w/2)/70,(this.p.y-this.p.h/2)/70];
             this.resetMove();
         } else {
             //Play can't do that sound
@@ -1761,7 +1696,7 @@ Q.Sprite.extend("Player",{
     resetMove:function(){
         this.setMyTurn();
         this.p.myTurnTiles=this.p.stats.other.stamina;
-        this.p.startLocation=this.p.location;
+        this.p.startLocation=this.p.loc;
         this.p.canRedo=true;
     },
     getItem:function(item){
@@ -1815,7 +1750,7 @@ Q.Sprite.extend("Player",{
         var func;
         var props;
         var player = this;
-        var itm = Q.stage(1).locate((player.p.location[0]*70)+player.p.w/2,(player.p.location[1]*70)+player.p.h/2,Q.SPRITE_NPC);
+        var itm = Q.stage(1).locate((player.p.loc[0]*70)+player.p.w/2,(player.p.loc[1]*70)+player.p.h/2,Q.SPRITE_NPC);
         if(itm){
             func="getItem";
             props=itm;

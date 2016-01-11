@@ -130,7 +130,7 @@ Quintus.HUD = function(Q){
             this.p.y=this.p.player.p.y;
             
             this.p.tileSize=this.p.player.p.tileSize;
-            this.p.loc =[this.p.player.p.location[0],this.p.player.p.location[1]];
+            this.p.loc =[this.p.player.p.loc[0],this.p.player.p.loc[1]];
             var tileLayer = Q.stage(1).lists.TileLayer[1];
             this.p.rangeMinX=0;
             this.p.rangeMaxX=tileLayer.p.tiles[0].length;
@@ -292,26 +292,26 @@ Quintus.HUD = function(Q){
                         var player = this.p.player;
                        
                         var dir = "";
-                        target.p.location = target.setLocation();
-                        player.p.location = player.setLocation();
+                        target.p.loc = target.setLocation();
+                        player.p.loc = player.setLocation();
                         //For y
-                        if(target.p.location[0]-player.p.location[0]>=-1&&target.p.location[0]-player.p.location[0]<=1){
+                        if(target.p.loc[0]-player.p.loc[0]>=-1&&target.p.loc[0]-player.p.loc[0]<=1){
                             switch(true){
-                                case target.p.y<player.p.y&&target.p.location[1]-player.p.location[1]===-1:
+                                case target.p.y<player.p.y&&target.p.loc[1]-player.p.loc[1]===-1:
                                     dir+="Up";
                                     break;
-                                case target.p.y>player.p.y&&target.p.location[1]-player.p.location[1]===1:
+                                case target.p.y>player.p.y&&target.p.loc[1]-player.p.loc[1]===1:
                                     dir+="Down";
                                     break;    
                             }
                         }
                         //For x
-                        if(target.p.location[1]-player.p.location[1]>=-1&&target.p.location[1]-player.p.location[1]<=1){
+                        if(target.p.loc[1]-player.p.loc[1]>=-1&&target.p.loc[1]-player.p.loc[1]<=1){
                             switch(true){
-                                case target.p.x<player.p.x&&target.p.location[0]-player.p.location[0]===-1:
+                                case target.p.x<player.p.x&&target.p.loc[0]-player.p.loc[0]===-1:
                                     dir+="Left";
                                     break;
-                                case target.p.x>player.p.x&&target.p.location[0]-player.p.location[0]===1:
+                                case target.p.x>player.p.x&&target.p.loc[0]-player.p.loc[0]===1:
                                     dir+="Right";
                                     break;    
                             }
@@ -670,7 +670,7 @@ Quintus.HUD = function(Q){
                 if(p.player.p.canRedo&&Q.state.get("phase")===2){
                     p.player.p.x=p.player.p.w/2+p.player.p.startLocation[0]*70;
                     p.player.p.y=p.player.p.h/2+p.player.p.startLocation[1]*70;
-                    p.player.p.location = [(p.player.p.x-p.player.p.w/2)/70,(p.player.p.y-p.player.p.h/2)/70];
+                    p.player.p.loc = [(p.player.p.x-p.player.p.w/2)/70,(p.player.p.y-p.player.p.h/2)/70];
                     p.player.resetMove();
                     //this.exitMenu();
                 } else {

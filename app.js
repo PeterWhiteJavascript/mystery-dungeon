@@ -3,74 +3,97 @@ var app = express();
 var server = require('http').Server(app);
 var io = require('socket.io')(server);
 
+//My modules
+var Player = require("./server/player.js");
+var events = require("./server/events.js");
+
 app.use(express.static(__dirname + '/public'));
 
 app.get('/', function(req, res){
   res.render('/index.html');
 });
 
+var _players = [];
+var _users = [];
 var id = 0;
-
-//Holds all events
-//events:{
-//  stageName:{
-//      completed:bool,
-//      eventId:String
-//  }
-//}
-var events = {};
-//The event class
-function eventObj(data){
-    this.complete = false;
-    this.eventId = data['event']['eventId'];
-    this.stageName = data['stageName'];
-};
-function addEvent(event){
-    if(!events[event.stageName]){
-        events[event.stageName]={};
-    }
-    if(!events[event.stageName][event.eventId]){
-        events[event.stageName][event.eventId]={complete:false};
-    }
-}
-function completeEvent(event){
-    events[event.stageName][event.eventId].complete=true;
-}
 io.on('connection', function (socket) {
     id++;
     var userId;
     setTimeout(function () {
         userId = id;
-        socket.emit('connected', { playerId: userId});
+        if(_users.length>0&&_users[_users.length-1].playerId===id){id++;userId++;};
+        _users.push({playerId:userId});
+        socket.emit('connected', { playerId: userId,events:events.events});
         io.emit('count', { playerCount: io.engine.clientsCount});
-       
+        
     }, 1500);
 
     socket.on('disconnect', function () {
         io.emit('count', { playerCount: io.engine.clientsCount});
-        io.emit('disconnected', { playerId: userId});
+        for(i=0;i<_players.length;i++){
+            if(_players[i].p.playerId===userId){
+                _players.splice(i,1);
+            }
+        }
+        io.emit('disconnected', {players:_players});
     });
-
+    
+    socket.on('startGame', function (data) {
+        function setPlayer(id,pl){
+            //Check if the player is already in the array
+            for(j=0;j<_players.length;j++){
+                if(_players[j].p.playerId===id){
+                    return;
+                }
+            }
+            for(i=0;i<_users.length;i++){
+                if(_users[i].playerId===id){
+                    _players.push(pl);
+                    return;
+                }
+            }
+        }
+        var player = new Player(data);
+        setPlayer(data['playerId'],player);
+        io.emit('startedGame',{player:player,players:_players,events:events.getEvents(player.p.area)});
+    });
+    
     socket.on('update', function (data) {
-        socket.broadcast.emit('updated', data);
+        var player = _players.filter(function(obj){
+            return obj.p.playerId==data['playerId'];
+        })[0];
+        if(player){
+            player.p.x=data['props']['x'];
+            player.p.y=data['props']['y'];
+            player.p.dir=data['props']['dir'];
+            player.p.loc=data['props']['loc'];
+            player.p.animation = data['props']['animation'];
+            io.emit('updated',{inputted:data['inputs'],playerId:data['playerId'],player:player});
+        }
     });
-
+    
     socket.on('changeArea',function(data){
-        socket.broadcast.emit('changedArea', data);
+        var changePlayer = data['player'];
+        var pl = _players.filter(function (obj) {
+            return obj.p.playerId == changePlayer.p.playerId;
+        })[0];
+        pl.p.loc=data['playerLoc'];
+        pl.p.area=data['newArea'];
+        socket.emit('recievedEvents',{events:events.getEvents(data['currentStage']),player:pl});
+        socket.broadcast.emit('changedArea',pl);
     });
     
     socket.on('triggerEvent',function(data){
-        var ev = new eventObj(data);
-        addEvent(ev);
-        io.emit('triggeredEvent', ev);
+        io.emit('triggeredEvent', events.triggerEvent(data));
+    });
+    
+    socket.on("partOfBattle",function(data){
+        io.emit("playersInBattle",events.attachPlayerToEvent(data));
     });
     
     socket.on('completeEvent',function(data){
-        completeEvent(data.event);
-        io.emit('completedEvent',data.event);
+        io.emit('completedEvent',events.completeEvent(data['event']));
     });
-    
-    
 });
 
 server.listen(process.env.PORT || 5000);

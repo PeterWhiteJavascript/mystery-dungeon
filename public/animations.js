@@ -40,22 +40,6 @@ Q.setUpAnimations=function(){
         walkingRight:{ frames: [9,10,11], rate:walkRate},
         attackingRight:{ frames: [9,10,11], rate:walkRate,loop:false,trigger:"playStand"},
         
-        standingDownLeft:{ frames: [12,13], rate:standRate},
-        walkingDownLeft:{ frames: [12,13,14], rate:walkRate},
-        attackingDownLeft:{ frames: [12,13,14], rate:walkRate,loop:false,trigger:"playStand"},
-        
-        standingDownRight:{ frames: [15,16], rate:standRate},
-        walkingDownRight:{ frames: [15,16,17], rate:walkRate},
-        attackingDownRight:{ frames: [15,16,17], rate:walkRate,loop:false,trigger:"playStand"},
-        
-        standingUpLeft:{ frames: [18,19], rate:standRate},
-        walkingUpLeft:{ frames: [18,19,20], rate:walkRate},
-        attackingUpLeft:{ frames: [18,19,20], rate:walkRate,loop:false,trigger:"playStand"},
-        
-        standingUpRight:{ frames: [21,22], rate:standRate},
-        walkingUpRight:{ frames: [21,22,23], rate:walkRate},
-        attackingUpRight:{ frames: [21,22,23], rate:walkRate,loop:false,trigger:"playStand"},
-        
         fainting:{ frames: [0,3,6,9,12,15,18,21,0], rate:walkRate,loop:false,trigger:"fainted"}
     });
 };
