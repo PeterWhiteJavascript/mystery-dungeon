@@ -6,6 +6,9 @@ var users = {
         "exp": 770,
         "curHp": 55,
         "gender": "M",
+        "types": [
+            "Normal"
+        ],
         "pp": [
             [
                 35,
@@ -67,6 +70,9 @@ var users = {
         "exp": 680,
         "curHp": 51,
         "gender": "M",
+        "types": [
+            "Water"
+        ],
         "pp": [
             [
                 35,
@@ -115,7 +121,7 @@ var users = {
         "text": [
             "Hello, I'm Estevan!"
         ],
-        "loc":[12,11],
+        "loc":[1,10],
         "area":"first_plains2_0"
     },
     "Lan": {
@@ -125,6 +131,9 @@ var users = {
         "exp": 708,
         "curHp": 26,
         "gender": "M",
+        "types": [
+            "Fire"
+        ],
         "pp": [
             [
                 35,
@@ -161,13 +170,19 @@ var users = {
             "Leer"
         ],
         "items": [
+            [
+                "OranBerry",
+                3
+            ]
         ],
         "special": {
-            "canSwim": false
+            "canSwim": true
         },
         "text": [
             "Hello, I'm Lan!"
-        ]
+        ],
+        "loc":[1,8],
+        "area":"first_plains2_0"
     }
 };
 

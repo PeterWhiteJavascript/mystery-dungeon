@@ -185,9 +185,9 @@ Q.addActor=function(actor){
     if(actor.p.playerId!==Q.state.get("playerConnection").id){
         var obj = Q.stage(1).insert(new Q.Player({data:actor}));
         obj.p.playerId=actor.p.playerId;
+        obj.p.area=actor.p.area;
+        obj.p.loc = actor.p.loc;
         obj.add("actor, stepControls");
-        obj = Q.setPosition(obj,actor.p.loc);
-        console.log("Inserted "+actor.p.name+". #"+actor.p.playerId)
     }
 };
 
@@ -196,6 +196,14 @@ Q.checkSameStage=function(actorStage){
         return true;
     }
     return false;
+};
+
+Q.updatePlayers=function(pl){
+    for(i=0;i<Q.players.length;i++){
+        if(Q.players[i].p.playerId===pl.p.playerId){
+            Q.players[i]=pl;
+        }
+    }
 };
 require(['socket.io/socket.io.js']);
 
@@ -227,14 +235,36 @@ require(objectFiles, function () {
         
         socket.on('startedGame', function (data) {
             Q.players=data['players'];
-            UiPlayers.innerHTML = 'Players: ' + Q.players.length;
+            /*UiPlayers.innerHTML = 'Players: ' + Q.players.length;
             for(i=0;i<data['players'].length;i++){
                 console.log(data['players'][i].p.playerId)
-            }
+            }*/
             var player = data['player'];
             if(data['player'].p.playerId===selfId){
                 Q.state.set("player",player);
                 Q.goToStage(player.p.area,player.p.loc,data['events']);
+                setInterval(function(){
+                    var player = Q.state.get("playerObj");
+                    if(player){
+                        socket.emit('update',{
+                            inputs:{
+                                left:Q.inputs['left'],
+                                right:Q.inputs['right'],
+                                up:Q.inputs['up'],
+                                down:Q.inputs['down']
+                            },
+                            playerId:selfId,
+                            props:{
+                                x:player.p.x,
+                                y:player.p.y,
+                                dir:player.p.dir,
+                                loc:player.p.loc,
+                                animation:player.p.animation,
+                                area:player.p.area
+                            }
+                        });
+                    }
+                },50);
             } else if(Q.checkSameStage(player.p.area)){
                 Q.addActor(player);
             }
@@ -244,30 +274,39 @@ require(objectFiles, function () {
             var actor = Q("Player",1).items.filter(function (obj) {
                 return obj.p.playerId == data['playerId'];
             })[0];
-            if(actor.p.playerId===selfId){
-                actor.p.inputted=data['inputted'];
-                actor.trigger("acceptInput")
-            } else {
-                var pl = data['player'];
-                actor.p.x=pl.p.x;
-                actor.p.y=pl.p.y;
-                actor.p.dir=pl.p.dir;
-                actor.p.loc=pl.p.loc;
-                actor.p.update=true;
-                if(actor.p.animation!==pl.p.animation){
-                    actor.play(''+pl.p.animation);
-                    actor.p.animation = pl.p.animation;
+            if(actor){
+                if(actor.p.playerId===selfId){
+                    actor.p.inputted=data['inputted'];
+                    actor.trigger("acceptInput")
+                } else if(Q.checkSameStage(actor.p.area)){
+                    var pl = data['player'];
+                    actor.p.x=pl.p.x;
+                    actor.p.y=pl.p.y;
+                    actor.p.dir=pl.p.dir;
+                    actor.p.loc=pl.p.loc;
+                    actor.p.area = pl.p.area;
+                    actor.p.update=true;
+                    if(actor.p.animation!==pl.p.animation){
+                        actor.play(''+pl.p.animation);
+                        actor.p.animation = pl.p.animation;
+                    }
+                } else {
+                    actor.destroy();
                 }
             }
         });
-        socket.on("changedArea",function(pl){
-            if(Q.checkSameStage(pl.p.currentStage)){
+        socket.on("changedArea",function(data){
+            var pl = data['player'];
+            //Update the Q.players
+            Q.updatePlayers(pl);
+            if(Q.checkSameStage(pl.p.area)){
                 Q.addActor(pl);
             }
         });
         socket.on("recievedEvents",function(data){
             var player = data['player'];
-            Q.goToStage(player['currentStage'],player['playerLoc'],data['events']);
+            Q.state.set("player",player);
+            Q.goToStage(player.p.area,player.p.loc,data['events']);
         });
         socket.on("triggeredEvent",function(data){
             var stageName = Q.stage(1).scene.name;
@@ -376,7 +415,7 @@ require(objectFiles, function () {
             }
             //Insert the protagonist
             var player = Q.givePlayerProperties(stage,stage.options.playerLoc);
-            player.p.currentStage=whereTo;
+            player.p.area=whereTo;
             Q.state.set("playerObj",player);
             //Adventuring Phase
             if(Q.state.get("phase")===1){

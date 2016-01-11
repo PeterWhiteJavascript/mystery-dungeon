@@ -277,8 +277,6 @@ Q.component("stepControls", {
         if(!p.stepDistance) { p.stepDistance = 70; }
         if(!p.stepDelay) { p.stepDelay = 0.3; }
         p.stepWait = 0;
-        p.canMove=true;
-        p.canInput=true;
         p.diffX = 0;
         p.diffY = 0;
         this.entity.on("step",this,"step");
@@ -336,7 +334,9 @@ Q.component("stepControls", {
         }
         var newArea = level+newPathNum[0]+"_"+newPathNum[1];
         var player = this.entity;
-        Q.state.get("playerConnection").socket.emit('changeArea', {player:player,playerLoc:playerLoc,newArea:newArea});
+        player.p.loc = playerLoc;
+        player.p.area=newArea;
+        return true;
     },
     
     checkOffscreen:function(locTo,tiles){
@@ -389,7 +389,10 @@ Q.component("stepControls", {
                 //Get the tiles
                 var tiles = this.entity.stage.lists.TileLayer[1].p.tiles;
                 //Check to make sure locTo to is on this stage
-                this.checkOffscreen(locTo,tiles);
+                if(this.checkOffscreen(locTo,tiles)){
+                    p.canMove=false;
+                    return;
+                };
                 //Make sure we aren't going to crash into an interactable
                 //Don't collide with players
                 //THIS NEEDS TO BE CHANGED TO CHECK THE LOCATION AND NOT XY POSITION
@@ -1566,6 +1569,21 @@ Q.Sprite.extend("Player",{
     checkTrigger:function(){
         Q("Trigger",1).invoke("checkLocation");
     },
+    getDir:function(loc){
+        var dir;
+        if(loc[0]>0&&loc[1]===0){
+            dir='Down';
+        } else if(loc[0]>loc[1]&&loc[1]>0){
+            dir='Left';
+        } else if(loc[1]>0&&loc[0]===0){
+            dir='Right';
+        } else if(loc[1]>loc[0]&&loc[0]>0){
+            dir='Up';
+        } else {
+            dir='Down1';
+        }
+        return dir;
+    },
     initialize:function(){
         //Get the user data
         //var data = RP.users[this.p.character];
@@ -1592,7 +1610,7 @@ Q.Sprite.extend("Player",{
         this.p.special = data.special;
         this.p.text = data.text;
         
-        this.p.types = sData.types;
+        this.p.types = data.types;
         this.p.stats = {
             base:sData.baseStats,
             iv:data.iv,
@@ -1618,6 +1636,15 @@ Q.Sprite.extend("Player",{
         this.p.graphWithWeight = new Graph(this.getWalkMatrix(true));
         //[x,y]
         this.p.loc = data.loc;
+        
+        this.p.dir = this.getDir(this.p.loc);
+        
+        this.p.area=Q.stage(1).scene.name;
+        
+        this.p.canMove=true;
+        this.p.canInput=true;
+        
+        this.playStand(this.p.dir);
         
         this.p.initialize = false;
     },

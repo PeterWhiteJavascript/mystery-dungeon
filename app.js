@@ -63,24 +63,22 @@ io.on('connection', function (socket) {
             return obj.p.playerId==data['playerId'];
         })[0];
         if(player){
+            var area = data['props']['area']
             player.p.x=data['props']['x'];
             player.p.y=data['props']['y'];
             player.p.dir=data['props']['dir'];
+            
             player.p.loc=data['props']['loc'];
             player.p.animation = data['props']['animation'];
-            io.emit('updated',{inputted:data['inputs'],playerId:data['playerId'],player:player});
+            if(area!==player.p.area){
+                player.p.area=data['props']['area'];
+                socket.emit('recievedEvents',{events:events.getEvents(player.p.area),player:player});
+                socket.broadcast.emit('changedArea',{player:player});
+            } else {
+                player.p.area=data['props']['area'];
+                io.emit('updated',{inputted:data['inputs'],playerId:data['playerId'],player:player});
+            }
         }
-    });
-    
-    socket.on('changeArea',function(data){
-        var changePlayer = data['player'];
-        var pl = _players.filter(function (obj) {
-            return obj.p.playerId == changePlayer.p.playerId;
-        })[0];
-        pl.p.loc=data['playerLoc'];
-        pl.p.area=data['newArea'];
-        socket.emit('recievedEvents',{events:events.getEvents(data['currentStage']),player:pl});
-        socket.broadcast.emit('changedArea',pl);
     });
     
     socket.on('triggerEvent',function(data){

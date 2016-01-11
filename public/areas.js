@@ -1,5 +1,5 @@
 Quintus.Areas = function(Q){
-Q.setPosition = function(player,loc){console.log(loc)
+Q.setPosition = function(player,loc){
     if(loc[0]==='x'){
         loc[0]=Q("TileLayer").items[0].p.tiles[0].length-1;
         player.p.x=loc[0]*70+35;
@@ -27,34 +27,15 @@ Q.givePlayerProperties=function(stage,loc){
     //Set the players' properties
     var player = stage.insert(new Q.Player({num:0,Class:"Player",playerId:conn.id,socket:conn.socket,character:Q.state.get("character"),data:Q.state.get("player")}));
     if(loc){
-        Q.setPosition(player,loc);
+        player = Q.setPosition(player,loc);
     }
     player.p.loc=player.confirmLocation(loc);
     if(loc&&loc!==player.p.loc){
         player = Q.setPosition(player,[player.p.loc[0]*70+35,player.p.loc[1]*70+35]);
     }
-    player.p.currentStage=stage.scene.name;
+    player.p.area=stage.scene.name;
     player.add("protagonist");
     player.addControls();
-    setInterval(function(){
-        conn.socket.emit('update',{
-            inputs:{
-                left:Q.inputs['left'],
-                right:Q.inputs['right'],
-                up:Q.inputs['up'],
-                down:Q.inputs['down']
-            },
-            playerId:conn.id,
-            props:{
-                x:player.p.x,
-                y:player.p.y,
-                dir:player.p.dir,
-                loc:player.p.loc,
-                animation:player.p.animation,
-                inMenu:player.p.inMenu
-            }
-        });
-    },50);
     return player;
 };
 Q.Sprite.extend("Trigger",{
