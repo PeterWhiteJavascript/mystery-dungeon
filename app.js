@@ -54,8 +54,36 @@ io.on('connection', function (socket) {
             }
         }
         var player = new Player(data);
+        player.p.socketId=socket.id;
         setPlayer(data['playerId'],player);
         io.emit('startedGame',{player:player,players:_players,events:events.getEvents(player.p.area)});
+    });
+    
+    socket.on('updateItems',function(data){
+        var player = _players.filter(function(obj){
+            return obj.p.playerId==data['playerId'];
+        })[0];
+        if(player){
+            player.p.items=data['items'];
+        }
+        socket.broadcast.emit('updatePlayerItems',{items:player.p.items,playerId:data['playerId']});
+    });
+    
+    socket.on('updateStats',function(data){
+        var player = _players.filter(function(obj){
+            return obj.p.playerId==data['playerId'];
+        })[0];
+        if(player){
+            //Takes an object in the form of:
+            // stats:{
+            //    curHp:40,
+            //    ofn:12
+            // }
+            var stats = Object.keys(data['stats']);
+            for(i=0;i<stats.length;i++){
+                player.p[stats[i]]=data['stats'][stats[i]];
+            }
+        }
     });
     
     socket.on('update', function (data) {
@@ -63,11 +91,10 @@ io.on('connection', function (socket) {
             return obj.p.playerId==data['playerId'];
         })[0];
         if(player){
-            var area = data['props']['area']
+            var area = data['props']['area'];
             player.p.x=data['props']['x'];
             player.p.y=data['props']['y'];
             player.p.dir=data['props']['dir'];
-            
             player.p.loc=data['props']['loc'];
             player.p.animation = data['props']['animation'];
             if(area!==player.p.area){
@@ -81,16 +108,49 @@ io.on('connection', function (socket) {
         }
     });
     
+    socket.on("startTurn",function(data){
+        var evs = events.updateEvents(data);
+        if(data['host']||typeof data['turnOrder'][0] === "string"){
+            var player = _players.filter(function(obj){
+                 return obj.p.playerId==data['host'];
+             })[0];
+            //io.to(player.p.socketId).emit('startTurn',{turnOrder:data['turnOrder'],events:evs});
+            io.emit('startTurn',{turnOrder:data['turnOrder'],events:evs,host:data['host'],stageName:data['stageName']});
+        } else {
+            var player = _players.filter(function(obj){
+                 return obj.p.playerId==data['turnOrder'][0];
+            })[0];
+            //io.to(player.p.socketId).emit('startTurn',{turnOrder:data['turnOrder'],events:evs});
+            io.emit('startTurn',{turnOrder:data['turnOrder'],events:evs,stageName:data['stageName']});
+        }
+    });
+    
     socket.on('triggerEvent',function(data){
-        io.emit('triggeredEvent', events.triggerEvent(data));
+        var ev = events.triggerEvent(data);
+        socket.broadcast.emit('triggeredEvent', {stageName:data['stageName'],event:ev,host:data['host']});
+    });
+    socket.on("updateEvent",function(data){
+        events.updateEvent(data);
+        io.emit('updatedEvent', {stageName:data['stageName'],eventId:data['eventId']});
     });
     
     socket.on("partOfBattle",function(data){
-        io.emit("playersInBattle",events.attachPlayerToEvent(data));
+        //The host will do all enemy calculations
+        var host = data['host'];
+        //Returns the 'p' of event
+        var event = events.updateEvent(data);
+        io.emit("playersInBattle",{stageName:data['stageName'],turnOrder:event.p.turnOrder,host:host});
     });
     
-    socket.on('completeEvent',function(data){
-        io.emit('completedEvent',events.completeEvent(data['event']));
+    socket.on("battleMove",function(data){
+        socket.broadcast.emit('battleMoved',data);
+    });
+    socket.on('attack',function(data){
+        socket.broadcast.emit('attacked',data);
+    });
+    socket.on('eventComplete',function(data){
+        events.completeEvent(data['eventId'],data['stageName'])
+        //io.emit('completedEvent',events.completeEvent(data['eventId'],data['stageName']));
     });
 });
 

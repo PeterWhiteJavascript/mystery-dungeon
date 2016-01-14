@@ -3,7 +3,7 @@ Q.getTileCost = function(tile,p){
     var cost = 2;
     var type1 = p.types[0];
     var type2 = p.types[1];
-    if(!type1){return};
+    if(!type1){return;};
     switch(tile){
         case "SPRITE_DEFAULT":
             cost=200000;
@@ -172,7 +172,7 @@ Q.getMoveSpeed=function(tile,obj){
     var stepDelay=0.3;
     var type1 = obj.p.types[0];
     var type2 = obj.p.types[1];
-    
+    if(!type1){return;};
     switch(tile){
         case "SPRITE_DEFAULT":
             //Only ghosts can go through walls

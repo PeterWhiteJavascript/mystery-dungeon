@@ -1,110 +1,102 @@
  var Events=function(){
-    this.addEvent=function(event){
-        if(!this.p.events[event.stageName]){
-            this.p.events[event.stageName]={};
-        }
-        if(!this.p.events[event.stageName][event.eventId]){
-            this.p.events[event.stageName][event.eventId]={complete:false};
-        }
-        return event;
-    };
     this.getEvents=function(stage){
-        return this.events[stage];
+        if(this.events[stage]){
+            return this.events[stage];
+        }
     };
-    this.attachPlayerToEvent=function(data){
-        var players = this.events[data['stageName']][data['eventId']].players;
-        var found=false;
-        for(i=0;i<players.length;i++){
-            if(players[i]===data['playerId']){
-                found = true;
+    this.updateEvent=function(event){
+        var ev = this.events[event.stageName][event.eventId].p;
+        //Need to loop though and update the event
+        var keys = Object.keys(event);
+        for(i=0;i<keys.length;i++){
+            ev[keys[i]]=event[keys[i]];
+        }
+        return this.events[event.stageName][event.eventId];
+    };
+    //When updating more than one event at a time, for example: two battles going on at one time in the same level.
+    this.updateEvents=function(event){
+        var evs = [];
+        for(i=0;i<event.eventIds.length;i++){
+            var ev = this.events[event.stageName][event.eventIds[i]].p;
+            //Need to loop though and update the event
+            var keys = Object.keys(event);
+            for(i=0;i<keys.length;i++){
+                ev[keys[i]]=event[keys[i]];
             }
+            evs.push(ev);
         }
-        if(!found){
-            players.push(data['playerId']);
-        }
-        return players;
+        return evs;
     };
     this.triggerEvent=function(event){
-        this.events[event.stageName][event.eventId].status=1;
-        return event;
+        this.events[event.stageName][event.eventId].p.status=1;
+        this.events[event.stageName][event.eventId].p.host=event.host;
+        return this.updateEvent(event);
     };
-    this.completeEvent=function(event){
-        this.events[event.stageName][event.eventId].status=2;
-        //todo
-        return "What to do on event complete";
+    this.completeEvent=function(eventId,stageName){
+        this.events[stageName][eventId].p.status=2;
+        return this.events[stageName][eventId];
     };
      //status
      //0 waiting to be triggered
      //1 in progress
      //2 complete
     this.events={
-        first_plains0_0:{},
-        first_plains1_0:{
+        //first_demo start
+        //Anything not in p is a constant
+        first_demo1_0:{
             a:{
                 trigger:{type:"onLocation"},
-                locations:[[3,2]],
+                locations:[[14,11]],
                 event:"spawnEnemies",
-                enemies:[
-                    {loc:[12,2],opts:{gender:'M',level:5},character:"Totodile"},
-                    {loc:[12,2],opts:{gender:'M',level:5},character:"Totodile"},
-                    {loc:[12,2],opts:{gender:'M',level:5},character:"Totodile"}
-                ],
-                status:0,
                 onCompleted:"doneBattle",
-                players:[]
-            },
-            b:{
-                trigger:{type:"onLocation"},
-                locations:[[1,8],[1,9],[1,10]],
-                event:"spawnEnemies",
-                enemies:[
-                    {loc:[4,21],opts:{gender:'M',level:5},character:"Grimer"},
-                    {loc:[21,19],opts:{gender:'M',level:5},character:"Grimer"},
-                    {loc:[11,21],opts:{gender:'M',level:5},character:"Grimer"},
-                    {loc:[12,21],opts:{gender:'F',level:5},character:"Spinarak"},
-                    {loc:[12,21],opts:{gender:'M',level:5},character:"Spinarak"},
-                    {loc:[12,21],opts:{gender:'M',level:5},character:"Spinarak"}
-                ],
-                status:0,
-                onCompleted:"doneBattle",
-                players:[]
+                p:{
+                    status:0,
+                    enemies:[
+                        {loc:[17,9],opts:{gender:'M',level:5},character:"Dratini"},
+                        {loc:[20,5],opts:{gender:'M',level:7,drop:{p:{item:"Diamond",amount:1}}},character:"Dratini"},
+                        {loc:[22,9],opts:{gender:'F',level:5},character:"Dratini"},
+                        {loc:[15,11],opts:{gender:'M',level:5},character:"Dratini"}
+                    ],
+                    turnOrder:[]
+                }
             }
         },
-        first_plains2_0:{
+        first_demo2_0:{
             a:{
                 trigger:{type:"onLocation"},
-                locations:[[13,14]],
+                locations:[[13,9],[13,10],[13,6],[14,4],[15,4],[16,4]],
                 event:"spawnEnemies",
-                enemies:[
-                    {loc:[8,19],opts:{gender:'M',level:5},character:"Dratini"},
-                    {loc:[9,20],opts:{gender:'M',level:5},character:"Dratini"},
-                    {loc:[6,22],opts:{gender:'M',level:5},character:"Dratini"},
-                ],
-                status:0,
                 onCompleted:"doneBattle",
-                players:[]
-            },
+                p:{
+                    status:0,
+                    enemies:[
+                        {loc:[17,9],opts:{gender:'M',level:5},character:"Dratini"},
+                        {loc:[20,5],opts:{gender:'M',level:7,drop:{p:{item:"Diamond",amount:1}}},character:"Dratini"},
+                        {loc:[22,9],opts:{gender:'F',level:5},character:"Dratini"},
+                        {loc:[15,11],opts:{gender:'M',level:5},character:"Dratini"}
+                    ],
+                    turnOrder:[]
+                }
+            }
         },
-        first_plains0_1:{/*
-            a:{
-                trigger:{type:"enter"},
+        first_demo1_1:{
+            
+            b:{
+                trigger:{type:"onLocation"},
+                locations:[[13,2]],
                 event:"spawnEnemies",
-                enemies:[
-                    {loc:[2,9],opts:{gender:'M',level:5},character:"Grimer"},
-                    {loc:[19,8],opts:{gender:'M',level:5},character:"Grimer"},
-                    {loc:[11,21],opts:{gender:'M',level:5},character:"Grimer"},
-                    {loc:[12,20],opts:{gender:'F',level:5},character:"Spinarak"},
-                    {loc:[12,20],opts:{gender:'M',level:5},character:"Spinarak"},
-                    {loc:[12,20],opts:{gender:'M',level:5},character:"Spinarak"}
-                ],
-                completed:"doneBattle"
-            },*/
-        },
-        first_plains1_1:{},
-        first_plains2_1:{},
-        first_plains3_1:{},
-        first_plains4_1:{},
-        first_plains0_2:{},
+                onCompleted:"doneBattle",
+                p:{
+                    status:0,
+                    enemies:[
+                        {loc:[14,5],opts:{gender:'M',level:7,drop:{p:{item:"Diamond",amount:1}}},character:"Dratini"},
+                        {loc:[14,4],opts:{gender:'M',level:7,drop:{p:{item:"Diamond",amount:1}}},character:"Dratini"},
+                        {loc:[14,2],opts:{gender:'M',level:7,drop:{p:{item:"Diamond",amount:1}}},character:"Dratini"}
+                    ],
+                    turnOrder:[]
+                }
+            }
+        }
     };
     
 };

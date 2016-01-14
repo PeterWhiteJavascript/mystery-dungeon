@@ -60,8 +60,8 @@ var users = {
         "text": [
             "Hello, I'm Saito!"
         ],
-        "loc":[12,12],
-        "area":"first_plains2_0"
+        "loc":[17,9],
+        "area":"first_demo1_1"
     },
     "Estevan": {
         "name": "Estevan",
@@ -113,7 +113,11 @@ var users = {
             [
                 "OranBerry",
                 3
-            ]
+            ],
+            [
+                "PechaBerry",
+                3
+            ],
         ],
         "special": {
             "canSwim": true
@@ -121,8 +125,8 @@ var users = {
         "text": [
             "Hello, I'm Estevan!"
         ],
-        "loc":[1,10],
-        "area":"first_plains2_0"
+        "loc":[14,1],
+        "area":"first_demo1_1"
     },
     "Lan": {
         "name": "Lan",
@@ -176,13 +180,13 @@ var users = {
             ]
         ],
         "special": {
-            "canSwim": true
+            "canSwim": false
         },
         "text": [
             "Hello, I'm Lan!"
         ],
-        "loc":[1,8],
-        "area":"first_plains2_0"
+        "loc":[10,11],
+        "area":"first_demo1_1"
     }
 };
 

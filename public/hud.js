@@ -98,7 +98,7 @@ Quintus.HUD = function(Q){
                 p.destX = p.x + p.diffX;
                 p.destY = p.y + p.diffY;
                 p.target=this.entity.getTarget(p.destX,p.destY);
-                if(p.target&&p.target.p.character){
+                if(p.target&&p.target.has("attacker")){
                     Q.stageScene("tophud",3,{target:p.target});
                 } else {
                     if(Q.stage(3)){
@@ -125,7 +125,7 @@ Quintus.HUD = function(Q){
                 
                 name:"Pointer"
             });
-            if(!this.p.player){this.p.player=Q.state.get("player");};
+            if(!this.p.player){this.p.player=Q.state.get("playerObj");};
             this.p.x=this.p.player.p.x;
             this.p.y=this.p.player.p.y;
             
@@ -508,7 +508,9 @@ Quintus.HUD = function(Q){
         },
         done:function(){
             this.p.textNum=0;
-            this.stage.options.obj.createFreePointer();
+            if(this.stage.options.obj){
+                this.stage.options.obj.createFreePointer();
+            }
             for(i=0;i<this.children.length;i++){
                 this.children[i].destroy();
             }
@@ -517,13 +519,24 @@ Quintus.HUD = function(Q){
         cycleText:function(){
             if(this.p.textNum<this.stage.options.text.length){
                 //Do the function if it is an object
-                if(Q._isObject(this.stage.options.text[this.p.textNum])){
-                    var keys = Object.keys(this.stage.options.text[this.p.textNum]);
-                    for(i=0;i<keys.length;i++){
-                        this.stage.options.text[this.p.textNum][keys[i]][0][keys[i]](this.stage.options.text[this.p.textNum][keys[i]][1]);
+                function checkObject(object){
+                    if(Q._isObject(object.stage.options.text[object.p.textNum])){
+                        var keys = Object.keys(object.stage.options.text[object.p.textNum]);
+                        for(i=0;i<keys.length;i++){
+                            var p = object.p;
+                            var stage = object.stage;
+                            var obj = Q(stage.options.text[p.textNum][keys[i]][0].Class,1).items.filter(function(o){
+                                return o.p.playerId===stage.options.text[p.textNum][keys[i]][0].id;
+                            })[0];
+                            if(obj){
+                                obj[keys[i]](stage.options.text[p.textNum][keys[i]][1]);
+                            }
+                        }
+                        object.p.textNum++;
+                        checkObject(object);
                     }
-                    this.p.textNum++;
                 }
+                checkObject(this);
                 //Show the text if it is text
                 if(Q._isString(this.stage.options.text[this.p.textNum])){
                     this.p.text = this.insert(new Q.BottomText({label:this.stage.options.text[this.p.textNum],x:10,y:10}));
@@ -599,7 +612,7 @@ Quintus.HUD = function(Q){
                 text.push(player.p.name+" used "+props.p.p.name);
                 var itemText = player.useItem(props.p);
                 text.push(itemText);
-                var endFuncs = {endTurn:[player]};
+                var endFuncs = {endTurn:[{Class:player.p.Class,id:player.p.playerId}]};
                 text.push(endFuncs);
                 Q.stageScene("bottomhud",3,{text:text,player:player});
             },
@@ -1355,5 +1368,24 @@ Quintus.HUD = function(Q){
         }
         return text;
     };
+    Q.scene('customAnimate',function(stage){
+        switch(stage.options.anim){
+            case "doneBattle":
+                var box = stage.insert(new Q.Sprite({
+                    x:200,y:200,
+                    w:200,h:150,
+                    asset:"/images/battle_complete.png",
+                    type:Q.SPRITE_NONE,
+                    scale:0.1
+                }));
+                box.add('tween');
+                box.animate({ x: 500, y:  400, scale:1 }, 1, Q.Easing.Quadratic.InOut)
+                    .chain({ angle: 360 },0.25)
+                    .chain({ angle: 720 },0.25) 
+                    .chain({ angle: 0 },0.25) 
+                    .chain({  x: 800, y:  200, scale:0.1  }, 1, Q.Easing.Quadratic.InOut,{callback:function(){Q.clearStage(4);}});
+                break;
+        }
+    });
     
 };

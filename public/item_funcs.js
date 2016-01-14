@@ -38,6 +38,9 @@ Quintus.ItemFuncs=function(Q){
         },
         buff:function(props,user){
             
+        },
+        showDesc:function(text){
+            return text.effect[1].text;
         }
     };
 };

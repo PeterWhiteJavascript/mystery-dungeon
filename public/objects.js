@@ -51,7 +51,69 @@ Q.checkGroundPos={
         ]
     }
 };
+
+Q.buildCharacter=function(data){
+    var player={p:{}};
+    //Get the user data
+    player.p.species = data.species;
+    var sData = RP.monsters[player.p.species];
+    player.p.name = data.name;
+    player.p.exp = data.exp;
+    player.p.level= data.level;
+    player.p.curHp = data.curHp;
+    player.p.gender = data.gender;
+    player.p.pp = data.pp;
+    player.p.ability = RP.abilities[data.ability];
+    var attacks = data.attacks;
+    player.p.attacks=[];
+    for(i=0;i<attacks.length;i++){
+        player.p.attacks.push(RP.moves[attacks[i]]);
+    }
+    var itms = [];
+    for(i=0;i<data.items.length;i++){
+        if(Q._isArray(data.items[i])){
+            itms.push({p:RP.items[data.items[i][0]],amount:data.items[i][1]});
+        } else if(Q._isObject(data.items[i])){
+            itms.push(data.items[i]);
+        }
+    }
+
+    player.p.items = itms;
+    player.p.special = data.special;
+    player.p.text = data.text;
+
+    player.p.types = data.types;
+    player.p.stats = {
+        base:sData.baseStats,
+        iv:data.iv,
+        other:data.other
+    };
+    var stats = Q.getStats(player.p.stats,player.p.level);
+    player.p.maxHp = stats[0];
+    player.p.ofn = stats[1];
+    player.p.dfn = stats[2];
+    player.p.spd = stats[3];
+
+    //These properties are use in the damage calculation and are changed by stat modifiers (leer, etc...)
+    player.p.mod_ofn = player.p.ofn;
+    player.p.mod_dfn = player.p.dfn;
+    player.p.mod_spd = player.p.spd;
+
+    player.p.sightRange = player.p.stats.other.mind;
+    player.p.dexNum = RP.monsters[player.p.species].dexNum;
+    player.p.types = RP.monsters[player.p.species].types;
+    player.p.sheet=player.p.species;
+    //[x,y]
+    player.p.loc = data.loc;
+    player.p.x=player.p.loc[0]*70+35;
+    player.p.y=player.p.loc[1]*70+35;
+    player.p.area = data.area;
     
+    player.p.playerId=data.playerId;
+    return player;
+};
+
+
 Q.component("AI", {
     added: function() {
         var p = this.entity.p;
@@ -68,22 +130,14 @@ Q.component("AI", {
         checkOutline:function(){
             var p = this.p;
             //0 - Top
-            //1 - TopRight
-            //2 - Right
-            //3 - BottomRight
-            //4 - Bottom
-            //5 - BottomLeft
-            //6 - Left
-            //7 - TopLeft
+            //1 - Right
+            //2 - Bottom
+            //3 - Left
             var outline = [];
             outline.push(Q.stage(1).locate(p.x,p.y-70,Q.SPRITE_INTERACTABLE));
-            outline.push(Q.stage(1).locate(p.x+70,p.y-70,Q.SPRITE_INTERACTABLE));
             outline.push(Q.stage(1).locate(p.x+70,p.y,Q.SPRITE_INTERACTABLE));
-            outline.push(Q.stage(1).locate(p.x+70,p.y+70,Q.SPRITE_INTERACTABLE));
             outline.push(Q.stage(1).locate(p.x,p.y+70,Q.SPRITE_INTERACTABLE));
-            outline.push(Q.stage(1).locate(p.x-70,p.y+70,Q.SPRITE_INTERACTABLE));
             outline.push(Q.stage(1).locate(p.x-70,p.y,Q.SPRITE_INTERACTABLE));
-            outline.push(Q.stage(1).locate(p.x-70,p.y-70,Q.SPRITE_INTERACTABLE));
 
             for(i=0;i<outline.length;i++){
                 if(outline[i]){
@@ -107,37 +161,75 @@ Q.component("AI", {
     }
     
 });
+
+Q.setPhaseOneUpdating=function(){
+    Q.updateInterval = setInterval(function(){
+        var player = Q.state.get("playerObj");
+        if(player){
+            Q.state.get("playerConnection").socket.emit('update',{
+                inputs:{
+                    left:Q.inputs['left'],
+                    right:Q.inputs['right'],
+                    up:Q.inputs['up'],
+                    down:Q.inputs['down']
+                },
+                playerId:Q.state.get("playerConnection").id,
+                props:{
+                    x:player.p.x,
+                    y:player.p.y,
+                    dir:player.p.dir,
+                    loc:player.p.loc,
+                    animation:player.p.animation,
+                    area:player.p.area
+                }
+            });
+        }
+    },50);
+}
     
 Q.component("autoMove", {
     added: function() {
-      var p = this.entity.p;
-      if(!p.stepDistance) { p.stepDistance = 70; }
-      if(!p.stepDelay) { p.stepDelay = 0.3; }
-
-      p.stepWait = 0;
-      p.stepping=false;
-      this.entity.on("step",this,"step");
-      p.walkPath = this.moveAlong(p.menuPath);
+        var p = this.entity.p;
+        if(!p.stepDistance) { p.stepDistance = 70; }
+        //if(!p.stepDelay) { p.stepDelay = 0.3; }
+        p.stepDelay = 0.3; 
+        p.stepWait = 0;
+        p.stepping=false;
+        this.entity.on("step",this,"step");
+        if(!p.calcMenuPath&&p.menuPath.length>0){
+            Q.state.get("playerConnection").socket.emit('battleMove',{playerId:p.playerId,stageName:Q.stage(1).scene.name,walkPath:p.menuPath,myTurnTiles:p.myTurnTiles});
+            p.walkPath = this.moveAlong(p.menuPath);
+        } else {
+            p.walkPath = this.moveAlong(p.calcMenuPath);
+        }
     },
     
 
     atDest:function(){
         var p = this.entity.p;
+        
         p.loc=[(p.x-p.w/2)/p.tileSize,(p.y-p.h/2)/p.tileSize];
         this.entity.getTileLocation();
-        
         this.entity.clearGuide();
         p.stepped=false;
         p.stepping=false;
         if(!this.entity.has("AI")){
             this.entity.playStand(p.dir);
             //this.entity.createFreePointer();
-            this.entity.createMenu();
+            //Only create the menu if this is the current player
+            if(Q.state.get("playerConnection").id===p.playerId){
+                this.entity.createMenu();
+            }
         } else {
-            this.entity[p.AIAtDest]();
+            //Need to only run this when it is the host
+            //Then send what happened over
+            //if(Q.state.get("playerConnection").id===p.playerId){
+                this.entity[p.AIAtDest]();
+            //}
         }
         this.entity.del("autoMove");
-        //this.entity.trigger("atDest");
+        
+        this.entity.trigger("atDest");
     },
     moveAlong:function(to){
         var p = this.entity.p;
@@ -222,15 +314,13 @@ Q.component("autoMove", {
             p.diffX = -p.stepDistance;
         } else if(p.walkPath[0][0]==="right") {
             p.diffX = p.stepDistance;
-        }
-        if(p.walkPath[0][1]==="up") {
+        } else if(p.walkPath[0][1]==="up") {
             p.diffY = -p.stepDistance;
         } else if(p.walkPath[0][1]==="down"){
             p.diffY = p.stepDistance;
         }
-        
         //Run the first time
-        if((p.diffX || p.diffY )&&p.myTurnTiles>0) {
+        if((p.diffX || p.diffY )&&p.myTurnTiles>0){
             p.destX = p.x + p.diffX;
             p.destY = p.y + p.diffY;
             p.stepping = true;
@@ -280,8 +370,6 @@ Q.component("stepControls", {
         p.diffX = 0;
         p.diffY = 0;
         this.entity.on("step",this,"step");
-        p.maxXLocation = (Q.stage(1).width-35)/70;
-        p.maxYLocation = (Q.stage(1).height-35)/70;
         this.entity.on("acceptInput",this,"acceptInputted");
     },
     //When at the tile that you were moving to
@@ -311,7 +399,7 @@ Q.component("stepControls", {
                 break;
             //Player is going off from the top or bottom of this level
             case x===0:
-                playerLoc[0]=(p.x+35)/70;
+                playerLoc[0]=(p.x-35)/70;
                 break;
             case x<0:
                 //This string means that we need to figure out the maxX of the tilelayer on the next stage.
@@ -325,7 +413,7 @@ Q.component("stepControls", {
                 break;
             //Player is going off from the right or left of this level
             case y===0:
-                playerLoc[1]=(p.y+35)/70;
+                playerLoc[1]=(p.y-35)/70;
                 break;
             case y<0:
                 //This string means that we need to figure out the maxY of the tilelayer on the next stage.
@@ -344,13 +432,13 @@ Q.component("stepControls", {
             case locTo[0]<0:
                 return this.goOffscreen(-1,0);
                 break;
-            case locTo[0]>=tiles.length:
+            case locTo[0]>=tiles[0].length:
                 return this.goOffscreen(1,0);
                 break;
             case locTo[1]<0:
                 return this.goOffscreen(0,-1);
                 break;
-            case locTo[1]>=tiles[0].length:
+            case locTo[1]>=tiles.length:
                 return this.goOffscreen(0,1);
                 break;
         }
@@ -385,7 +473,7 @@ Q.component("stepControls", {
                 p.destX = p.x + p.diffX;
                 p.destY = p.y + p.diffY;
                 //Set the destination location
-                var locTo=[(p.destX-(p.h/2))/70,(p.destY-(p.w/2))/70];
+                var locTo=[Math.round((p.destX-(p.h/2))/70),Math.round((p.destY-(p.w/2))/70)];
                 //Get the tiles
                 var tiles = this.entity.stage.lists.TileLayer[1].p.tiles;
                 //Check to make sure locTo to is on this stage
@@ -511,6 +599,7 @@ Q.component('actor', {
         var temp = this.entity;
         //Automatically destroys the actor if it has not moved in 10 seconds
         setInterval(function () {
+            if(Q.state.get("phase")===2){temp.p.update=true;};
             if (!temp.p.update) {
               temp.destroy();
             }
@@ -539,40 +628,20 @@ Q.Sprite.extend("dirTri",{
                 this.p.y=char.p.y;
                 this.p.angle=270;
                 break;
-            case "UpLeft":
-                this.p.x=char.p.x-char.p.w/2-this.p.w/2;
-                this.p.y=char.p.y-char.p.h/2-this.p.h/2;
-                this.p.angle=315;
-                break;
             case "Up":
                 this.p.x=char.p.x;
                 this.p.y=char.p.y-char.p.h/2-this.p.h/2;
                 this.p.angle=0;
-                break;
-            case "UpRight":
-                this.p.x=char.p.x+char.p.w/2+this.p.w/2;
-                this.p.y=char.p.y-char.p.h/2-this.p.h/2;
-                this.p.angle=45;
                 break;
             case "Right":
                 this.p.x=char.p.x+char.p.w/2+this.p.w/2;
                 this.p.y=char.p.y;
                 this.p.angle=90;
                 break;
-            case "DownRight":
-                this.p.x=char.p.x+char.p.w/2+this.p.w/2;
-                this.p.y=char.p.y+char.p.h/2+this.p.h/2;
-                this.p.angle=135;
-                break;
             case "Down":
                 this.p.x=char.p.x;
                 this.p.y=char.p.y+char.p.w/2+this.p.w/2;
                 this.p.angle=180;
-                break;
-            case "DownLeft":
-                this.p.x=char.p.x-char.p.w/2-this.p.w/2;
-                this.p.y=char.p.y+char.p.h/2+this.p.h/2;
-                this.p.angle=225;
                 break;
         }
     },
@@ -600,23 +669,10 @@ Q.component("directionControls", {
                 p.dir='Left';
             } else if(Q.inputs['right']) {;
                 p.dir='Right';
-            }
-            if(Q.inputs['up']) {
-                if(Q.inputs['left']){
-                    p.dir="UpLeft";
-                } else if(Q.inputs['right']){
-                    p.dir="UpRight";
-                } else {
-                    p.dir='Up';
-                }
+            } else if(Q.inputs['up']) {
+                p.dir='Up';
             } else if(Q.inputs['down']) {
-                if(Q.inputs['left']){
-                    p.dir="DownLeft";
-                } else if(Q.inputs['right']){
-                    p.dir="DownRight";
-                } else {
-                    p.dir='Down';
-                }
+                p.dir='Down';
             }
             this.entity.playStand(p.dir);
             if(p.dirTri&&p.lastDir!==p.dir){
@@ -866,8 +922,8 @@ Q.component("attacker",{
             }
             this.p.possTargets=possibleTargets;
         },
-        faceTarget:function(target){
-            var tLoc = [(target.p.x-35)/70,(target.p.y-35)/70];
+        faceTarget:function(pos){
+            var tLoc = [(pos.x-35)/70,(pos.y-35)/70];
             var pLoc = this.p.loc;
             var xDif = tLoc[0]-pLoc[0];
             var yDif = tLoc[1]-pLoc[1];
@@ -881,15 +937,17 @@ Q.component("attacker",{
                     newDir+="Down";
                     break;
             }
-            switch(true){
-                case xDif<0:
-                    newDir+="Left";
-                    break
-                case xDif>0:
-                    newDir+="Right";
-                    break;
+            if(newDir.length===0){
+                switch(true){
+                    case xDif<0:
+                        newDir+="Left";
+                        break
+                    case xDif>0:
+                        newDir+="Right";
+                        break;
+                }
             }
-            return newDir;
+            this.p.dir = newDir;
         },
         compareDirection:function(user,target){
             var getDirection = function(dir,dirs){
@@ -945,7 +1003,7 @@ Q.component("attacker",{
                         this.changePP([i,-1]);
                     } else {
                         var text = ["Not enough PP for "+attack.name+"."];
-                        var endFuncs = {addViewport:[this],createMenu:[this]};
+                        var endFuncs = {addViewport:[{Class:this.p.Class,id:this.p.playerId}],createMenu:[{Class:this.p.Class,id:this.p.playerId}]};
                         text.push(endFuncs);
                         Q.stageScene("bottomhud",3,{text:text,player:this});
                         return;
@@ -953,16 +1011,16 @@ Q.component("attacker",{
                 }
             }
             //Set the direction we need to be facing
-            this.p.dir = this.faceTarget(center);
+            this.faceTarget({x:center.p.x,y:center.p.y});
             //Play the attack animation
             this.playAttack(this.p.dir);
             
-            var text =  [this.p.name+" used "+attack.name+". "];
-            var endFuncs = {addViewport:[this],endTurn:[this]};
+            var text =  [{faceTarget:[{Class:this.p.Class,id:this.p.playerId},{x:center.p.x,y:center.p.y}],playAttack:[{Class:this.p.Class,id:this.p.playerId},this.p.dir]},this.p.name+" used "+attack.name+". "];
+            var endFuncs = {addViewport:[{Class:this.p.Class,id:this.p.playerId}],endTurn:[{Class:this.p.Class,id:this.p.playerId}]};
             //Loop through the targets and generate the proper text
             for(a=0;a<targets.length;a++){
                 var target = targets[a];
-                text.push({addViewport:[target]});
+                //text.push({addViewport:[target]});
                 //Random number between 1 and 100 
                 var rand = Math.floor(Math.random()*100)+1;
                 var hit;
@@ -983,11 +1041,12 @@ Q.component("attacker",{
                         }
                         //We hit!
                         if(damageCalc.damage>0){
-                            text.push("Hit "+target.p.name+" for "+damageCalc.damage+" damage!");
-                            target.p.curHp-=damageCalc.damage;
-                            if(target.p.curHp<=0){
-                                text.push({faint:[target]},target.p.name+" fainted!");
+                            text.push("Hit "+target.p.name+" for "+damageCalc.damage+" damage!",{lowerHp:[{Class:target.p.Class,id:target.p.playerId},damageCalc.damage]});
+                            if(target.p.curHp-damageCalc.damage<=0){
+                                text.push({faint:[{Class:target.p.Class,id:target.p.playerId}]},target.p.name+" fainted!");
+                                target.p.defeated=true;
                                 target.removeFromTurnOrder();
+                                target.checkDrop(this);
                                 var expText = target.giveExp();
                                 //If someone leveled up
                                 if(expText&&expText.length>0){
@@ -1037,6 +1096,17 @@ Q.component("attacker",{
                     hit = false;
                 }
             }
+            
+            //Send off what happened so it can be replicated in the other player
+            //Note that these calculations are always done on the 'host' machine
+            //This will be broadcast to all other clients
+            var p = this.p;
+            Q.state.get("playerConnection").socket.emit('attack',{
+                text:text,
+                stageName:Q.stage(1).scene.name,
+                playerId:p.playerId,
+                targetId:target.p.playerId
+            });
             //Finish up with the functions that are called after the text is done
             text.push(endFuncs);
             Q.stageScene("bottomhud",3,{text:text,player:this,obj:this,obj2:this,target:target});
@@ -1074,28 +1144,46 @@ Q.component("commonPlayer", {
             //Remove from the turn order right away so that it won't be this's turn
             var turnOrder = Q.state.get("turnOrder");
             for(i=0;i<turnOrder.length;i++){
-                if(turnOrder[i].p.id===this.p.id){
+                if(turnOrder[i]===this.p.playerId){
                     turnOrder.splice(i,1);
                 }
             }
-            
+        },
+        checkDrop:function(obj){
+            if(this.p.drop){
+                obj.getItem(this.p.drop);
+            }
         },
         giveExp:function(){
             var leveledUp = [];
             if(this.p.Class==="Enemy"){
                 var exp=this.p.expGiven;
                 Q("Player",1).each(function(){
-                    var up = this.gainExp(exp);
-                    if(up){leveledUp.push(this.p.name+" grew to level "+this.p.level+"!");};
+                    var up = this.checkExp(exp);
+                    if(up){
+                        leveledUp.push(this.p.name+" grew to level "+this.p.level+"!",
+                        {gainExp:[{Class:this.p.Class,id:this.p.playerId},exp]});
+                    };
                 });
             } else if(this.p.Class==="Player"){
                 var exp = this.p.expGiven||50;
                 Q("Enemy",1).each(function(){
-                    var up = this.gainExp(exp);
-                    if(up){leveledUp.push(this.p.name+" grew to level "+this.p.level+"!");};
+                    var up = this.check(exp);
+                    if(up){
+                        leveledUp.push(this.p.name+" grew to level "+this.p.level+"!",
+                        {gainExp:[{Class:this.p.Class,id:this.p.playerId},exp]});
+                    };
                 });
             }
             return leveledUp;
+        },
+        checkExp:function(exp){
+            var newExp = this.p.exp+exp;
+            //Check for level up
+            //If we leveled up
+            if(this.checkLevelUp(this.p.level,newExp)){
+                return true;
+            };
         },
         gainExp:function(exp){
             this.p.exp+=exp;
@@ -1131,6 +1219,22 @@ Q.component("commonPlayer", {
             var hpInc = Math.ceil(Math.random()*5);
             this.p.curHp+=hpInc;
             this.p.maxHp+=hpInc;
+            var player = this;
+            Q.state.get("playerConnection").socket.emit('updateStats',{
+                stats:{
+                    level:player.p.level,
+                    ofn:player.p.ofn,
+                    dfn:player.p.dfn,
+                    spd:player.p.spd,
+                    mod_ofn:player.p.mod_ofn,
+                    mod_dfn:player.p.mod_dfn,
+                    mod_spd:player.p.mod_spd,
+                    curHp:player.p.curHp,
+                    maxHp:player.p.maxHp
+                },
+                playerId:player.p.playerId
+            });
+            
             return newLevel;
         },
         //Used when this is a possible target for attack
@@ -1144,7 +1248,7 @@ Q.component("commonPlayer", {
         },
         
         getTileLocation:function(){
-            var loc = this.p.loc;
+            var loc = this.setLocation();
             var tiles = this.stage.lists.TileLayer[1].p.tiles;
             return this.stage.lists.TileLayer[1].tileCollisionObjects[tiles[loc[1]][loc[0]]].p.type;
         },
@@ -1159,10 +1263,10 @@ Q.component("commonPlayer", {
             var tiles=Q.stage(1).lists.TileLayer[1].p.tiles;
             var cM=[];
             if(tiles){
-                for(i=0;i<tiles.length;i++){
+                for(i=0;i<tiles[0].length;i++){
                     var costRow = [];
                     var colLoc = i*70+35;
-                    for(j=0;j<tiles[i].length;j++){
+                    for(j=0;j<tiles.length;j++){
                         var rowLoc=j*70+35;
                         var cost = getWalkable(tiles,this);
                         var objOn=false;
@@ -1189,9 +1293,12 @@ Q.component("commonPlayer", {
         },
         tempChangeStat:function(props){
             var player = this;
-            var text =  [player.p.name+" raised "+props.p.stat+" by "+props.p.amount+" temporarily.",{endTurn:[player]}];
+            var text =  [player.p.name+" raised "+props.p.stat+" by "+props.p.amount+" temporarily.",{endTurn:[{Class:player.p.Class,id:player.p.playerId}]}];
             Q.stageScene("bottomhud",3,{text:text,player:player,obj:player});
             this.p.statsModified[props.p.stat]+=props.p.amount;
+        },
+        lowerHp:function(amount){
+            this.p.curHp-=amount;
         },
         changePP:function(props){
             this.p.pp[props[0]][0]+=props[1];
@@ -1210,6 +1317,7 @@ Q.component("commonPlayer", {
                     }
                 }
             }
+            Q.state.get("playerConnection").socket.emit('updateItems',{items:player.p.items,playerId:player.p.playerId});
             var text = RP.itemFuncs[itm.p.effect[0]](itm.p,this);
             return text;
         },
@@ -1282,8 +1390,8 @@ Q.component("commonPlayer", {
 
             var minTile = 0;
             var tileLayer = Q.stage(1).lists.TileLayer[1];
-            var maxTileRow = tileLayer.p.tiles[0].length;
-            var maxTileCol = tileLayer.p.tiles.length;
+            var maxTileRow = tileLayer.p.tiles.length;//25
+            var maxTileCol = tileLayer.p.tiles[0].length;//15
             var rows=mov*2+1,
                 cols=mov*2+1,
                 tileStartX=loc[0]-mov,
@@ -1295,29 +1403,30 @@ Q.component("commonPlayer", {
                 cols-=dif;
                 tileStartX=mov+1-cols+loc[0];
             }
-            if(loc[0]+mov>=maxTileRow){
-                dif = cols-(maxTileRow-loc[0]+mov);
+            if(loc[0]+mov>=maxTileCol){
+                dif = cols-(maxTileCol-loc[0]+mov);
                 cols-=dif;
             }
             if(loc[1]-mov<minTile){
                 dif = rows-(mov+1+loc[1]);
                 rows-=dif;
                 tileStartY=mov+1-rows+loc[1];
-
             }
-            if(loc[1]+mov>=maxTileCol){
-                dif = rows-(maxTileCol-loc[1]+mov);
+            if(loc[1]+mov>=maxTileRow){
+                dif = rows-(maxTileRow-loc[1]+mov);
                 rows-=dif;
             }
-            if(rows>maxTileRow){rows=maxTileRow;};
-            if(cols>maxTileCol){cols=maxTileCol;};
+            
+            if(rows+tileStartY>=maxTileRow){rows=maxTileRow-tileStartY;};
+            if(cols+tileStartX>=maxTileCol){cols=maxTileCol-tileStartX;};
             var movTiles=[];
             //Get all possible move locations that are within the bounds
             var graph = this.p.graphWithWeight;
-            for(i=tileStartY;i<tileStartY+rows;i++){
-                for(j=tileStartX;j<tileStartX+cols;j++){
-                    if(graph.grid[j][i].weight<10000){
-                        movTiles.push(graph.grid[j][i]);
+            for(i=tileStartX;i<tileStartX+cols;i++){
+                for(j=tileStartY;j<tileStartY+rows;j++){
+                    //console.log(i,j)
+                    if(graph.grid[i][j].weight<10000){
+                        movTiles.push(graph.grid[i][j]);
                     }
                 }
             }
@@ -1359,9 +1468,6 @@ Q.component("commonPlayer", {
             var result;
             if(prop==="maxScore"){
                 result = astar.search(graph, start, end,{maxScore:score});
-            //Not in use (was using it for attacks but realized that is stupid)
-            } else if(prop==="diagonal"){
-                result = astar.search(graph, start, end,{heuristic: astar.heuristics.diagonal});
             } else {
                 result = astar.search(graph, start, end);
             }
@@ -1373,7 +1479,7 @@ Q.component("commonPlayer", {
             Q.inputs['interact']=false;
         },
         setLocation:function(){
-            return [(this.p.x-this.p.w/2)/this.p.tileSize,(this.p.y-this.p.h/2)/this.p.tileSize];
+            return [Math.round((this.p.x-this.p.w/2)/this.p.tileSize),Math.round((this.p.y-this.p.h/2)/this.p.tileSize)];
         },
         addViewport:function(){
             Q.addViewport(this);
@@ -1412,7 +1518,8 @@ Q.Sprite.extend("Enemy",{
                 spd:0
             },
             buffs:[],
-            debuffs:[]
+            debuffs:[],
+            defeated:false
         });
         //Library
         this.add("2d, animation, tween");
@@ -1502,7 +1609,10 @@ Q.Sprite.extend("Enemy",{
             }
         }
         if(enm[this.p.eventId].length===0){
-            Q.eventCompleted(this.p.eventId,this.p.onCompleted);
+            //Broadcast that this event is done
+            var eventId = this.p.eventId;
+            Q.state.get("playerConnection").socket.emit('eventComplete',{stageName:Q.stage(1).scene.name,eventId:eventId});
+            Q.eventCompleted(eventId,this.p.onCompleted);
         }
     },
     
@@ -1511,12 +1621,12 @@ Q.Sprite.extend("Enemy",{
         this.p.myTurn=true;
         this.p.myTurnTiles=this.p.stats.other.stamina;
         this.p.startLocation=this.p.loc;
-        
         this.add("AI");
         
         this.p.graphWithWeight = new Graph(this.getWalkMatrix(true));
         this.p.menuPath = this.getPath(this.p.AITo,this.p.graphWithWeight);
         this.add("autoMove");
+        
         
     },
     turnOver:function(){
@@ -1534,6 +1644,7 @@ Q.Sprite.extend("Enemy",{
 Q.Sprite.extend("Player",{
     init: function(p) {
         this._super(p, {
+            Class:"Player",
             frame:0,
             sprite:"player",
             
@@ -1555,7 +1666,8 @@ Q.Sprite.extend("Player",{
                 spd:0
             },
             buffs:[],
-            debuffs:[]
+            debuffs:[],
+            defeated:false
         });
         //Library
         this.add("2d, animation, tween");
@@ -1573,74 +1685,22 @@ Q.Sprite.extend("Player",{
         var dir;
         if(loc[0]>0&&loc[1]===0){
             dir='Down';
-        } else if(loc[0]>loc[1]&&loc[1]>0){
+        } else if(loc[0]===this.stage.lists.TileLayer[1].p.tiles[0].length-1&&loc[1]>0){
             dir='Left';
         } else if(loc[1]>0&&loc[0]===0){
             dir='Right';
-        } else if(loc[1]>loc[0]&&loc[0]>0){
+        } else if(loc[1]===this.stage.lists.TileLayer[1].p.tiles.length-1&&loc[0]>0){
             dir='Up';
         } else {
-            dir='Down1';
+            dir='Down';
         }
         return dir;
     },
+    
     initialize:function(){
-        //Get the user data
-        //var data = RP.users[this.p.character];
-        var data = this.p.data.p;
-        this.p.species = data.species;
-        var sData = RP.monsters[this.p.species];
-        this.p.name = data.name;
-        this.p.exp = data.exp;
-        this.p.level= data.level;
-        this.p.curHp = data.curHp;
-        this.p.gender = data.gender;
-        this.p.pp = data.pp;
-        this.p.ability = RP.abilities[data.ability];
-        var attacks = data.attacks;
-        this.p.attacks=[];
-        for(i=0;i<attacks.length;i++){
-            this.p.attacks.push(RP.moves[attacks[i]]);
-        }
-        var itms = [];
-        for(i=0;i<data.items.length;i++){
-            itms.push({p:RP.items[data.items[i][0]],amount:data.items[i][1]});
-        }
-        this.p.items = itms;
-        this.p.special = data.special;
-        this.p.text = data.text;
-        
-        this.p.types = data.types;
-        this.p.stats = {
-            base:sData.baseStats,
-            iv:data.iv,
-            other:data.other
-        };
-        var stats = Q.getStats(this.p.stats,this.p.level);
-        this.p.maxHp = stats[0];
-        this.p.ofn = stats[1];
-        this.p.dfn = stats[2];
-        this.p.spd = stats[3];
-        
-        //These properties are use in the damage calculation and are changed by stat modifiers (leer, etc...)
-        this.p.mod_ofn = this.p.ofn;
-        this.p.mod_dfn = this.p.dfn;
-        this.p.mod_spd = this.p.spd;
-        
-        this.p.sightRange = this.p.stats.other.mind;
-        this.p.dexNum = RP.monsters[this.p.species].dexNum;
-        this.p.types = RP.monsters[this.p.species].types;
-        
-        this.p.sheet=this.p.species;
-        
-        this.p.graphWithWeight = new Graph(this.getWalkMatrix(true));
-        //[x,y]
-        this.p.loc = data.loc;
-        
         this.p.dir = this.getDir(this.p.loc);
-        
         this.p.area=Q.stage(1).scene.name;
-        
+        this.p.graphWithWeight = new Graph(this.getWalkMatrix(true));
         this.p.canMove=true;
         this.p.canInput=true;
         
@@ -1660,10 +1720,12 @@ Q.Sprite.extend("Player",{
             }
         }
         this.p.canMove=true;
+        this.p.canInput=true;
         
     },
     disableControls:function(){
         this.p.canMove=false;
+        this.p.canInput=false;
     },
     changeControls:function(){
         if(this.has("stepControls")){
@@ -1682,14 +1744,15 @@ Q.Sprite.extend("Player",{
     },
     turnStart:function(){
         Q.addViewport(this);
-        //this.createFreePointer();
         this.createMenu();
         this.p.myTurn=true;
         this.p.myTurnTiles=this.p.stats.other.stamina;
         this.p.startLocation=this.p.loc;
         this.p.canRedo=true;
+        this.p.canInput=false;
         
         this.p.graphWithWeight = new Graph(this.getWalkMatrix(true));
+        this.playStand(this.p.dir);
         
     },
     turnOver:function(){
@@ -1725,11 +1788,30 @@ Q.Sprite.extend("Player",{
         this.p.myTurnTiles=this.p.stats.other.stamina;
         this.p.startLocation=this.p.loc;
         this.p.canRedo=true;
+        var player=this;
+        Q.state.get("playerConnection").socket.emit('update',{
+            inputs:{
+                left:Q.inputs['left'],
+                right:Q.inputs['right'],
+                up:Q.inputs['up'],
+                down:Q.inputs['down']
+            },
+            playerId:Q.state.get("playerConnection").id,
+            props:{
+                x:player.p.x,
+                y:player.p.y,
+                dir:player.p.dir,
+                loc:player.p.loc,
+                animation:player.p.animation,
+                area:Q.stage(1).scene.name
+            }
+        });
+        
     },
     getItem:function(item){
         var itm = item;
         var player = this;
-        var text =  [player.p.name+" obtained "+itm.p.amount+" "+RP.items[itm.p.item].name,{endTurn:[player]}];
+        var text =  [player.p.name+" obtained "+itm.p.amount+" "+RP.items[itm.p.item].name,{endTurn:[{Class:player.p.Class,id:player.p.playerId}]}];
         var found = false;
         for(i=0;i<player.p.items.length;i++){
             if(player.p.items[i].p.id===itm.p.item){
@@ -1740,6 +1822,9 @@ Q.Sprite.extend("Player",{
         if(!found){
             player.p.items.push({p:RP.items[itm.p.item],amount:itm.p.amount});
         }
+        
+        //Update the player's items for all players
+        Q.state.get("playerConnection").socket.emit('updateItems',{playerId:Q.state.get("playerConnection").id,items:player.p.items});
         Q.stageScene("bottomhud",3,{text:text,player:player});
         if(itm.p.type===Q.SPRITE_NPC){
             itm.destroy();
@@ -1750,12 +1835,12 @@ Q.Sprite.extend("Player",{
         var attacks = player.p.attacks;
         var rand = Math.floor(Math.random()*player.p.attacks.length);
         var attack = Q.getAttack(attacks[rand]);
-        var text =  [player.p.name+" lost "+itm.p.amount+" PP on "+attack.name,{changePP:[player,[rand,itm.p.amount]],endTurn:[player]}];
+        var text =  [player.p.name+" lost "+itm.p.amount+" PP on "+attack.name,{changePP:[{Class:player.p.Class,id:player.p.playerId},[rand,itm.p.amount]],endTurn:[{Class:player.p.Class,id:player.p.playerId}]}];
         Q.stageScene("bottomhud",3,{text:text,player:player});
     },
     foundNothing:function(){
         var player = this;
-        var text =  [player.p.name+" checked the ground and found nothing...",{endTurn:[player]}];
+        var text =  [player.p.name+" checked the ground and found nothing...",{endTurn:[{Class:player.p.Class,id:player.p.playerId}]}];
         Q.stageScene("bottomhud",3,{text:text,player:player});
     },
     createMenu:function(){
@@ -1844,10 +1929,12 @@ Q.Sprite.extend("NPC",{
         this.getText(Q.intData[this.stage.scene.name][this.p.name],this.p.textNum);
     },
     interact:function(player){
-        for(i=0;i<this.p.items.length;i++){
-            if(this.p.items[i][0]===this.p.textNum){
-                this.p.item=this.p.items[i][1];
-                player.getItem({p:{amount:this.p.items[i][1].amount,item:this.p.items[i][1].item}});
+        if(this.p.items){
+            for(i=0;i<this.p.items.length;i++){
+                if(this.p.items[i][0]===this.p.textNum){
+                    this.p.item=this.p.items[i][1];
+                    player.getItem({p:{amount:this.p.items[i][1].amount,item:this.p.items[i][1].item}});
+                }
             }
         }
         if(Q._isObject(this.p.text[this.p.text.length-1])){

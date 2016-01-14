@@ -492,6 +492,15 @@ RP.items={
         "desc": "Heals 10% of max hp each turn.",
         "target": "self",
         "kind": "Multiuse"
+    },
+    //Key Items
+    "Diamond":{
+        "id": "Diamond",
+        "name": "Diamond",
+        "effect":["showDesc",{text:"The diamond is very shiny."}],
+        "desc": "A valuable gem",
+        "target":"",
+        "kind":"Key"
     }
 }
 RP.monsters={
