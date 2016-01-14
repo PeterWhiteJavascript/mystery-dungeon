@@ -61,7 +61,8 @@ var users = {
             "Hello, I'm Saito!"
         ],
         "loc":[17,9],
-        "area":"first_demo1_1"
+        "area":"first_demo1_1",
+        "file":"BigGame"
     },
     "Estevan": {
         "name": "Estevan",
@@ -126,7 +127,8 @@ var users = {
             "Hello, I'm Estevan!"
         ],
         "loc":[14,1],
-        "area":"first_demo1_1"
+        "area":"first_demo1_1",
+        "file":"BigGame"
     },
     "Lan": {
         "name": "Lan",
@@ -186,7 +188,8 @@ var users = {
             "Hello, I'm Lan!"
         ],
         "loc":[10,11],
-        "area":"first_demo1_1"
+        "area":"first_demo1_1",
+        "file":"BigGame"
     }
 };
 

@@ -507,10 +507,10 @@ Quintus.HUD = function(Q){
             this.p.text.destroy();
         },
         done:function(){
-            this.p.textNum=0;
+            this.p.textNum=0;/*
             if(this.stage.options.obj){
                 this.stage.options.obj.createFreePointer();
-            }
+            }*/
             for(i=0;i<this.children.length;i++){
                 this.children[i].destroy();
             }
@@ -534,6 +534,9 @@ Quintus.HUD = function(Q){
                         }
                         object.p.textNum++;
                         checkObject(object);
+                        if(object.p.textNum>=object.stage.options.text.length){
+                            object.done();
+                        }
                     }
                 }
                 checkObject(this);

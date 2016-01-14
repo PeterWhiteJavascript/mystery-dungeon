@@ -55,7 +55,6 @@ Q.Sprite.extend("Trigger",{
     }
 });
 Q.eventCompleted=function(eventId,onComplete){
-    console.log("Event " +eventId + " completed! Running "+onComplete+" function.");
     var trigger = Q("Trigger",1).items.filter(function(obj){
         return obj.p.eventId === eventId;
     })[0];
@@ -78,13 +77,14 @@ Q.eventCompleted=function(eventId,onComplete){
                     battle = true;
                 }
             }
-            if(!battle){
+            //if(!battle){
                 Q.stageScene('customAnimate',4,{anim:onComplete});
                 Q.toAdventuringPhase();
-            }
+            //}
             break;
-            
     }
+    var events = Q.state.get("events");
+    events[eventId].p.status=2;
 };
 Q.toAdventuringPhase=function(){
     Q.state.set("phase",1);
@@ -96,7 +96,7 @@ Q.toAdventuringPhase=function(){
     Q.setPhaseOneUpdating();
 };
 Q.eventFuncs= {
-    spawnEnemies:function(event,hostId){console.log(event.eventId+" triggered")
+    spawnEnemies:function(event,hostId){
         if(Q.state.get("phase")!==2){
             Q.state.set("battle",true);
             Q.setPhase(2);

@@ -185,7 +185,7 @@ Q.setPhaseOneUpdating=function(){
             });
         }
     },50);
-}
+};
     
 Q.component("autoMove", {
     added: function() {
@@ -197,7 +197,7 @@ Q.component("autoMove", {
         p.stepping=false;
         this.entity.on("step",this,"step");
         if(!p.calcMenuPath&&p.menuPath.length>0){
-            Q.state.get("playerConnection").socket.emit('battleMove',{playerId:p.playerId,stageName:Q.stage(1).scene.name,walkPath:p.menuPath,myTurnTiles:p.myTurnTiles});
+            Q.state.get("playerConnection").socket.emit('battleMove',{host:Q.state.get("battleHost"),playerId:p.playerId,stageName:Q.stage(1).scene.name,walkPath:p.menuPath,myTurnTiles:p.myTurnTiles});
             p.walkPath = this.moveAlong(p.menuPath);
         } else {
             p.walkPath = this.moveAlong(p.calcMenuPath);
@@ -1105,7 +1105,8 @@ Q.component("attacker",{
                 text:text,
                 stageName:Q.stage(1).scene.name,
                 playerId:p.playerId,
-                targetId:target.p.playerId
+                targetId:target.p.playerId,
+                host:Q.state.get("battleHost")
             });
             //Finish up with the functions that are called after the text is done
             text.push(endFuncs);
@@ -1205,36 +1206,37 @@ Q.component("commonPlayer", {
         levelUp:function(){
             var newLevel = this.p.level+1;
             this.p.level=newLevel;
-            //Increase stats here
-            var ofnInc = Math.ceil(Math.random()*3);
-            var dfnInc = Math.ceil(Math.random()*3);
-            var spdInc = Math.ceil(Math.random()*3);
-            this.p.ofn+=ofnInc;
-            this.p.mod_ofn+=ofnInc;
-            this.p.dfn+=dfnInc;
-            this.p.mod_dfn+=dfnInc;
-            this.p.spd+=spdInc;
-            this.p.mod_spd+=spdInc;
-            
-            var hpInc = Math.ceil(Math.random()*5);
-            this.p.curHp+=hpInc;
-            this.p.maxHp+=hpInc;
-            var player = this;
-            Q.state.get("playerConnection").socket.emit('updateStats',{
-                stats:{
-                    level:player.p.level,
-                    ofn:player.p.ofn,
-                    dfn:player.p.dfn,
-                    spd:player.p.spd,
-                    mod_ofn:player.p.mod_ofn,
-                    mod_dfn:player.p.mod_dfn,
-                    mod_spd:player.p.mod_spd,
-                    curHp:player.p.curHp,
-                    maxHp:player.p.maxHp
-                },
-                playerId:player.p.playerId
-            });
-            
+            if(this.p.playerId===Q.state.get("playerConnection").id){
+                //Increase stats here
+                var ofnInc = Math.ceil(Math.random()*3);
+                var dfnInc = Math.ceil(Math.random()*3);
+                var spdInc = Math.ceil(Math.random()*3);
+                this.p.ofn+=ofnInc;
+                this.p.mod_ofn+=ofnInc;
+                this.p.dfn+=dfnInc;
+                this.p.mod_dfn+=dfnInc;
+                this.p.spd+=spdInc;
+                this.p.mod_spd+=spdInc;
+
+                var hpInc = Math.ceil(Math.random()*5);
+                this.p.curHp+=hpInc;
+                this.p.maxHp+=hpInc;
+                var player = this;
+                Q.state.get("playerConnection").socket.emit('updateStats',{
+                    stats:{
+                        level:player.p.level,
+                        ofn:player.p.ofn,
+                        dfn:player.p.dfn,
+                        spd:player.p.spd,
+                        mod_ofn:player.p.mod_ofn,
+                        mod_dfn:player.p.mod_dfn,
+                        mod_spd:player.p.mod_spd,
+                        curHp:player.p.curHp,
+                        maxHp:player.p.maxHp
+                    },
+                    playerId:player.p.playerId
+                });
+            }
             return newLevel;
         },
         //Used when this is a possible target for attack
@@ -1608,11 +1610,10 @@ Q.Sprite.extend("Enemy",{
                 enm[this.p.eventId].splice(i,1);
             }
         }
-        if(enm[this.p.eventId].length===0){
+        if(enm[this.p.eventId].length===0&&Q.state.get("battleHost")===Q.state.get("playerConnection").id){
             //Broadcast that this event is done
             var eventId = this.p.eventId;
-            Q.state.get("playerConnection").socket.emit('eventComplete',{stageName:Q.stage(1).scene.name,eventId:eventId});
-            Q.eventCompleted(eventId,this.p.onCompleted);
+            Q.state.get("playerConnection").socket.emit('eventComplete',{playerId:Q.state.get("playerConnection").id,stageName:Q.stage(1).scene.name,eventId:eventId,onCompleted:this.p.onCompleted});
         }
     },
     
@@ -1739,7 +1740,7 @@ Q.Sprite.extend("Player",{
         if(phase===1){
             this.addControls();
         } else if(phase===2){
-            this.stage.insert(new Q.Pointer({player:this.entity,freeSelecting:true}));      
+            this.stage.insert(new Q.Pointer({player:this,freeSelecting:true}));      
         }
     },
     turnStart:function(){
@@ -1825,6 +1826,7 @@ Q.Sprite.extend("Player",{
         
         //Update the player's items for all players
         Q.state.get("playerConnection").socket.emit('updateItems',{playerId:Q.state.get("playerConnection").id,items:player.p.items});
+        
         Q.stageScene("bottomhud",3,{text:text,player:player});
         if(itm.p.type===Q.SPRITE_NPC){
             itm.destroy();

@@ -91,7 +91,7 @@
                     enemies:[
                         {loc:[14,5],opts:{gender:'M',level:7,drop:{p:{item:"Diamond",amount:1}}},character:"Dratini"},
                         {loc:[14,4],opts:{gender:'M',level:7,drop:{p:{item:"Diamond",amount:1}}},character:"Dratini"},
-                        {loc:[14,2],opts:{gender:'M',level:7,drop:{p:{item:"Diamond",amount:1}}},character:"Dratini"}
+                        {loc:[14,3],opts:{gender:'M',level:7,drop:{p:{item:"Diamond",amount:1}}},character:"Dratini"}
                     ],
                     turnOrder:[]
                 }

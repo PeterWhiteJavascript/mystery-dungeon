@@ -16,6 +16,20 @@ Quintus.ItemFuncs=function(Q){
                     text = ""+props.name+" did nothing...";
                 }
             }
+            Q.state.get("playerConnection").socket.emit('updateStats',{
+                stats:{
+                    level:user.p.level,
+                    ofn:user.p.ofn,
+                    dfn:user.p.dfn,
+                    spd:user.p.spd,
+                    mod_ofn:user.p.mod_ofn,
+                    mod_dfn:user.p.mod_dfn,
+                    mod_spd:user.p.mod_spd,
+                    curHp:user.p.curHp,
+                    maxHp:user.p.maxHp
+                },
+                playerId:Q.state.get("playerConnection").id
+            });
             return text;
         },
         statPercent:function(props,user){
@@ -34,6 +48,20 @@ Quintus.ItemFuncs=function(Q){
                     text = ""+props.name+" did nothing...";
                 }
             }
+            Q.state.get("playerConnection").socket.emit('updateStats',{
+                stats:{
+                    level:user.p.level,
+                    ofn:user.p.ofn,
+                    dfn:user.p.dfn,
+                    spd:user.p.spd,
+                    mod_ofn:user.p.mod_ofn,
+                    mod_dfn:user.p.mod_dfn,
+                    mod_spd:user.p.mod_spd,
+                    curHp:user.p.curHp,
+                    maxHp:user.p.maxHp
+                },
+                playerId:Q.state.get("playerConnection").id
+            });
             return text;
         },
         buff:function(props,user){

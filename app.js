@@ -20,6 +20,7 @@ io.on('connection', function (socket) {
     id++;
     var userId;
     setTimeout(function () {
+        socket.join('lobby');
         userId = id;
         if(_users.length>0&&_users[_users.length-1].playerId===id){id++;userId++;};
         _users.push({playerId:userId});
@@ -35,7 +36,7 @@ io.on('connection', function (socket) {
                 _players.splice(i,1);
             }
         }
-        io.emit('disconnected', {players:_players});
+        io.emit('disconnected', {players:_players,id:userId});
     });
     
     socket.on('startGame', function (data) {
@@ -56,7 +57,9 @@ io.on('connection', function (socket) {
         var player = new Player(data);
         player.p.socketId=socket.id;
         setPlayer(data['playerId'],player);
-        io.emit('startedGame',{player:player,players:_players,events:events.getEvents(player.p.area)});
+        socket.leave('lobby');
+        socket.join(player.p.file+player.p.area);
+        io.sockets.in(player.p.file+player.p.area).emit('startedGame',{player:player,players:_players,events:events.getEvents(player.p.area)});
     });
     
     socket.on('updateItems',function(data){
@@ -66,7 +69,7 @@ io.on('connection', function (socket) {
         if(player){
             player.p.items=data['items'];
         }
-        socket.broadcast.emit('updatePlayerItems',{items:player.p.items,playerId:data['playerId']});
+        io.sockets.in(player.p.file+player.p.area).emit('updatePlayerItems',{items:player.p.items,playerId:data['playerId']});
     });
     
     socket.on('updateStats',function(data){
@@ -84,6 +87,7 @@ io.on('connection', function (socket) {
                 player.p[stats[i]]=data['stats'][stats[i]];
             }
         }
+        io.sockets.in(player.p.file+player.p.area).emit('updatedStats',{playerId:data['playerId'],player:player});
     });
     
     socket.on('update', function (data) {
@@ -98,12 +102,15 @@ io.on('connection', function (socket) {
             player.p.loc=data['props']['loc'];
             player.p.animation = data['props']['animation'];
             if(area!==player.p.area){
+                socket.leave(player.p.file+player.p.area);
+                socket.broadcast.to(player.p.file+player.p.area).emit('leftArea',{playerId:player.p.playerId,player:player});
                 player.p.area=data['props']['area'];
-                socket.emit('recievedEvents',{events:events.getEvents(player.p.area),player:player});
-                socket.broadcast.emit('changedArea',{player:player});
+                socket.join(player.p.file+player.p.area);
+                socket.emit('recievedEvents',{events:events.getEvents(player.p.area),player:player,players:_players});
+                socket.broadcast.to(player.p.file+player.p.area).emit('changedArea',{player:player});
             } else {
                 player.p.area=data['props']['area'];
-                io.emit('updated',{inputted:data['inputs'],playerId:data['playerId'],player:player});
+                io.sockets.in(player.p.file+player.p.area).emit('updated',{inputted:data['inputs'],playerId:data['playerId'],player:player});
             }
         }
     });
@@ -114,24 +121,28 @@ io.on('connection', function (socket) {
             var player = _players.filter(function(obj){
                  return obj.p.playerId==data['host'];
              })[0];
-            //io.to(player.p.socketId).emit('startTurn',{turnOrder:data['turnOrder'],events:evs});
-            io.emit('startTurn',{turnOrder:data['turnOrder'],events:evs,host:data['host'],stageName:data['stageName']});
+            io.sockets.in(player.p.file+player.p.area).emit('startTurn',{turnOrder:data['turnOrder'],events:evs,host:data['host'],stageName:data['stageName']});
         } else {
             var player = _players.filter(function(obj){
                  return obj.p.playerId==data['turnOrder'][0];
             })[0];
-            //io.to(player.p.socketId).emit('startTurn',{turnOrder:data['turnOrder'],events:evs});
-            io.emit('startTurn',{turnOrder:data['turnOrder'],events:evs,stageName:data['stageName']});
+            io.sockets.in(player.p.file+player.p.area).emit('startTurn',{turnOrder:data['turnOrder'],events:evs,stageName:data['stageName']});
         }
     });
     
     socket.on('triggerEvent',function(data){
         var ev = events.triggerEvent(data);
-        socket.broadcast.emit('triggeredEvent', {stageName:data['stageName'],event:ev,host:data['host']});
+        var player = _players.filter(function(obj){
+            return obj.p.playerId==data['host'];
+        })[0];
+        socket.broadcast.to(player.p.file+player.p.area).emit('triggeredEvent', {stageName:data['stageName'],event:ev,host:data['host']});
     });
     socket.on("updateEvent",function(data){
         events.updateEvent(data);
-        io.emit('updatedEvent', {stageName:data['stageName'],eventId:data['eventId']});
+        var player = _players.filter(function(obj){
+            return obj.p.playerId==data['host'];
+        })[0];
+        io.sockets.in(player.p.file+player.p.area).emit('updatedEvent', {stageName:data['stageName'],eventId:data['eventId']});
     });
     
     socket.on("partOfBattle",function(data){
@@ -139,18 +150,38 @@ io.on('connection', function (socket) {
         var host = data['host'];
         //Returns the 'p' of event
         var event = events.updateEvent(data);
-        io.emit("playersInBattle",{stageName:data['stageName'],turnOrder:event.p.turnOrder,host:host});
+        var player = _players.filter(function(obj){
+            return obj.p.playerId==data['host'];
+        })[0];
+        io.sockets.in(player.p.file+player.p.area).emit("playersInBattle",{stageName:data['stageName'],turnOrder:event.p.turnOrder,host:host});
+    });
+    
+    //For when a player comes into the battle after it has started
+    socket.on("joinBattle",function(data){
+        var player = _players.filter(function(obj){
+            return obj.p.playerId==data['playerId'];
+        })[0];
+        io.sockets.in(player.p.file+player.p.area).emit("joinedBattle",{stageName:data['stageName'],events:events.getEvents(player.p.area)});
     });
     
     socket.on("battleMove",function(data){
-        socket.broadcast.emit('battleMoved',data);
+        var player = _players.filter(function(obj){
+            return obj.p.playerId==data['host'];
+        })[0];
+        socket.broadcast.to(player.p.file+player.p.area).emit('battleMoved',data);
     });
     socket.on('attack',function(data){
-        socket.broadcast.emit('attacked',data);
+        var player = _players.filter(function(obj){
+            return obj.p.playerId==data['host'];
+        })[0];
+        socket.broadcast.to(player.p.file+player.p.area).emit('attacked',data);
     });
     socket.on('eventComplete',function(data){
         events.completeEvent(data['eventId'],data['stageName'])
-        //io.emit('completedEvent',events.completeEvent(data['eventId'],data['stageName']));
+        var player = _players.filter(function(obj){
+            return obj.p.playerId==data['playerId'];
+        })[0];
+        io.sockets.in(player.p.file+player.p.area).emit('completedEvent',{eventId:data['eventId'],onCompleted:data['onCompleted']});
     });
 });
 
