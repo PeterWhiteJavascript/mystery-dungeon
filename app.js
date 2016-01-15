@@ -105,13 +105,23 @@ io.on('connection', function (socket) {
                 socket.leave(player.p.file+player.p.area);
                 socket.broadcast.to(player.p.file+player.p.area).emit('leftArea',{playerId:player.p.playerId,player:player});
                 player.p.area=data['props']['area'];
-                socket.join(player.p.file+player.p.area);
                 socket.emit('recievedEvents',{events:events.getEvents(player.p.area),player:player,players:_players});
                 socket.broadcast.to(player.p.file+player.p.area).emit('changedArea',{player:player});
             } else {
                 player.p.area=data['props']['area'];
                 io.sockets.in(player.p.file+player.p.area).emit('updated',{inputted:data['inputs'],playerId:data['playerId'],player:player});
             }
+        }
+    });
+    
+    socket.on('joinRoom',function(data){
+        var player = _players.filter(function(obj){
+            return obj.p.playerId==data['playerId'];
+        })[0];
+        if(data['battle']){
+            socket.join(player.p.file+player.p.area+"battleWait");
+        } else {
+            socket.join(player.p.file+player.p.area);
         }
     });
     
@@ -158,17 +168,21 @@ io.on('connection', function (socket) {
     
     //For when a player comes into the battle after it has started
     socket.on("joinBattle",function(data){
-        var player = _players.filter(function(obj){
-            return obj.p.playerId==data['playerId'];
-        })[0];
-        io.sockets.in(player.p.file+player.p.area).emit("joinedBattle",{stageName:data['stageName'],events:events.getEvents(player.p.area)});
+        for(i=0;i<data['players'].length;i++){
+            var pl = data['players'][i];
+            var player = _players.filter(function(obj){
+                return obj.p.playerId==pl.p.playerId;
+            })[0];
+            io.sockets.in(player.p.file+player.p.area+"battleWait").emit("joinedBattle",{player:player,stageName:data['stageName'],events:events.getEvents(player.p.area),playerId:player.p.playerId});
+            io.sockets.in(player.p.file+player.p.area).emit("joinedBattle",{player:player,stageName:data['stageName'],events:events.getEvents(player.p.area),playerId:player.p.playerId});
+        }
     });
     
     socket.on("battleMove",function(data){
         var player = _players.filter(function(obj){
             return obj.p.playerId==data['host'];
         })[0];
-        socket.broadcast.to(player.p.file+player.p.area).emit('battleMoved',data);
+        io.sockets.in(player.p.file+player.p.area).emit('battleMoved',data);
     });
     socket.on('attack',function(data){
         var player = _players.filter(function(obj){

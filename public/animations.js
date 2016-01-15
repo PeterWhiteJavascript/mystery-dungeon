@@ -8,7 +8,9 @@ Q.setUpAnimations=function(){
         ['Totodile','Totodile60x60.png',60,60],
         ['Chimchar','Aipom60x60.png',60,60],
         ['Deino','Deino60x60.png',60,60],
-        ['Dratini','Dratini.png',70,70]
+        ['Dratini','Dratini.png',70,70],
+        ['Spinarak','Aipom60x60.png',60,60],
+        ['Grimer','Aipom60x60.png',60,60]
     ];
     for(j=0;j<toSheet.length;j++){
         Q.sheet(toSheet[j][0],

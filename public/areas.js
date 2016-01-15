@@ -47,10 +47,13 @@ Q.Sprite.extend("Trigger",{
         }
     },
     checkLocation:function(){
-        var obj = Q.stage(1).locate(this.p.loc[0]*70+35,this.p.loc[1]*70+35,Q.SPRITE_INTERACTABLE);
-        if(obj&&obj.has('protagonist')&&this.p.status===0){
-            this.p.status=1;
-            Q.eventFuncs[this.p.eventObj.event](this.p.eventObj,Q.state.get("playerConnection").id);
+        for(i=0;i<this.p.loc.length;i++){
+            var loc = this.p.loc[i];
+            var obj = Q.stage(1).locate(loc[0]*70+35,loc[1]*70+35,Q.SPRITE_INTERACTABLE);
+            if(obj&&obj.has('protagonist')&&this.p.status===0){
+                this.p.status=1;
+                Q.eventFuncs[this.p.eventObj.event](this.p.eventObj,Q.state.get("playerConnection").id);
+            }
         }
     }
 });
@@ -216,9 +219,8 @@ Q.setEvents=function(stage,events){
                 
                 break;
             case "onLocation":
-                for(iL=0;iL<event.locations.length;iL++){
-                    stage.insert(new Q.Trigger({eventObj:event,eventId:event.eventId,loc:event.locations[iL],event:event.event,enemies:enemies,status:event.p.status,host:event.p.host}));
-                }
+                stage.insert(new Q.Trigger({eventObj:event,eventId:event.eventId,loc:event.locations,event:event.event,enemies:enemies,status:event.p.status,host:event.p.host}));
+                
                 break;
             
         }
@@ -241,6 +243,17 @@ Q.endTurn=function(){
 };
 Q.afterDir=function(newHost){
     Q.inputs['interact']=false;
+    var enemies = Q("Enemy",1).items;
+    if(enemies.length<1){
+        //Broadcast that this event is done
+        var battles = Q.state.get("currentBattles");
+        for(i=0;i<battles.length;i++){
+            var event = Q.state.get("events")[battles[i]];
+            Q.state.get("playerConnection").socket.emit('eventComplete',{playerId:Q.state.get("playerConnection").id,stageName:Q.stage(1).scene.name,eventId:event.eventId,onCompleted:event.onCompleted});
+        }
+        
+        Q.state.set("battle",false)
+    }
     if(!Q.state.get("battle")){
         //There is on battle, give all players control now
         //This will be done through socket
@@ -298,6 +311,7 @@ Q.afterDir=function(newHost){
             enems.push(enemy);
         }
     }
+    
     Q.state.get("playerConnection").socket.emit('startTurn',{
         turnOrder:tO,
         host:host,
@@ -330,8 +344,13 @@ Q.afterDir=function(newHost){
 Q.generateTurnOrder=function(activePlayers,enemies){
     //For now, just put the order chronologically
     var turnOrder = [];
+    
     for(i=0;i<activePlayers.length;i++){
-        turnOrder.push(activePlayers[i].p.playerId);
+        if(Q._isObject(activePlayers[i])){
+            turnOrder.push(activePlayers[i].p.playerId);
+        } else {
+            turnOrder.push(activePlayers[i]);
+        }
     }
     for(i=0;i<enemies.length;i++){
         turnOrder.push(enemies[i].p.playerId);

@@ -2,9 +2,9 @@ var users = {
     "Saito": {
         "name": "Saito",
         "species": "Aipom",
-        "level": 8,
-        "exp": 770,
-        "curHp": 55,
+        "level": 1,
+        "exp": 0,
+        "curHp": 25,
         "gender": "M",
         "types": [
             "Normal"
@@ -45,14 +45,7 @@ var users = {
             "TailWhip"
         ],
         "items": [
-            [
-                "OranBerry",
-                3
-            ],
-            [
-                "CheriBerry",
-                3
-            ]
+            
         ],
         "special": {
             "canSwim": false
@@ -60,16 +53,16 @@ var users = {
         "text": [
             "Hello, I'm Saito!"
         ],
-        "loc":[17,9],
-        "area":"first_demo1_1",
+        "loc":[7,10],
+        "area":"first_demo1_2",
         "file":"BigGame"
     },
     "Estevan": {
         "name": "Estevan",
         "species": "Totodile",
-        "level": 83,
-        "exp": 680,
-        "curHp": 51,
+        "level": 1,
+        "exp": 0,
+        "curHp": 22,
         "gender": "M",
         "types": [
             "Water"
@@ -102,7 +95,7 @@ var users = {
             "mind": 5,
             "dexterity": 3,
             "strength": 4,
-            "stamina": 49
+            "stamina": 9
         },
         "ability":"Torrent",
         "attacks": [
@@ -111,14 +104,7 @@ var users = {
             "DumpsterDunk"
         ],
         "items": [
-            [
-                "OranBerry",
-                3
-            ],
-            [
-                "PechaBerry",
-                3
-            ],
+            
         ],
         "special": {
             "canSwim": true
@@ -126,16 +112,16 @@ var users = {
         "text": [
             "Hello, I'm Estevan!"
         ],
-        "loc":[14,1],
-        "area":"first_demo1_1",
+        "loc":[8,10],
+        "area":"first_demo1_2",
         "file":"BigGame"
     },
     "Lan": {
         "name": "Lan",
         "species": "Chimchar",
-        "level": 8,
-        "exp": 708,
-        "curHp": 26,
+        "level": 1,
+        "exp": 0,
+        "curHp": 20,
         "gender": "M",
         "types": [
             "Fire"
@@ -177,8 +163,7 @@ var users = {
         ],
         "items": [
             [
-                "OranBerry",
-                3
+                
             ]
         ],
         "special": {
@@ -187,8 +172,8 @@ var users = {
         "text": [
             "Hello, I'm Lan!"
         ],
-        "loc":[10,11],
-        "area":"first_demo1_1",
+        "loc":[8,11],
+        "area":"first_demo1_2",
         "file":"BigGame"
     }
 };

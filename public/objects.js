@@ -195,12 +195,15 @@ Q.component("autoMove", {
         p.stepDelay = 0.3; 
         p.stepWait = 0;
         p.stepping=false;
-        this.entity.on("step",this,"step");
-        if(!p.calcMenuPath&&p.menuPath.length>0){
+        
+        if(!p.calcMenuPath){
             Q.state.get("playerConnection").socket.emit('battleMove',{host:Q.state.get("battleHost"),playerId:p.playerId,stageName:Q.stage(1).scene.name,walkPath:p.menuPath,myTurnTiles:p.myTurnTiles});
-            p.walkPath = this.moveAlong(p.menuPath);
-        } else {
+            this.entity.del("autoMove");
+            //p.walkPath = this.moveAlong(p.menuPath);
+        } else {console.log(p.calcMenuPath)
+            this.entity.on("step",this,"step");
             p.walkPath = this.moveAlong(p.calcMenuPath);
+            p.calcMenuPath=false;
         }
     },
     
@@ -341,15 +344,16 @@ Q.component("autoMove", {
                         p.dir="Down";
                         break;
                 }
-                switch(p.walkPath[0][0]){
-                    case "right":
-                        p.dir+="Right";
-                        break;
-                    case "left":
-                        p.dir+="Left";
-                        break;
+                if(p.dir.length===0){
+                    switch(p.walkPath[0][0]){
+                        case "right":
+                            p.dir+="Right";
+                            break;
+                        case "left":
+                            p.dir+="Left";
+                            break;
+                    }
                 }
-                
                 //Play the correct direction walking animation
                 this.entity.playWalk(p.dir);
                 if(Q.state.get("phase")===2){
@@ -644,6 +648,8 @@ Q.Sprite.extend("dirTri",{
                 this.p.angle=180;
                 break;
         }
+        char.p.canMove=true;
+        char.p.stepping=false;
     },
     draw:function(ctx){
         ctx.beginPath();
@@ -678,7 +684,6 @@ Q.component("directionControls", {
             if(p.dirTri&&p.lastDir!==p.dir){
                 this.entity.moveTri();
             }
-            
             if(Q.inputs['interact']&&!p.stepping){
                 if(this.entity.p.dirTri){
                     this.entity.p.dirTri.destroy();
@@ -716,7 +721,7 @@ Q.component("animations", {
     },
     extend:{
         checkPlayDir:function(dir){
-            if(!dir){return this.p.dir;}else{return dir;}
+            if(!dir){return this.p.dir;}else{return dir||"Down";}
         },
         playStand:function(dir){
             this.play("standing"+this.checkPlayDir(dir));
@@ -823,7 +828,8 @@ Q.component("attacker",{
             //Get all possible attack locations that are within the bounds
             var graph = this.p.graphWithWeight;
             //UpLeft, Up, UpRight, Left, Right, DownLeft, Down, DownRight, Center
-            var canCheck = [true,true,true,true,true,true,true,true,true];
+            //I took out diagonal
+            var canCheck = [true,true,true,true,true];
             
             for(i=0;i<attack.range+1;i++){
                 var checking = i*2+1;
@@ -835,32 +841,20 @@ Q.component("attacker",{
                             //Check to see if there was an object in the previous spot
                             //Used so that you can't shoot through or over walls
                             var check = -1;
-                            if(startY<0&&startX<0){
+                            if(startY<0&&startX===0){
                                 if(canCheck[0]){check=0;};
 
-                            } else if(startY<0&&startX===0){
+                            } else if(startY===0&&startX<0){
                                 if(canCheck[1]){check=1;};
 
-                            } else if(startY<0&&startX>0){
+                            }  else if(startY===0&&startX>0){
                                 if(canCheck[2]){check=2;};
 
-                            } else if(startY===0&&startX<0){
+                            } else if(startY>0&&startX===0){
                                 if(canCheck[3]){check=3;};
 
-                            }  else if(startY===0&&startX>0){
-                                if(canCheck[4]){check=4;};
-
-                            } else if(startY>0&&startX<0){
-                                if(canCheck[5]){check=5;};
-
-                            } else if(startY>0&&startX===0){
-                                if(canCheck[6]){check=6;};
-
-                            } else if(startY>0&&startX>0){
-                                if(canCheck[7]){check=7;};
-                                
                             } else if(startY===0&&startX===0){
-                                if(canCheck[8]){check=8;};
+                                if(canCheck[4]){check=4;};
                             }
                             var x = checkX(tileStartX+startX);
                             var y = checkY(tileStartY+startY);
@@ -1386,7 +1380,7 @@ Q.component("commonPlayer", {
 
         getRange:function(){
             var mov = this.p.myTurnTiles;
-            var loc = this.p.loc;
+            var loc = this.setLocation();
             this.p.movTiles=[];
             this.clearGuide();
 
@@ -1610,10 +1604,12 @@ Q.Sprite.extend("Enemy",{
                 enm[this.p.eventId].splice(i,1);
             }
         }
-        if(enm[this.p.eventId].length===0&&Q.state.get("battleHost")===Q.state.get("playerConnection").id){
+        var enemies = Q("Enemy",1).items;
+        if(enemies.length<1){
             //Broadcast that this event is done
             var eventId = this.p.eventId;
             Q.state.get("playerConnection").socket.emit('eventComplete',{playerId:Q.state.get("playerConnection").id,stageName:Q.stage(1).scene.name,eventId:eventId,onCompleted:this.p.onCompleted});
+            Q.state.set("battle",false)
         }
     },
     
@@ -1621,7 +1617,8 @@ Q.Sprite.extend("Enemy",{
         Q.addViewport(this);
         this.p.myTurn=true;
         this.p.myTurnTiles=this.p.stats.other.stamina;
-        this.p.startLocation=this.p.loc;
+        this.p.startLocation=this.setLocation();
+         
         this.add("AI");
         
         this.p.graphWithWeight = new Graph(this.getWalkMatrix(true));

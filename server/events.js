@@ -44,22 +44,7 @@
         //first_demo start
         //Anything not in p is a constant
         first_demo1_0:{
-            a:{
-                trigger:{type:"onLocation"},
-                locations:[[14,11]],
-                event:"spawnEnemies",
-                onCompleted:"doneBattle",
-                p:{
-                    status:0,
-                    enemies:[
-                        {loc:[17,9],opts:{gender:'M',level:5},character:"Dratini"},
-                        {loc:[20,5],opts:{gender:'M',level:7,drop:{p:{item:"Diamond",amount:1}}},character:"Dratini"},
-                        {loc:[22,9],opts:{gender:'F',level:5},character:"Dratini"},
-                        {loc:[15,11],opts:{gender:'M',level:5},character:"Dratini"}
-                    ],
-                    turnOrder:[]
-                }
-            }
+            
         },
         first_demo2_0:{
             a:{
@@ -70,28 +55,42 @@
                 p:{
                     status:0,
                     enemies:[
-                        {loc:[17,9],opts:{gender:'M',level:5},character:"Dratini"},
-                        {loc:[20,5],opts:{gender:'M',level:7,drop:{p:{item:"Diamond",amount:1}}},character:"Dratini"},
-                        {loc:[22,9],opts:{gender:'F',level:5},character:"Dratini"},
-                        {loc:[15,11],opts:{gender:'M',level:5},character:"Dratini"}
+                        {loc:[17,9],opts:{gender:'M',level:3},character:"Grimer"},
+                        {loc:[20,5],opts:{gender:'M',level:5,drop:{p:{item:"Diamond",amount:1}}},character:"Grimer"},
+                        {loc:[22,9],opts:{gender:'F',level:3},character:"Grimer"},
+                        {loc:[15,11],opts:{gender:'M',level:3},character:"Grimer"}
                     ],
                     turnOrder:[]
                 }
             }
         },
         first_demo1_1:{
-            
-            b:{
+            a:{
                 trigger:{type:"onLocation"},
-                locations:[[13,2]],
+                locations:[[14,1]],
                 event:"spawnEnemies",
                 onCompleted:"doneBattle",
                 p:{
                     status:0,
                     enemies:[
-                        {loc:[14,5],opts:{gender:'M',level:7,drop:{p:{item:"Diamond",amount:1}}},character:"Dratini"},
-                        {loc:[14,4],opts:{gender:'M',level:7,drop:{p:{item:"Diamond",amount:1}}},character:"Dratini"},
-                        {loc:[14,3],opts:{gender:'M',level:7,drop:{p:{item:"Diamond",amount:1}}},character:"Dratini"}
+                        {loc:[2,7],opts:{gender:'M',level:1},character:"Spinarak"},
+                        {loc:[4,9],opts:{gender:'M',level:3},character:"Grimer"},
+                        {loc:[6,10],opts:{gender:'M',level:1},character:"Spinarak"}
+                    ],
+                    turnOrder:[]
+                }
+            },
+            b:{
+                trigger:{type:"onLocation"},
+                locations:[[16,10],[16,11]],
+                event:"spawnEnemies",
+                onCompleted:"doneBattle",
+                p:{
+                    status:0,
+                    enemies:[
+                        {loc:[20,10],opts:{gender:'M',level:1},character:"Spinarak"},
+                        {loc:[18,11],opts:{gender:'M',level:1},character:"Spinarak"},
+                        {loc:[21,9],opts:{gender:'M',level:1},character:"Spinarak"}
                     ],
                     turnOrder:[]
                 }

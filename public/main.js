@@ -209,6 +209,7 @@ Q.updatePlayers=function(pl){
 };
 
 Q.updateEvents=function(events){
+    if(!Q.stage(1)){return;};
     var evs = Q.state.get("events");
     for(i=0;i<events.length;i++){
         var ev = evs[events[i].eventId];
@@ -254,6 +255,10 @@ Q.checkBattleEvents=function(events){
     return false;
 };
 
+Q.showWaiting=function(){
+    Q.stageScene("customAnimate",4,{anim:"waitingBattle"});
+};
+
 require(['socket.io/socket.io.js']);
 
 var socket = io.connect();
@@ -278,7 +283,6 @@ require(objectFiles, function () {
         //When the user disconnects from the game
         socket.on("disconnected",function(data){
             Q.players = data['players'];
-            UiPlayers.innerHTML = 'Players: ' + Q.players.length;
             if(Q.state.get("battle")){
                 //TO DO Remove the dc'ed player from the tO
                 Q.state.set("battleHost",selfId);
@@ -305,6 +309,8 @@ require(objectFiles, function () {
             if(data['player'].p.playerId===selfId){
                 Q.state.set("player",player);
                 Q.goToStage(player.p.area,player.p.loc,data['events']);
+                //Join the room
+                socket.emit("joinRoom",{playerId:selfId});
                 Q.setPhaseOneUpdating();
             } else {
                 Q.addActor(player);
@@ -352,7 +358,6 @@ require(objectFiles, function () {
         socket.on("changedArea",function(data){
             //Update the Q.players
             Q.updatePlayers(data['player']);
-            console.log(Q.state.get("battle"))
             if(!Q.state.get("battle")){
                 var pl = Q.buildCharacter(data['player'].p);
                 Q.addActor(pl);
@@ -370,13 +375,25 @@ require(objectFiles, function () {
             Q.state.set("player",player);
             if(!Q.checkBattleEvents(data['events'])){
                 Q.goToStage(player.p.area,player.p.loc,data['events']);
+                //Join the room
+                socket.emit("joinRoom",{playerId:selfId});
             } else {
                 //show waiting for best time to join (at host's turn)
+                Q.clearStage(1);
+                Q.showWaiting();
+                socket.emit("joinRoom",{playerId:selfId,battle:true});
             }
         });
         socket.on('joinedBattle',function(data){
-            
-            console.log(data)
+            var player = Q.buildCharacter(data['player']['p']);
+            if(data['playerId']===selfId){
+                Q.state.set("player",player);
+                Q.clearStage(4);
+                Q.goToStage(player.p.area,player.p.loc,data['events']);
+                socket.emit("joinRoom",{playerId:selfId});
+            } else {
+                Q.addActor(player);
+            }
         });
         socket.on("triggeredEvent",function(data){
             Q.state.get("events")[data['event']['p']['eventId']]=data['event'];
@@ -433,6 +450,7 @@ require(objectFiles, function () {
                 })[0];
                 enemy.p.calcMenuPath=data['walkPath'];
                 enemy.p.myTurnTiles=data['myTurnTiles'];
+                console.log(enemy.p.calcMenuPath)
                 Q.addViewport(enemy);
                 enemy.add("autoMove");
             }
@@ -471,6 +489,7 @@ require(objectFiles, function () {
                 var wP = Q.state.get("waitingPlayers");
                 if(wP.length){
                     socket.emit('joinBattle',{playerId:selfId,players:wP});
+                    Q.state.set("waitingPlayers",[]);
                 }
                 //Start the host's turn
                 Q.state.get("playerObj").turnStart();
@@ -487,6 +506,8 @@ require(objectFiles, function () {
                 var enemyTurn = Q("Enemy",1).items.filter(function(obj){
                     return obj.p.playerId===tO[0];
                 })[0];
+                console.log(enemyTurn)
+                console.log(enemyTurn.p.playerId)
                 if(data['events'][0].host===selfId){
                     enemyTurn.turnStart();
                 } else {
@@ -548,7 +569,8 @@ require(objectFiles, function () {
         "sprites.png",
         "berries.png",
         "fog.png",
-        "battle_complete.png"
+        "battle_complete.png",
+        "battle_waiting.png"
     ];
     for(i=0;i<imageFiles.length;i++){
         imageFiles[i]="/images/"+imageFiles[i];

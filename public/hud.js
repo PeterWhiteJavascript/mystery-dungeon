@@ -595,7 +595,7 @@ Quintus.HUD = function(Q){
                     this.p.path.push(["showAttacks",p.player]);
                 }
             },
-
+            //When 'Move' is selected
             showPointer:function(player,attack){
                 if(Q.state.get("phase")===2){
                     Q.clearStage(3);
@@ -1387,6 +1387,24 @@ Quintus.HUD = function(Q){
                     .chain({ angle: 720 },0.25) 
                     .chain({ angle: 0 },0.25) 
                     .chain({  x: 800, y:  200, scale:0.1  }, 1, Q.Easing.Quadratic.InOut,{callback:function(){Q.clearStage(4);}});
+                break;
+            case "waitingBattle":
+                var box = stage.insert(new Q.Sprite({
+                    x:200,y:200,
+                    w:200,h:150,
+                    asset:"/images/battle_waiting.png",
+                    type:Q.SPRITE_NONE,
+                    scale:0.1
+                }));
+                box.add('tween');
+                function animateBox(b){
+                    b.animate({ x: 500, y:  400, scale:1 }, 1, Q.Easing.Quadratic.InOut)
+                        .chain({ angle: 360 },0.25)
+                        .chain({ angle: 720 },0.25) 
+                        .chain({ angle: 0 },0.25) 
+                        .chain({  x: 800, y:  200, scale:0.1  }, 1, Q.Easing.Quadratic.InOut,{callback:function(){animateBox(b);}});
+                }
+                animateBox(box)
                 break;
         }
     });
