@@ -1018,7 +1018,8 @@ Q.component("attacker",{
                 //Random number between 1 and 100 
                 var rand = Math.floor(Math.random()*100)+1;
                 var hit;
-                var facingValue = this.compareDirection(this,targets[a]);
+                var t = this;
+                var facingValue = this.compareDirection(t,targets[a]);
                 rand*=facingValue;
                 rand = Math.floor(rand);
                 //If the attack hits

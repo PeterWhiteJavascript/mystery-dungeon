@@ -523,10 +523,14 @@ require(objectFiles, function () {
                 var enemyTurn = Q("Enemy",1).items.filter(function(obj){
                     return obj.p.playerId===tO[0];
                 })[0];
-                if(data['events'][0].host===selfId){
-                    enemyTurn.turnStart();
+                if(enemyTurn){
+                    if(data['events'][0].host===selfId){
+                        enemyTurn.turnStart();
+                    } else {
+                        Q.addViewport(enemyTurn);
+                    }
                 } else {
-                    Q.addViewport(enemyTurn);
+                    Q.afterDir();
                 }
             }
             

@@ -57,7 +57,7 @@
                     status:0,
                     enemies:[
                         {loc:[2,7],opts:{gender:'M',level:1},character:"Spinarak"},
-                        {loc:[4,9],opts:{gender:'M',level:3,drop:{p:{item:"OranBerry",amount:1}}},character:"Grimer"},
+                        {loc:[4,9],opts:{gender:'M',level:2,drop:{p:{item:"OranBerry",amount:1}}},character:"Grimer"},
                         {loc:[6,10],opts:{gender:'M',level:1},character:"Spinarak"}
                     ],
                     turnOrder:[]
@@ -89,10 +89,10 @@
                 p:{
                     status:0,
                     enemies:[
-                        {loc:[17,9],opts:{gender:'M',level:3},character:"Grimer"},
-                        {loc:[20,5],opts:{gender:'M',level:5,drop:{p:{item:"OranBerry",amount:1}}},character:"Deino"},
-                        {loc:[22,9],opts:{gender:'F',level:3},character:"Grimer"},
-                        {loc:[15,11],opts:{gender:'M',level:3},character:"Grimer"}
+                        {loc:[17,9],opts:{gender:'M',level:2},character:"Grimer"},
+                        {loc:[20,5],opts:{gender:'M',level:4,drop:{p:{item:"OranBerry",amount:1}}},character:"Deino"},
+                        {loc:[22,9],opts:{gender:'F',level:2},character:"Grimer"},
+                        {loc:[15,11],opts:{gender:'M',level:1},character:"Grimer"}
                     ],
                     turnOrder:[]
                 }
@@ -106,8 +106,8 @@
                     status:0,
                     enemies:[
                         {loc:[17,9],opts:{gender:'M',level:2,drop:{p:{item:"OranBerry",amount:1}}},character:"Spinarak"},
-                        {loc:[22,9],opts:{gender:'F',level:2},character:"Spinarak"},
-                        {loc:[15,11],opts:{gender:'M',level:2},character:"Spinarak"}
+                        {loc:[22,9],opts:{gender:'F',level:1},character:"Spinarak"},
+                        {loc:[15,11],opts:{gender:'M',level:1},character:"Spinarak"}
                     ],
                     turnOrder:[]
                 }
