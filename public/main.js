@@ -144,7 +144,7 @@ Q.scene('playerMenu',function(stage){
             params:["player"]
         }
     };
-    if(Q.state.get("phase")!==2){
+    if(Q.state.get("phase")!==2&&!Q.state.get("battle")){
         menu.p.greyed.push(1,5,6);
     }
     menu.add("playerMenu");
@@ -196,7 +196,6 @@ Q.addActor=function(actor){
         obj.p.area=actor.p.area;
         obj.p.loc = actor.p.loc;
         obj.add("actor");
-        //obj.addControls();
     }
 };
 
@@ -246,10 +245,12 @@ Q.setTurnOrder=function(){
 };
 
 Q.checkBattleEvents=function(events){
-    var keys = Object.keys(events);;
-    for(i=0;i<keys.length;i++){
-        if(events[keys[i]].p.enemies&&events[keys[i]].p.status===1){
-            return true;
+    if(Q._isObject(events)){
+        var keys = Object.keys(events);
+        for(i=0;i<keys.length;i++){
+            if(events[keys[i]].p.enemies&&events[keys[i]].p.status===1){
+                return true;
+            }
         }
     }
     return false;
@@ -387,16 +388,30 @@ require(objectFiles, function () {
         socket.on('joinedBattle',function(data){
             var player = Q.buildCharacter(data['player']['p']);
             if(data['playerId']===selfId){
+                Q.state.set("battleHost",data['host']);
+                Q.state.set("battle",true);
                 Q.state.set("player",player);
                 Q.clearStage(4);
+                Q.state.set("events",data['events']);
                 Q.goToStage(player.p.area,player.p.loc,data['events']);
                 socket.emit("joinRoom",{playerId:selfId});
             } else {
-                Q.addActor(player);
+                //If this actor is being added to someone that is already in the stage
+                if(Q.stage(1)){
+                    Q.addActor(player);
+                } else {
+                    var toAdd = Q.state.get("actorsToAdd");
+                    toAdd.push(player);
+                }
             }
+            Q.state.set("waitingPlayers",[]);
         });
         socket.on("triggeredEvent",function(data){
             Q.state.get("events")[data['event']['p']['eventId']]=data['event'];
+            var trigger = Q("Trigger",1).items.filter(function(obj){
+                return obj.p.eventId===data['event']['p']['eventId'];
+            })[0];
+            trigger.p.status = data['event']['p']['status'];
             var event = Q.state.get("events")[data['event']['p']['eventId']];
             event.eventId=event.p.eventId;
             if(event.event==="spawnEnemies"){
@@ -433,6 +448,7 @@ require(objectFiles, function () {
             Q.state.set("battleHost",data['host']);
             var tO = data['turnOrder'];
             Q.state.set("turnOrder",tO);
+            Q.state.set("battle",true);
             if(tO[0]===selfId){
                 Q.state.get("playerObj").turnStart();
             } else {
@@ -450,7 +466,6 @@ require(objectFiles, function () {
                 })[0];
                 enemy.p.calcMenuPath=data['walkPath'];
                 enemy.p.myTurnTiles=data['myTurnTiles'];
-                console.log(enemy.p.calcMenuPath)
                 Q.addViewport(enemy);
                 enemy.add("autoMove");
             }
@@ -484,14 +499,16 @@ require(objectFiles, function () {
             var tO = data['turnOrder'];
             Q.state.set("turnOrder",tO);
             Q.updateEvents(data['events']);
-            //If it's the host's turn
+            //If it's the current player turn
             if(tO[0]===selfId){
                 var wP = Q.state.get("waitingPlayers");
                 if(wP.length){
-                    socket.emit('joinBattle',{playerId:selfId,players:wP});
+                    socket.emit('joinBattle',{playerId:selfId,players:wP,battleHost:Q.state.get("battleHost")});
                     Q.state.set("waitingPlayers",[]);
                 }
-                //Start the host's turn
+                //Clear the menu if there is one
+                Q.clearStage(3);
+                //Start the player's turn
                 Q.state.get("playerObj").turnStart();
             }
             //If the current player is a user
@@ -506,8 +523,6 @@ require(objectFiles, function () {
                 var enemyTurn = Q("Enemy",1).items.filter(function(obj){
                     return obj.p.playerId===tO[0];
                 })[0];
-                console.log(enemyTurn)
-                console.log(enemyTurn.p.playerId)
                 if(data['events'][0].host===selfId){
                     enemyTurn.turnStart();
                 } else {
@@ -517,7 +532,10 @@ require(objectFiles, function () {
             
         });
         socket.on('completedEvent',function(data){
-            Q.eventCompleted(data['eventId'],data['onCompleted']);
+            var event = data['event'];
+            Q.eventCompleted(event['p']['eventId'],event['onCompleted']);
+            //Clear the menu if there is one
+            Q.clearStage(3);
         });
         socket.on("updatePlayerItems",function(data){
             var player = Q.players.filter(function(obj){
@@ -611,6 +629,8 @@ require(objectFiles, function () {
             currentBattles:[],
             //All players that are waiting to join the battle
             waitingPlayers:[],
+            //Any players that didn't get added because more than one player ws going to the stage at a time during a battle.
+            actorsToAdd:[],
 
             //The current events happening in this level
             events:{},
@@ -679,6 +699,12 @@ require(objectFiles, function () {
             } 
             else if(Q.state.get("phase")===2){
                 setTimeout(function(){
+                    for(ac=0;ac<Q.state.get("actorsToAdd").length;ac++){
+                        Q.addActor(Q.state.get("actorsToAdd")[ac]);
+                        console.log("Added")
+                        console.log(Q.state.get("actorsToAdd")[ac])
+                        Q.state.set("actorsToAdd",[]);
+                    }
                     Q.setTurnOrder();
                     Q.addTurnOrderView();
                 },10);

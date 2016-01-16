@@ -45,7 +45,10 @@ var users = {
             "TailWhip"
         ],
         "items": [
-            
+            [
+                "OranBerry",
+                1
+            ]
         ],
         "special": {
             "canSwim": false
@@ -104,7 +107,10 @@ var users = {
             "DumpsterDunk"
         ],
         "items": [
-            
+            [
+                "OranBerry",
+                1
+            ]
         ],
         "special": {
             "canSwim": true
@@ -163,7 +169,8 @@ var users = {
         ],
         "items": [
             [
-                
+                "OranBerry",
+                1
             ]
         ],
         "special": {

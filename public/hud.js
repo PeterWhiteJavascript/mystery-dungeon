@@ -1287,9 +1287,11 @@ Quintus.HUD = function(Q){
                 Q.inputs['interact']=false;
             }
             if(Q.inputs['back']||Q.inputs['esc']){
-                this.p.menu.p.disabled=false;
-                this.p.menu.show();
-                this.p.menu.setUpMenu();
+                if(this.p.menu){
+                    this.p.menu.p.disabled=false;
+                    this.p.menu.show();
+                    this.p.menu.setUpMenu();
+                }
                 this.destroy();
                 Q.inputs['back']=false;
                 Q.inputs['esc']=false;

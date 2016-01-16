@@ -200,7 +200,7 @@ Q.component("autoMove", {
             Q.state.get("playerConnection").socket.emit('battleMove',{host:Q.state.get("battleHost"),playerId:p.playerId,stageName:Q.stage(1).scene.name,walkPath:p.menuPath,myTurnTiles:p.myTurnTiles});
             this.entity.del("autoMove");
             //p.walkPath = this.moveAlong(p.menuPath);
-        } else {console.log(p.calcMenuPath)
+        } else {
             this.entity.on("step",this,"step");
             p.walkPath = this.moveAlong(p.calcMenuPath);
             p.calcMenuPath=false;
@@ -950,7 +950,7 @@ Q.component("attacker",{
                         return i;
                     }
                 }
-                alert("Invalid direction!");
+                alert("Invalid direction!"+dir);
             };
             var checkBounds = function(num){
                 if(num>=dirs.length){
@@ -1152,21 +1152,25 @@ Q.component("commonPlayer", {
         giveExp:function(){
             var leveledUp = [];
             if(this.p.Class==="Enemy"){
-                var exp=this.p.expGiven;
+                var exp=Math.round((this.p.expGiven*this.p.level)/Q("Player",1).items.length);
                 Q("Player",1).each(function(){
                     var up = this.checkExp(exp);
                     if(up){
                         leveledUp.push(this.p.name+" grew to level "+this.p.level+"!",
                         {gainExp:[{Class:this.p.Class,id:this.p.playerId},exp]});
+                    } else {
+                        leveledUp.push({gainExp:[{Class:this.p.Class,id:this.p.playerId},exp]});
                     };
                 });
             } else if(this.p.Class==="Player"){
-                var exp = this.p.expGiven||50;
+                var exp = Math.round((this.p.expGiven*this.p.level)/Q("Enemy",1).items.length)||50;
                 Q("Enemy",1).each(function(){
-                    var up = this.check(exp);
+                    var up = this.checkExp(exp);
                     if(up){
                         leveledUp.push(this.p.name+" grew to level "+this.p.level+"!",
-                        {gainExp:[{Class:this.p.Class,id:this.p.playerId},exp]});
+                        {gainExp:[{Class:this.p.Class,id:this.p.playerId},Math.round(exp)]});
+                    } else {
+                        leveledUp.push({gainExp:[{Class:this.p.Class,id:this.p.playerId},exp]});
                     };
                 });
             }
@@ -1226,7 +1230,8 @@ Q.component("commonPlayer", {
                         mod_dfn:player.p.mod_dfn,
                         mod_spd:player.p.mod_spd,
                         curHp:player.p.curHp,
-                        maxHp:player.p.maxHp
+                        maxHp:player.p.maxHp,
+                        exp:player.p.exp
                     },
                     playerId:player.p.playerId
                 });
@@ -1625,7 +1630,6 @@ Q.Sprite.extend("Enemy",{
         this.p.menuPath = this.getPath(this.p.AITo,this.p.graphWithWeight);
         this.add("autoMove");
         
-        
     },
     turnOver:function(){
         this.playStand(this.p.dir);
@@ -1745,12 +1749,15 @@ Q.Sprite.extend("Player",{
         this.createMenu();
         this.p.myTurn=true;
         this.p.myTurnTiles=this.p.stats.other.stamina;
-        this.p.startLocation=this.p.loc;
+        this.p.loc=this.setLocation();
+        this.p.startLocation=this.setLocation();
+        
         this.p.canRedo=true;
         this.p.canInput=false;
         
         this.p.graphWithWeight = new Graph(this.getWalkMatrix(true));
         this.playStand(this.p.dir);
+        
         
     },
     turnOver:function(){
@@ -1778,6 +1785,7 @@ Q.Sprite.extend("Player",{
             //Play can't do that sound
         }
     },
+    //Used to allow movement in adventuring phase
     setMyTurn:function(){
         this.p.myTurn=true;  
     },

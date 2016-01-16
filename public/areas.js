@@ -63,7 +63,7 @@ Q.eventCompleted=function(eventId,onComplete){
     })[0];
     trigger.p.status = 2;
     var events = Q.state.get("events");
-    var enm = Q.state.get("enemies");
+    var enm = Q("Enemy",1).items;
     switch(onComplete){
         case "doneBattle":
             for(k=0;k<events.length;k++){
@@ -72,18 +72,16 @@ Q.eventCompleted=function(eventId,onComplete){
                 } 
             }
             //First, make sure that there are no other battles going on
-            var keys = Object.keys(enm);
             var battle = false;
-            for(l=0;l<keys.length;l++){
-                if(enm[keys[l]].length>0){
-                    //Still a battle going on
-                    battle = true;
-                }
+            if(enm.length>0){
+                //Still a battle going on
+                battle = true;
             }
-            //if(!battle){
+            if(!battle){
                 Q.stageScene('customAnimate',4,{anim:onComplete});
+                Q.state.set("battle",false);
                 Q.toAdventuringPhase();
-            //}
+            }
             break;
     }
     var events = Q.state.get("events");
@@ -101,10 +99,10 @@ Q.toAdventuringPhase=function(){
 Q.eventFuncs= {
     spawnEnemies:function(event,hostId){
         if(Q.state.get("phase")!==2){
-            Q.state.set("battle",true);
-            Q.setPhase(2);
             var phaseChange = true;
         }
+        Q.state.set("battle",true);
+        Q.setPhase(2);
         if(Q.state.get("playerConnection").id===hostId){
             var curEvent = Q.state.get("events")[event.eventId];
             curEvent.status = 1;
@@ -115,7 +113,7 @@ Q.eventFuncs= {
             var enm = Q.state.get("enemies");
             enm[event.eventId]=[];
             for(jj=0;jj<enemies.length;jj++){
-                var enemy = stage.insert(new Q.Enemy({eventId:event.eventId,loc:enemies[jj].loc,opts:{gender:enemies[jj].opts.gender,level:enemies[jj].opts.level},character:enemies[jj].character,playerId:jj+event.eventId,onCompleted:event.onCompleted,drop:enemies[jj].opts.drop}));
+                var enemy = stage.insert(new Q.Enemy({eventId:event.eventId,loc:enemies[jj].loc,opts:{gender:enemies[jj].opts.gender,level:enemies[jj].opts.level},character:enemies[jj].character,playerId:jj+event.eventId,onCompleted:event.onCompleted,drop:enemies[jj].opts.drop,dir:enemies[jj].dir}));
                 enemy.initialize();
                 enm[event.eventId].push(enemy);
             }
@@ -145,7 +143,8 @@ Q.eventFuncs= {
                         curHp:e[i].p.curHp,
                         maxHp:e[i].p.maxHp,
                         defeated:false,
-                        dir:e[i].p.dir
+                        dir:e[i].p.dir,
+                        exp:e[i].p.exp
                     },
                     opts:{
                         level:e[i].p.opts.level,
@@ -162,6 +161,7 @@ Q.eventFuncs= {
         } else {
             var curEvent = Q.state.get("events")[event.p.eventId];
             curEvent.status = 1;
+            Q.state.set("turnOrder",curEvent.p.turnOrder);
             var enemies = curEvent.p.enemies;
             var stage = Q.stage(1);
             var enm = Q.state.get("enemies");
@@ -185,7 +185,8 @@ Q.eventFuncs= {
                             curHp:enemies[jj].stats.curHp,
                             maxHp:enemies[jj].stats.maxHp,
                             defeated:enemies[jj].stats.defeated,
-                            dir:enemies[jj].stats.dir
+                            dir:enemies[jj].stats.dir,
+                            exp:enemies[jj].stats.exp
                         },
                         opts:{
                             level:enemies[jj].opts.level,
@@ -198,7 +199,7 @@ Q.eventFuncs= {
             }
             var battles = Q.state.get("currentBattles");
             battles.push(event.p.eventId);
-            Q.state.set("battleHost",curEvent.p.host);
+            Q.state.set("battleHost",hostId);
             //clearInterval(Q.updateInterval);
         }
     }
@@ -251,8 +252,8 @@ Q.afterDir=function(newHost){
             var event = Q.state.get("events")[battles[i]];
             Q.state.get("playerConnection").socket.emit('eventComplete',{playerId:Q.state.get("playerConnection").id,stageName:Q.stage(1).scene.name,eventId:event.eventId,onCompleted:event.onCompleted});
         }
-        
-        Q.state.set("battle",false)
+        Q.state.set("battle",false);
+        console.log("no enemies!")
     }
     if(!Q.state.get("battle")){
         //There is on battle, give all players control now
@@ -300,7 +301,8 @@ Q.afterDir=function(newHost){
                     curHp:en.p.curHp,
                     maxHp:en.p.maxHp,
                     defeated:en.p.defeated,
-                    dir:en.p.dir
+                    dir:en.p.dir,
+                    exp:en.p.exp
                 },
                 opts:{
                     level:en.p.opts.level,

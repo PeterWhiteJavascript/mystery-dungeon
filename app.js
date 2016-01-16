@@ -173,8 +173,8 @@ io.on('connection', function (socket) {
             var player = _players.filter(function(obj){
                 return obj.p.playerId==pl.p.playerId;
             })[0];
-            io.sockets.in(player.p.file+player.p.area+"battleWait").emit("joinedBattle",{player:player,stageName:data['stageName'],events:events.getEvents(player.p.area),playerId:player.p.playerId});
-            io.sockets.in(player.p.file+player.p.area).emit("joinedBattle",{player:player,stageName:data['stageName'],events:events.getEvents(player.p.area),playerId:player.p.playerId});
+            io.sockets.in(player.p.file+player.p.area+"battleWait").emit("joinedBattle",{host:data['battleHost'],player:player,stageName:data['stageName'],events:events.getEvents(player.p.area),playerId:player.p.playerId});
+            io.sockets.in(player.p.file+player.p.area).emit("joinedBattle",{host:data['battleHost'],player:player,stageName:data['stageName'],events:events.getEvents(player.p.area),playerId:player.p.playerId});
         }
     });
     
@@ -191,11 +191,10 @@ io.on('connection', function (socket) {
         socket.broadcast.to(player.p.file+player.p.area).emit('attacked',data);
     });
     socket.on('eventComplete',function(data){
-        events.completeEvent(data['eventId'],data['stageName'])
         var player = _players.filter(function(obj){
             return obj.p.playerId==data['playerId'];
         })[0];
-        io.sockets.in(player.p.file+player.p.area).emit('completedEvent',{eventId:data['eventId'],onCompleted:data['onCompleted']});
+        io.sockets.in(player.p.file+player.p.area).emit('completedEvent',{event:events.completeEvent(data['eventId'],data['stageName'])});
     });
 });
 

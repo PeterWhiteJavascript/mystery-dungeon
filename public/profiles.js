@@ -507,7 +507,7 @@ RP.monsters={
     "Grimer":{
         "dexNum": 88,
         
-        "exp":65,
+        "exp":15,
         "types": [
             "Poison"
         ],
@@ -550,7 +550,7 @@ RP.monsters={
     "Dratini":{
         "dexNum": 147,
         
-        "exp":60,
+        "exp":16,
         "types": [
             "Dragon"
         ],
@@ -592,7 +592,7 @@ RP.monsters={
     "Totodile":{
         "dexNum": 158,
         
-        "exp":72,
+        "exp":12,
         "types": [
             "Water"
         ],
@@ -636,7 +636,7 @@ RP.monsters={
     "Spinarak":{
         "dexNum": 167,
         
-        "exp":50,
+        "exp":10,
         "types": [
             "Bug",
             "Poison"
@@ -679,7 +679,7 @@ RP.monsters={
     "Aipom":{
         "dexNum": 190,
         
-        "exp":72,
+        "exp":12,
         "types": [
             "Normal"
         ],
@@ -721,7 +721,7 @@ RP.monsters={
     "Chimchar":{
         "dexNum": 390,
         
-        "exp":62,
+        "exp":12,
         "types": [
             "Fire"
         ],
@@ -763,7 +763,7 @@ RP.monsters={
     "Deino":{
         "dexNum": 633,
         
-        "exp":60,
+        "exp":14,
         "types": [
             "Dark",
             "Dragon"
