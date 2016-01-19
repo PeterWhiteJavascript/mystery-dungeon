@@ -5,7 +5,7 @@ var io = require('socket.io')(server);
 
 //My modules
 var Player = require("./server/player.js");
-var events = require("./server/events.js");
+var levelData = require("./server/level_data.js");
 
 app.use(express.static(__dirname + '/public'));
 
@@ -24,7 +24,7 @@ io.on('connection', function (socket) {
         userId = id;
         if(_users.length>0&&_users[_users.length-1].playerId===id){id++;userId++;};
         _users.push({playerId:userId});
-        socket.emit('connected', { playerId: userId,events:events.events});
+        socket.emit('connected', { playerId: userId});
         io.emit('count', { playerCount: io.engine.clientsCount});
         
     }, 1500);
@@ -59,7 +59,7 @@ io.on('connection', function (socket) {
         setPlayer(data['playerId'],player);
         socket.leave('lobby');
         socket.join(player.p.file+player.p.area);
-        io.sockets.in(player.p.file+player.p.area).emit('startedGame',{player:player,players:_players,events:events.getEvents(player.p.area)});
+        io.sockets.in(player.p.file+player.p.area).emit('startedGame',{player:player,players:_players,levelData:levelData.getLevelData(player.p.area)});
     });
     
     socket.on('updateItems',function(data){
@@ -105,7 +105,7 @@ io.on('connection', function (socket) {
                 socket.leave(player.p.file+player.p.area);
                 socket.broadcast.to(player.p.file+player.p.area).emit('leftArea',{playerId:player.p.playerId,player:player});
                 player.p.area=data['props']['area'];
-                socket.emit('recievedEvents',{events:events.getEvents(player.p.area),player:player,players:_players});
+                socket.emit('recievedLevelData',{levelData:levelData.getLevelData(player.p.area),player:player,players:_players});
                 socket.broadcast.to(player.p.file+player.p.area).emit('changedArea',{player:player});
             } else {
                 player.p.area=data['props']['area'];
@@ -125,8 +125,23 @@ io.on('connection', function (socket) {
         }
     });
     
+    socket.on("pickUpItem",function(data){
+        var player = _players.filter(function(obj){
+            return obj.p.playerId==data['playerId'];
+        })[0];
+        levelData.pickUpItem(player.p.area,data['pickupId']);
+        io.sockets.in(player.p.file+player.p.area).emit('pickedUpItem',{pickupId:data['pickupId']});
+    });
+    
+    socket.on("getTextNum",function(data){
+        socket.emit("gotTextNum",{textNum:levelData.getTextNum(data),npcId:data['npcId']})
+    });
+    socket.on("setTextNum",function(data){
+        levelData.setTextNum(data)
+    });
+    
     socket.on("startTurn",function(data){
-        var evs = events.updateEvents(data);
+        var evs = levelData.updateEvents(data);
         if(data['host']||typeof data['turnOrder'][0] === "string"){
             var player = _players.filter(function(obj){
                  return obj.p.playerId==data['host'];
@@ -141,14 +156,14 @@ io.on('connection', function (socket) {
     });
     
     socket.on('triggerEvent',function(data){
-        var ev = events.triggerEvent(data);
+        var ev = levelData.triggerEvent(data);
         var player = _players.filter(function(obj){
             return obj.p.playerId==data['host'];
         })[0];
         socket.broadcast.to(player.p.file+player.p.area).emit('triggeredEvent', {stageName:data['stageName'],event:ev,host:data['host']});
     });
     socket.on("updateEvent",function(data){
-        events.updateEvent(data);
+        levelData.updateEvent(data);
         var player = _players.filter(function(obj){
             return obj.p.playerId==data['host'];
         })[0];
@@ -159,7 +174,7 @@ io.on('connection', function (socket) {
         //The host will do all enemy calculations
         var host = data['host'];
         //Returns the 'p' of event
-        var event = events.updateEvent(data);
+        var event = levelData.updateEvent(data);
         var player = _players.filter(function(obj){
             return obj.p.playerId==data['host'];
         })[0];
@@ -173,8 +188,8 @@ io.on('connection', function (socket) {
             var player = _players.filter(function(obj){
                 return obj.p.playerId==pl.p.playerId;
             })[0];
-            io.sockets.in(player.p.file+player.p.area+"battleWait").emit("joinedBattle",{host:data['battleHost'],player:player,stageName:data['stageName'],events:events.getEvents(player.p.area),playerId:player.p.playerId});
-            io.sockets.in(player.p.file+player.p.area).emit("joinedBattle",{host:data['battleHost'],player:player,stageName:data['stageName'],events:events.getEvents(player.p.area),playerId:player.p.playerId});
+            io.sockets.in(player.p.file+player.p.area+"battleWait").emit("joinedBattle",{host:data['battleHost'],player:player,stageName:data['stageName'],levelData:levelData.getLevelData(player.p.area),playerId:player.p.playerId});
+            io.sockets.in(player.p.file+player.p.area).emit("joinedBattle",{host:data['battleHost'],player:player,stageName:data['stageName'],playerId:player.p.playerId});
         }
     });
     
@@ -194,7 +209,7 @@ io.on('connection', function (socket) {
         var player = _players.filter(function(obj){
             return obj.p.playerId==data['playerId'];
         })[0];
-        io.sockets.in(player.p.file+player.p.area).emit('completedEvent',{event:events.completeEvent(data['eventId'],data['stageName'])});
+        io.sockets.in(player.p.file+player.p.area).emit('completedEvent',{event:levelData.completeEvent(data['eventId'],data['stageName'])});
     });
 });
 

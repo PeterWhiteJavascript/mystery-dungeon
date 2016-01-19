@@ -1,0 +1,366 @@
+ var LevelData=function(){
+    this.getLevelData=function(stageName){
+        if(this.levelData[stageName]){
+            return this.levelData[stageName];
+        }
+    };
+    this.updateEvent=function(event){
+        var ev = this.levelData[event.stageName].events[event.eventId].p;
+        //Need to loop though and update the event
+        var keys = Object.keys(event);
+        for(i=0;i<keys.length;i++){
+            ev[keys[i]]=event[keys[i]];
+        }
+        return this.levelData[event.stageName].events[event.eventId];
+    };
+    //When updating more than one event at a time, for example: two battles going on at one time in the same level.
+    this.updateEvents=function(event){
+        var evs = [];
+        for(i=0;i<event.eventIds.length;i++){
+            var ev = this.levelData[event.stageName].events[event.eventIds[i]].p;
+            //Need to loop though and update the event
+            var keys = Object.keys(event);
+            for(i=0;i<keys.length;i++){
+                ev[keys[i]]=event[keys[i]];
+            }
+            evs.push(ev);
+        }
+        
+        return evs;
+    };
+    this.triggerEvent=function(event){
+        this.levelData[event.stageName].events[event.eventId].p.status=1;
+        this.levelData[event.stageName].events[event.eventId].p.host=event.host;
+        return this.updateEvent(event);
+    };
+    this.completeEvent=function(eventId,stageName){
+        this.levelData[stageName].events[eventId].p.status=2;
+        return this.levelData[stageName].events[eventId];
+    };
+    
+    this.pickUpItem=function(stageName,id){
+        this.levelData[stageName].pickups[id].p.status=1;
+    };
+    
+    this.getTextNum=function(data){
+        return this.levelData[data['stageName']].npcs[data['npcId']].p.textNum;
+    };
+    
+    this.setTextNum=function(data){
+        this.levelData[data['stageName']].npcs[data['npcId']].p.textNum=data['textNum'];
+    };
+     //status
+     //0 waiting to be triggered
+     //1 in progress
+     //2 complete
+    this.levelData={
+        //first_demo start
+        //Anything not in p is a constant
+        first_demo1_0:{
+            events:[
+                {
+                    trigger:{type:"onLocation"},
+                    locations:[[11,1],[11,2],[11,3]],
+                    eventType:"spawnEnemies",
+                    onCompleted:"doneBattle",
+                    p:{
+                        status:0,
+                        enemies:[
+                            {character:"Spinarak",p:{loc:[9,1],level:1,dir:"Right"}},
+                            {character:"Spinarak",p:{loc:[9,2],level:1,dir:"Right"}},
+                            {character:"Spinarak",p:{loc:[9,3],level:1,dir:"Right",drop:{p:{item:"OranBerry",amount:1}}}}
+                        ],
+                        turnOrder:[]
+                    }
+                }
+            ],
+            npcs:[
+                {
+                    npcType:"StickMan",
+                    text:[
+                        ["Gets me a diamond and I might let you through!",{changeText:1}],
+                        ["TODO: Check the player's bag for diamond and code moving out of the way."]
+                        //[{checkItem:{item:"Diamond",amount:1,trigger:{moveTo:[[3,7],[3,6]],changeText:2}}},"You still don't got it?"],
+                        //["Thanks for the loot!"]
+                    ],
+                    p:{
+                        textNum:0,
+                        loc:[4,7]
+                    }
+                }
+            ],
+            pickups:[
+                {item:"OranBerry",amount:3,loc:[10,2],p:{status:0}}
+            ]
+        },
+        
+        first_demo1_1:{
+            events:[
+                {
+                    trigger:{type:"onLocation"},
+                    locations:[[14,1]],
+                    eventType:"spawnEnemies",
+                    onCompleted:"doneBattle",
+                    p:{
+                        status:0,
+                        enemies:[
+                            {character:"Spinarak",gender:'M',p:{loc:[2,7],level:1,dir:'Left'}},
+                            {character:"Grimer",gender:'M',p:{loc:[4,9],level:2,dir:'Right',drop:{p:{item:"OranBerry",amount:1}}}},
+                            {character:"Spinarak",gender:'M',p:{loc:[6,10],level:1}}
+                        ],
+                        turnOrder:[]
+                    }
+                },
+                {
+                    trigger:{type:"onLocation"},
+                    locations:[[16,10],[16,11],[18,6],[18,5],[18,4]],
+                    eventType:"spawnEnemies",
+                    onCompleted:"doneBattle",
+                    p:{
+                        status:0,
+                        enemies:[
+                            {character:"Spinarak",p:{loc:[20,10],level:1,dir:"Left"}},
+                            {character:"Spinarak",p:{loc:[18,11],level:1,dir:"Left"}},
+                            {character:"Spinarak",p:{loc:[21,9],level:1,drop:{p:{item:"OranBerry",amount:1}}}}
+                        ],
+                        turnOrder:[]
+                    }
+                }
+            ],
+            npcs:[
+            ],
+            pickups:[
+                {item:"OranBerry",amount:1,loc:[4,9],p:{status:0}},
+                {item:"OranBerry",amount:1,loc:[20,11],p:{status:0}}
+            ]
+        },
+        first_demo1_2:{
+            events:[
+            ],
+            npcs:[
+                {
+                    items:[[0,{amount:1,item:"Potion"}]],
+                    npcType:"StickMan",
+                    text:[
+                        ["Hello!","You look like you could use this!",{changeText:1}],
+                        ["I've given away my potion already!"]
+                    ],
+                    p:{
+                        textNum:0,
+                        loc:[12,7]
+                    }
+                }
+            ],
+            pickups:[
+                {item:"OranBerry",amount:1,loc:[9,4],p:{status:0}},
+                {item:"OranBerry",amount:1,loc:[20,11],p:{status:0}},
+                {item:"OranBerry",amount:1,loc:[21,2],p:{status:0}}
+            ]
+        },
+        first_demo2_0:{
+            events:[
+                {
+                    trigger:{type:"onLocation"},
+                    locations:[[5,10],[1,13]],
+                    eventType:"spawnEnemies",
+                    onCompleted:"doneBattle",
+                    p:{
+                        status:0,
+                        enemies:[
+                            {character:"Spinarak",p:{loc:[3,12],level:2,dir:"Left"}},
+                            {character:"Spinarak",p:{loc:[4,13],level:2,dir:"Left"}}
+                        ],
+                        turnOrder:[]
+                    }
+                },
+                {
+                    trigger:{type:"onLocation"},
+                    locations:[[13,10],[13,9],[13,6],[14,4],[15,4],[16,4]],
+                    eventType:"spawnEnemies",
+                    onCompleted:"doneBattle",
+                    p:{
+                        status:0,
+                        enemies:[
+                            {character:"Grimer",p:{loc:[7,10],level:2,dir:"Left"}},
+                            {character:"Grimer",p:{loc:[2,18],level:4,dir:"Left",drop:{p:{item:"Potion",amount:1}}}},
+                            {character:"Grimer",p:{loc:[20,5],level:4,dir:"Left"}}
+                        ],
+                        turnOrder:[]
+                    }
+                }
+            ],
+            npcs:[
+            ],
+            pickups:[
+                {item:"OranBerry",amount:1,loc:[4,12],p:{status:0}},
+                {item:"OranBerry",amount:1,loc:[13,13],p:{status:0}}
+            ]
+        },
+        first_demo3_0:{
+            events:[
+                {
+                    trigger:{type:"onLocation"},
+                    locations:[[1,9],[2,9],[8,9],[10,12],[10,13]],
+                    eventType:"spawnEnemies",
+                    onCompleted:"doneBattle",
+                    p:{
+                        status:0,
+                        enemies:[
+                            {character:"Spinarak",p:{loc:[2,13],level:3,dir:"Up"}},
+                            {character:"Spinarak",p:{loc:[4,12],level:3,dir:"Left"}},
+                            {character:"Spinarak",p:{loc:[6,10],level:3,dir:"Up"}},
+                            {character:"Spinarak",p:{loc:[8,13],level:3,dir:"Right"}}
+                        ],
+                        turnOrder:[]
+                    }
+                },
+                {
+                    trigger:{type:"onLocation"},
+                    locations:[[4,1],[4,2],[11,1],[11,2]],
+                    eventType:"spawnEnemies",
+                    onCompleted:"doneBattle",
+                    p:{
+                        status:0,
+                        enemies:[
+                            {character:"Grimer",p:{loc:[7,1],level:4,dir:"Left"}},
+                            {character:"Grimer",p:{loc:[8,2],level:4,dir:"Left",drop:{p:{item:"Potion",amount:1}}}}
+                        ],
+                        turnOrder:[]
+                    }
+                },
+                {
+                    trigger:{type:"onLocation"},
+                    locations:[[15,3],[16,3],[15,7],[16,7]],
+                    eventType:"spawnEnemies",
+                    onCompleted:"doneBattle",
+                    p:{
+                        status:0,
+                        enemies:[
+                            {character:"Aipom",p:{loc:[15,5],level:4,dir:"Up"}},
+                            {character:"Aipom",p:{loc:[16,5],level:4,dir:"Down"}}
+                        ],
+                        turnOrder:[]
+                    }
+                },
+                {
+                    trigger:{type:"onLocation"},
+                    locations:[[22,3],[23,3],[18,8],[18,9],[18,12],[18,13]],
+                    eventType:"spawnEnemies",
+                    onCompleted:"doneBattle",
+                    p:{
+                        status:0,
+                        enemies:[
+                            {character:"Aipom",p:{loc:[23,6],level:3,dir:"Up"}},
+                            {character:"Grimer",p:{loc:[19,5],level:3,dir:"Down"}},
+                            {character:"Spinarak",p:{loc:[20,13],level:3,dir:"Right"}},
+                            {character:"Chimchar",p:{loc:[20,8],level:5,dir:"Right",drop:{p:{item:"Potion",amount:1}}}},
+                            {character:"Spinarak",p:{loc:[19,13],level:3,dir:"Right"}}
+                        ],
+                        turnOrder:[]
+                    }
+                }
+            ],
+            npcs:[
+            ],
+            pickups:[
+                {item:"OranBerry",amount:1,loc:[16,5],p:{status:0}}
+            ]
+        },
+        first_demo3_1:{
+            events:[
+                {
+                    trigger:{type:"onLocation"},
+                    locations:[[5,10],[1,13]],
+                    eventType:"spawnEnemies",
+                    onCompleted:"doneBattle",
+                    p:{
+                        status:0,
+                        enemies:[
+                            {character:"Spinarak",p:{loc:[3,12],level:2,dir:"Left"}},
+                            {character:"Spinarak",p:{loc:[4,13],level:2,dir:"Left"}}
+                        ],
+                        turnOrder:[]
+                    }
+                },
+                {
+                    trigger:{type:"onLocation"},
+                    locations:[[11,1],[12,1],[13,1]],
+                    eventType:"spawnEnemies",
+                    onCompleted:"doneBattle",
+                    p:{
+                        status:0,
+                        enemies:[
+                            {character:"Spinarak",p:{loc:[21,4],level:4,dir:"Left"}},
+                            {character:"Spinarak",p:{loc:[10,2],level:4,dir:"Right"}},
+                            {character:"Totodile",p:{loc:[21,12],level:5,dir:"Up"}},
+                            {character:"Totodile",p:{loc:[4,12],level:5,dir:"Up"}},
+                            {character:"Totodile",p:{loc:[3,5],level:2,dir:"Right"}},
+                            {character:"Totodile",p:{loc:[22,7],level:2,dir:"Left"}}
+                        ],
+                        turnOrder:[]
+                    }
+                }
+            ],
+            npcs:[
+            ],
+            pickups:[
+                {item:"OranBerry",amount:1,loc:[2,7],p:{status:0}},
+                {item:"OranBerry",amount:1,loc:[21,4],p:{status:0}}
+            ]
+        },
+        first_demo3_2:{
+            events:[
+                {
+                    trigger:{type:"onLocation"},
+                    locations:[[11,1],[12,1],[13,1]],
+                    eventType:"spawnEnemies",
+                    onCompleted:"doneBattle",
+                    p:{
+                        status:0,
+                        enemies:[
+                            {character:"Spinarak",p:{loc:[7,8],level:4,dir:"Up"}},
+                            {character:"Spinarak",p:{loc:[17,8],level:4,dir:"Up"}},
+                            {character:"Aipom",p:{loc:[9,8],level:5,dir:"Up"}},
+                            {character:"Aipom",p:{loc:[15,8],level:5,dir:"Up"}},
+                            {character:"Dratini",p:{loc:[11,9],level:6,dir:"Up"}},
+                            {character:"Dratini",p:{loc:[13,9],level:6,dir:"Up"}}
+                        ],
+                        turnOrder:[]
+                    }
+                },
+                {
+                    trigger:{type:"onLocation"},
+                    locations:[[11,17],[12,17],[13,17]],
+                    eventType:"spawnEnemies",
+                    onCompleted:"doneBattle",
+                    p:{
+                        status:0,
+                        enemies:[
+                            {character:"Deino",p:{loc:[4,22],level:8,dir:"Up",drop:{p:{item:"Diamond",amount:1}}}},
+                            {character:"Dratini",p:{loc:[11,19],level:4,dir:"Up"}},
+                            {character:"Dratini",p:{loc:[13,19],level:4,dir:"Up"}},
+                            {character:"Dratini",p:{loc:[10,21],level:6,dir:"Up"}},
+                            {character:"Dratini",p:{loc:[12,22],level:6,dir:"Up"}},
+                            {character:"Dratini",p:{loc:[14,21],level:6,dir:"Up"}},
+                            {character:"Spinarak",p:{loc:[20,21],level:4,dir:"Left"}},
+                            {character:"Spinarak",p:{loc:[20,22],level:4,dir:"Left"}},
+                            
+                            {character:"Totodile",p:{loc:[2,15],level:5,dir:"Down"}},
+                            {character:"Totodile",p:{loc:[3,15],level:5,dir:"Down"}},
+                            {character:"Totodile",p:{loc:[4,15],level:5,dir:"Down"}},
+                        ],
+                        turnOrder:[]
+                    }
+                }
+            ],
+            npcs:[
+            ],
+            pickups:[
+                {item:"OranBerry",amount:1,loc:[8,23],p:{status:0}},
+                {item:"OranBerry",amount:1,loc:[21,27],p:{status:0}}
+            ]
+        }
+    };
+    
+};
+module.exports = new LevelData();

@@ -43,7 +43,7 @@ Q.Sprite.extend("Trigger",{
         });
         if(this.p.status===1){
             this.eventId=this.p.eventId;
-            Q.eventFuncs[this.p.event](this,this.p.host);
+            Q.eventFuncs[this.p.eventType](this,this.p.host);
         }
     },
     checkLocation:function(){
@@ -52,7 +52,7 @@ Q.Sprite.extend("Trigger",{
             var obj = Q.stage(1).locate(loc[0]*70+35,loc[1]*70+35,Q.SPRITE_INTERACTABLE);
             if(obj&&obj.has('protagonist')&&this.p.status===0){
                 this.p.status=1;
-                Q.eventFuncs[this.p.eventObj.event](this.p.eventObj,Q.state.get("playerConnection").id);
+                Q.eventFuncs[this.p.eventObj.eventType](this.p.eventObj,Q.state.get("playerConnection").id);
             }
         }
     }
@@ -68,7 +68,7 @@ Q.eventCompleted=function(eventId,onComplete){
         case "doneBattle":
             for(k=0;k<events.length;k++){
                 if(events[k].eventId===eventId){
-                    events.splice(k,1);
+                    events[k].p.status=2;
                 } 
             }
             //First, make sure that there are no other battles going on
@@ -84,8 +84,6 @@ Q.eventCompleted=function(eventId,onComplete){
             }
             break;
     }
-    var events = Q.state.get("events");
-    events[eventId].p.status=2;
 };
 Q.toAdventuringPhase=function(){
     Q.state.set("phase",1);
@@ -104,7 +102,7 @@ Q.eventFuncs= {
         Q.state.set("battle",true);
         Q.setPhase(2);
         if(Q.state.get("playerConnection").id===hostId){
-            var curEvent = Q.state.get("events")[event.eventId];
+            var curEvent = Q.state.get("levelData").events[event.eventId];
             curEvent.status = 1;
             var curBattles = Q.state.get("currentBattles");
             curBattles.push(event.eventId);
@@ -113,7 +111,17 @@ Q.eventFuncs= {
             var enm = Q.state.get("enemies");
             enm[event.eventId]=[];
             for(jj=0;jj<enemies.length;jj++){
-                var enemy = stage.insert(new Q.Enemy({eventId:event.eventId,loc:enemies[jj].loc,opts:{gender:enemies[jj].opts.gender,level:enemies[jj].opts.level},character:enemies[jj].character,playerId:jj+event.eventId,onCompleted:event.onCompleted,drop:enemies[jj].opts.drop,dir:enemies[jj].dir}));
+                var enemy = stage.insert(new Q.Enemy({
+                    eventId:event.eventId,
+                    loc:enemies[jj].p.loc,
+                    gender:enemies[jj].gender||"M",
+                    level:enemies[jj].p.level,
+                    character:enemies[jj].character,
+                    playerId:jj+"e",
+                    onCompleted:event.onCompleted,
+                    drop:enemies[jj].p.drop||false,
+                    dir:enemies[jj].p.dir||"Down"
+                }));
                 enemy.initialize();
                 enm[event.eventId].push(enemy);
             }
@@ -127,13 +135,19 @@ Q.eventFuncs= {
             var e = enm[event.eventId];
             for(i=0;i<e.length;i++){
                 var enemy = {
-                    loc:e[i].p.loc,
+                    
                     eventId:e[i].p.eventId,
                     playerId:e[i].p.playerId,
                     character:e[i].p.character,
                     onCompleted:e[i].p.onCompleted,
-                    drop:e[i].p.drop,
-                    stats:{
+                    
+                    gender:e[i].p.gender,
+                    p:{
+                        loc:e[i].p.loc,
+                        text:e[i].p.text,
+                        drop:e[i].p.drop,
+                        
+                        level:e[i].p.level,
                         ofn:e[i].p.ofn,
                         dfn:e[i].p.dfn,
                         spd:e[i].p.spd,
@@ -145,87 +159,103 @@ Q.eventFuncs= {
                         defeated:false,
                         dir:e[i].p.dir,
                         exp:e[i].p.exp
-                    },
-                    opts:{
-                        level:e[i].p.opts.level,
-                        gender:e[i].p.opts.gender,
-                        
-                        text:e[i].p.opts.text
                     }
-                    
                 };
                 enems.push(enemy);
             }
             //Tell all players that this event is running now
             Q.state.get("playerConnection").socket.emit('triggerEvent', {eventId:event.eventId,stageName:Q.stage(1).scene.name,host:Q.state.get("playerConnection").id,enemies:enems});
         } else {
-            var curEvent = Q.state.get("events")[event.p.eventId];
+            var curEvent = Q.state.get("levelData").events[event.p.eventId];
             curEvent.status = 1;
+            Q.state.set("battleHost",curEvent.p.host)
             Q.state.set("turnOrder",curEvent.p.turnOrder);
             var enemies = curEvent.p.enemies;
             var stage = Q.stage(1);
             var enm = Q.state.get("enemies");
             enm[curEvent.p.eventId]=[];
             for(jj=0;jj<enemies.length;jj++){
-                if(!enemies[jj].stats.defeated){
-                    var enemy = stage.insert(new Q.Enemy({
-                        loc:enemies[jj].loc,
-                        eventId:enemies[jj].eventId,
-                        playerId:enemies[jj].playerId,
-                        character:enemies[jj].character,
-                        onCompleted:enemies[jj].onCompleted,
-                        drop:enemies[jj].drop,
-                        stats:{
-                            ofn:enemies[jj].stats.ofn,
-                            dfn:enemies[jj].stats.dfn,
-                            spd:enemies[jj].stats.spd,
-                            mod_ofn:enemies[jj].stats.mod_ofn,
-                            mod_dfn:enemies[jj].stats.mod_dfn,
-                            mod_spd:enemies[jj].stats.mod_spd,
-                            curHp:enemies[jj].stats.curHp,
-                            maxHp:enemies[jj].stats.maxHp,
-                            defeated:enemies[jj].stats.defeated,
-                            dir:enemies[jj].stats.dir,
-                            exp:enemies[jj].stats.exp
-                        },
-                        opts:{
-                            level:enemies[jj].opts.level,
-                            gender:enemies[jj].opts.gender,
-                            text:enemies[jj].opts.text
-                        }
-                    }));
-                    enm[curEvent.p.eventId].push(enemy);
-                }
+                var enemy = stage.insert(new Q.Enemy({
+
+                    eventId:enemies[jj].eventId,
+                    playerId:enemies[jj].playerId,
+                    character:enemies[jj].character,
+                    onCompleted:enemies[jj].onCompleted,
+                    loc:enemies[jj].p.loc,
+                    
+                    level:enemies[jj].p.level
+                }));
+                enemy.p.dir=enemies[jj].p.dir;
+                enemy.p.gender=enemies[jj].gender||enemies[jj].p.gender||"S";
+                enemy.initialize();
+                
+                enemy.p.ofn=enemies[jj].p.ofn;
+                enemy.p.dfn=enemies[jj].p.dfn;
+                enemy.p.spd=enemies[jj].p.spd;
+                enemy.p.mod_ofn=enemies[jj].p.mod_ofn;
+                enemy.p.mod_dfn=enemies[jj].p.mod_dfn;
+                enemy.p.mod_spd=enemies[jj].p.mod_spd;
+                enemy.p.curHp=enemies[jj].p.curHp;
+                enemy.p.maxHp=enemies[jj].p.maxHp;
+                
+                enemy.p.exp=enemies[jj].p.exp;
+
+                enemy.p.level=enemies[jj].p.level;
+                
+                enemy.p.text=enemies[jj].p.text;
+                enemy.p.drop=enemies[jj].p.drop;
+                enm[curEvent.p.eventId].push(enemy);
             }
             var battles = Q.state.get("currentBattles");
             battles.push(event.p.eventId);
-            Q.state.set("battleHost",hostId);
             //clearInterval(Q.updateInterval);
         }
     }
 };
-Q.setEvents=function(stage,events){
-    var keys = Object.keys(events);
-    for(iE=0;iE<keys.length;iE++){
-        var event = events[keys[iE]];
-        event.eventId = keys[iE];
-        switch(event.event){
+//This is called in goToStage() to set up the level when a player goes to it.
+Q.setLevelData=function(stage,levelData){
+    var data = levelData;
+    var events = data.events;
+    Q.state.set("events",events);
+    //Events
+    for(ev=0;ev<events.length;ev++){
+        var event = events[ev];
+        event.stage = stage.scene.name;
+        event.eventId = ev;
+        switch(event.eventType){
             case "spawnEnemies":
                 var enemies = event.p.enemies;
                 break;
         }
         switch(event.trigger.type){
             case "enter":
-                Q.eventFuncs[event.event]({p:{enemies:enemies,status:event.p.status,eventId:event.eventId},stage:stage});
+                Q.eventFuncs[event.eventType](event);
                 
                 break;
             case "onLocation":
-                stage.insert(new Q.Trigger({eventObj:event,eventId:event.eventId,loc:event.locations,event:event.event,enemies:enemies,status:event.p.status,host:event.p.host}));
+                stage.insert(new Q.Trigger({eventObj:event,eventId:event.eventId,loc:event.locations,eventType:event.eventType,enemies:enemies,status:event.p.status,host:event.p.host}));
                 
                 break;
             
         }
     }
+    var npcs = data.npcs;
+    //NPCS
+    for(np=0;np<npcs.length;np++){
+        var npc = npcs[np];
+        npc.stage = stage.scene.name;
+        stage.insert(new Q.NPC({items:npc.items,npcType:npc.npcType,text:npc.text,textNum:npc.p.textNum,loc:npc.p.loc,npcId:np}));
+        
+    };
+    var pickups = data.pickups;
+    //Pickups
+    for(pi=0;pi<pickups.length;pi++){
+        var pickup = pickups[pi];
+        if(pickup.p.status===0){
+            pickup.stage = stage.scene.name;
+            stage.insert(new Q.Pickup({pickupId:pi,item:pickup.item,amount:pickup.amount,loc:pickup.loc,status:pickup.p.status}));
+        }
+    };
 };
 Q.setPhase=function(phase){
     Q.state.set("phase",phase);
@@ -248,12 +278,12 @@ Q.afterDir=function(newHost){
     if(enemies.length<1){
         //Broadcast that this event is done
         var battles = Q.state.get("currentBattles");
+        console.log(battles)
         for(i=0;i<battles.length;i++){
             var event = Q.state.get("events")[battles[i]];
             Q.state.get("playerConnection").socket.emit('eventComplete',{playerId:Q.state.get("playerConnection").id,stageName:Q.stage(1).scene.name,eventId:event.eventId,onCompleted:event.onCompleted});
         }
         Q.state.set("battle",false);
-        console.log("no enemies!")
     }
     if(!Q.state.get("battle")){
         //There is on battle, give all players control now
@@ -284,14 +314,13 @@ Q.afterDir=function(newHost){
         for(i=0;i<e[cb[j]].length;i++){
             var en = e[cb[j]][i];
             var enemy = {
-                loc:en.p.loc,
+                
                 eventId:en.p.eventId,
                 playerId:en.p.playerId,
                 character:en.p.character,
                 onCompleted:en.p.onCompleted,
-                drop:en.p.drop,
-                defeated:en.p.defeated,
-                stats:{
+                
+                p:{
                     ofn:en.p.ofn,
                     dfn:en.p.dfn,
                     spd:en.p.spd,
@@ -302,13 +331,14 @@ Q.afterDir=function(newHost){
                     maxHp:en.p.maxHp,
                     defeated:en.p.defeated,
                     dir:en.p.dir,
-                    exp:en.p.exp
+                    exp:en.p.exp,
+                    
+                    level:en.p.level,
+                    gender:en.p.gender,
+                    text:en.p.text,
+                    loc:en.p.loc,
+                    drop:en.p.drop
                 },
-                opts:{
-                    level:en.p.opts.level,
-                    gender:en.p.opts.gender,
-                    text:en.p.opts.text
-                }
             };
             enems.push(enemy);
         }

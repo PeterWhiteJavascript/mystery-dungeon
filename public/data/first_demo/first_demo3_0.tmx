@@ -1286,6 +1286,4 @@
    <tile gid="16"/>
   </data>
  </layer>
- <objectgroup name="objects"/>
- <objectgroup name="players"/>
 </map>

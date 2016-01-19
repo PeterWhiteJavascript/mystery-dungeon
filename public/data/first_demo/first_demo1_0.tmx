@@ -1057,7 +1057,7 @@
    <tile gid="23"/>
    <tile gid="16"/>
    <tile gid="16"/>
-   <tile gid="16"/>
+   <tile gid="12"/>
    <tile gid="16"/>
    <tile gid="16"/>
    <tile gid="17"/>
@@ -1286,11 +1286,4 @@
    <tile gid="16"/>
   </data>
  </layer>
- <objectgroup name="objects">
-  <object gid="102" x="350" y="560">
-   <properties>
-    <property name="name" value="NPC0"/>
-   </properties>
-  </object>
- </objectgroup>
 </map>

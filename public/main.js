@@ -195,6 +195,8 @@ Q.addActor=function(actor){
         obj.p.playerId=actor.p.playerId;
         obj.p.area=actor.p.area;
         obj.p.loc = actor.p.loc;
+        obj.p.dir = actor.p.dir;
+        obj.playWalk(obj.p.dir);
         obj.add("actor");
     }
 };
@@ -207,13 +209,21 @@ Q.updatePlayers=function(pl){
     }
 };
 
-Q.updateEvents=function(events){
-    if(!Q.stage(1)){return;};
-    var evs = Q.state.get("events");
+Q.updateEnemies=function(events){
+    if(!Q.stage(1)){return;};console.log(events)
     for(i=0;i<events.length;i++){
-        var ev = evs[events[i].eventId];
-        ev.enemies=events[i].enemies;
-        ev.turnOrder = events[i].turnOrder;
+        if(events[i].status===1&&events[i].enemies){
+            for(j=0;j<events[i].enemies.length;j++){
+                var enemy = events[i].enemies[j];
+                var enm = Q("Enemy",1).items.filter(function(obj){
+                    return obj.p.playerId===enemy.playerId;
+                })[0];
+                var keys = Object.keys(enemy.p);
+                for(k=0;k<keys.length;k++){
+                    enm.p[keys[k]]=enemy.p[keys[k]];
+                }
+            }
+        }
     }
 };
 
@@ -245,10 +255,9 @@ Q.setTurnOrder=function(){
 };
 
 Q.checkBattleEvents=function(events){
-    if(Q._isObject(events)){
-        var keys = Object.keys(events);
-        for(i=0;i<keys.length;i++){
-            if(events[keys[i]].p.enemies&&events[keys[i]].p.status===1){
+    if(events.length){
+        for(i=0;i<events.length;i++){
+            if(events[i].p.enemies&&events[i].p.status===1){
                 return true;
             }
         }
@@ -309,7 +318,7 @@ require(objectFiles, function () {
             var player = Q.buildCharacter(data['player']['p']);
             if(data['player'].p.playerId===selfId){
                 Q.state.set("player",player);
-                Q.goToStage(player.p.area,player.p.loc,data['events']);
+                Q.goToStage(player.p.area,player.p.loc,data['levelData']);
                 //Join the room
                 socket.emit("joinRoom",{playerId:selfId});
                 Q.setPhaseOneUpdating();
@@ -347,6 +356,21 @@ require(objectFiles, function () {
                 }
             }
         });
+        
+        socket.on('pickedUpItem',function(data){
+            var item = Q("Pickup",1).items.filter(function (obj) {
+                return obj.p.pickupId === data['pickupId'];
+            })[0];
+            item.destroy();
+        });
+        
+        socket.on('gotTextNum',function(data){
+            var npc = Q("NPC",1).items.filter(function(obj){
+                return obj.p.npcId===data['npcId'];
+            })[0];
+            npc.checkedServer(data['textNum']);
+        });
+        
         socket.on("leftArea",function(data){
             Q.updatePlayers(data['player']);
             var actor = Q("Player",1).items.filter(function (obj) {
@@ -369,13 +393,13 @@ require(objectFiles, function () {
             }
             
         });
-        socket.on("recievedEvents",function(data){
+        socket.on("recievedLevelData",function(data){
             Q.state.set("currentBattles",[]);
             Q.players=data['players'];
             var player = Q.buildCharacter(data['player']['p']);
             Q.state.set("player",player);
-            if(!Q.checkBattleEvents(data['events'])){
-                Q.goToStage(player.p.area,player.p.loc,data['events']);
+            if(!Q.checkBattleEvents(data['levelData'].events)){
+                Q.goToStage(player.p.area,player.p.loc,data['levelData']);
                 //Join the room
                 socket.emit("joinRoom",{playerId:selfId});
             } else {
@@ -392,8 +416,8 @@ require(objectFiles, function () {
                 Q.state.set("battle",true);
                 Q.state.set("player",player);
                 Q.clearStage(4);
-                Q.state.set("events",data['events']);
-                Q.goToStage(player.p.area,player.p.loc,data['events']);
+                Q.state.set("events",data['levelData'].events);
+                Q.goToStage(player.p.area,player.p.loc,data['levelData']);
                 socket.emit("joinRoom",{playerId:selfId});
             } else {
                 //If this actor is being added to someone that is already in the stage
@@ -414,11 +438,11 @@ require(objectFiles, function () {
             trigger.p.status = data['event']['p']['status'];
             var event = Q.state.get("events")[data['event']['p']['eventId']];
             event.eventId=event.p.eventId;
-            if(event.event==="spawnEnemies"){
+            if(event.eventType==="spawnEnemies"){
                 var curBattles = Q.state.get("currentBattles");
                 curBattles.push(event.p.eventId);
             }
-            Q.eventFuncs[event.event](event,data['host']);
+            Q.eventFuncs[event.eventType](event,data['host']);
             
         });
         socket.on("playersInBattle",function(data){
@@ -498,7 +522,7 @@ require(objectFiles, function () {
         socket.on("startTurn",function(data){
             var tO = data['turnOrder'];
             Q.state.set("turnOrder",tO);
-            Q.updateEvents(data['events']);
+            Q.updateEnemies(data['events']);
             //If it's the current player turn
             if(tO[0]===selfId){
                 var wP = Q.state.get("waitingPlayers");
@@ -610,8 +634,6 @@ require(objectFiles, function () {
         document.getElementById('main').removeChild(div);
         
         Q.state.set({
-            //Stores all level data
-            levelData: [],
             //The current stage that the player is on
             currentStage:[],
 
@@ -636,8 +658,8 @@ require(objectFiles, function () {
             //Any players that didn't get added because more than one player ws going to the stage at a time during a battle.
             actorsToAdd:[],
 
-            //The current events happening in this level
-            events:{},
+            //The current data happening in this level
+            levelData:{},
             //Is set to true when there is a battle
             //Is set to false when all enemies are defeated, and is checked after the dirTri is set
             battle:false,
@@ -657,25 +679,27 @@ require(objectFiles, function () {
             character:character
         });
     };
-    Q.goToStage = function(whereTo, playerLoc,events){
-        Q.state.set("events",events);
-        var levels = Q.state.get("levelData");
+    Q.goToStage = function(whereTo, playerLoc,levelData){
         var currentPath = Q.getPath(whereTo);
+        Q.state.set("levelData",levelData);
         //Check if the player has been to a level before
-        if(levels.length){
+        /*if(levels.length){
             for(i=0;i<levels.length;i++){
                 if(levels[i].id===whereTo){
                     Q.stageScene(whereTo,1,{path:currentPath[0],pathNum:currentPath[1],playerLoc:playerLoc});
                     return;
                 }
             }
-        }
+        }*/
         //CODE BELOW WON'T RUN IF THE PLAYER HAS BEEN TO THE STAGE BEFORE (FIRST TIME ONLY)
         //If the level hasn't been gone to yet
         Q.scene(""+whereTo,function(stage){
             //Q.stageScene("background",0,{path:stage.options.path});
             Q.stageTMX(""+stage.options.path+"/"+whereTo+".tmx",stage);
             Q.stage(1).add("viewport");
+            if(Q.state.get("levelData")){
+                Q.setLevelData(stage,Q.state.get("levelData"));
+            }
             //Q.getMusic(stage.options.path);
             //Here, get all players that are in this area and insert them.
             var players = Q.players;
@@ -689,9 +713,7 @@ require(objectFiles, function () {
             var player = Q.givePlayerProperties(stage,stage.options.playerLoc);
             player.p.area=whereTo;
             Q.state.set("playerObj",player);
-            if(Q.state.get("events",events)){
-                Q.setEvents(stage,Q.state.get("events",events));
-            }
+            
             //Adventuring Phase
             if(Q.state.get("phase")===1){
                 setTimeout(function(){
@@ -711,6 +733,9 @@ require(objectFiles, function () {
                     }
                     Q.setTurnOrder();
                     Q.addTurnOrderView();
+                    if(Q.state.get("turnOrder")[0]!==selfId){
+                        Q.state.get("playerObj").disableControls();
+                    }
                 },10);
             }
 

@@ -117,7 +117,40 @@ Q.buildCharacter=function(data){
 Q.component("AI", {
     added: function() {
         var p = this.entity.p;
-        this.moveToTarget(Q("Player",1).first());
+        var closestTarget = this.getClosestTarget();
+        this.moveToTarget(closestTarget);
+    },
+    getClosestTarget:function(){
+        var getPathCost=function(path){
+            var curCost = 0;
+            for(j=0;j<path.length-1;j++){
+                curCost+=path[j].weight;
+            }
+            return curCost;
+        };
+        var setClosest = function(obj,path,cost){
+            closest = obj;
+            closestPath = path;
+            closestPathCost = cost;
+        };
+        var p = this.entity.p;
+        var players = Q("Player",1).items;
+        var closest = Q("Player",1).first();
+        var closestPath = this.entity.getPath(closest.p.loc,p.graphWithWeight);
+        var closestPathCost = getPathCost(closestPath);
+        for(i=1;i<players.length;i++){
+            var path = this.entity.getPath(players[i].p.loc,p.graphWithWeight);
+            var cost = getPathCost(path);
+            if(cost<closestPathCost){
+                setClosest(players[i],path,cost);
+            } else if(cost===closestPathCost){
+                //Random between 0 and 1
+                if(Math.floor(Math.random()*2)){
+                    setClosest(players[i],path,cost);
+                }
+            }
+        }
+        return closest;
     },
     moveToTarget:function(target){
         if(!target){alert("You lost :)"); return};
@@ -144,7 +177,9 @@ Q.component("AI", {
                     if(outline[i].p.character===p.target.p.character){
                         //Obviously we will want to run a function here to determine the best attack.
                         //Also, the first parameter is 'targets' so we still need to check the attack area to find more targets
-                        this.useAttack([outline[i]],p.attacks[0],outline[i]);
+                        var randAttack = Math.floor(Math.random()*p.attacks.length);
+                        //targets, attack, center
+                        this.useAttack([outline[i]],p.attacks[randAttack],outline[i]);
                         return true;
                     }
                 }
@@ -667,7 +702,13 @@ Q.component("directionControls", {
     added: function() {
         this.entity.on("step",this,"step");
     },
-    
+    checkEnemyAnim:function(){
+        var enemy = Q("Enemy",1).items.filter(function(obj){
+            return obj.p.animation === "fainting";
+        })[0];
+        if(enemy){return true};
+        return false;
+    },
     step:function(dt){
         var p = this.entity.p;
         if(p.canMove){
@@ -684,7 +725,7 @@ Q.component("directionControls", {
             if(p.dirTri&&p.lastDir!==p.dir){
                 this.entity.moveTri();
             }
-            if(Q.inputs['interact']&&!p.stepping){
+            if(Q.inputs['interact']&&!p.stepping&!this.checkEnemyAnim()){
                 if(this.entity.p.dirTri){
                     this.entity.p.dirTri.destroy();
                     this.entity.p.dirTri=false;
@@ -1534,13 +1575,10 @@ Q.Sprite.extend("Enemy",{
         this.p.x=this.p.loc[0]*70+35;
         this.p.y=this.p.loc[1]*70+35;
         var data = RP.monsters[this.p.character];
-        var opts = this.p.opts;
         this.p.name = this.p.character;
         this.p.expGiven = data.exp;
         
-        this.p.level = opts.level;
         this.p.exp = RP.expNeeded[this.p.level-1];
-        this.p.gender = opts.gender;
         
         this.p.ability = RP.abilities[data.abilities[Math.floor(Math.random()*data.abilities.length)]];
         var attacks = data.attacks;
@@ -1553,9 +1591,9 @@ Q.Sprite.extend("Enemy",{
                 this.p.pp.push([RP.moves[attacks[i][0]].pp,RP.moves[attacks[i][0]].pp]);
             }
         }
-        this.p.items = opts.items || [];
-        this.p.special = opts.special || {};
-        this.p.text = opts.text || ["..."];
+        this.p.items = this.p.items || [];
+        this.p.special = this.p.special || {};
+        this.p.text = this.p.text || ["..."];
         this.p.species = this.p.character;
         //Random IV's
         var iv = {
@@ -1598,7 +1636,7 @@ Q.Sprite.extend("Enemy",{
         this.p.sheet=this.p.species;
         
         this.p.graphWithWeight = new Graph(this.getWalkMatrix(true));
-        
+        this.playStand(this.p.dir);
         this.p.initialize = false;
     },
     
@@ -1615,7 +1653,7 @@ Q.Sprite.extend("Enemy",{
             //Broadcast that this event is done
             var eventId = this.p.eventId;
             Q.state.get("playerConnection").socket.emit('eventComplete',{playerId:Q.state.get("playerConnection").id,stageName:Q.stage(1).scene.name,eventId:eventId,onCompleted:this.p.onCompleted});
-            Q.state.set("battle",false)
+            Q.state.set("battle",false);
         }
     },
     
@@ -1708,6 +1746,7 @@ Q.Sprite.extend("Player",{
         this.p.canInput=true;
         
         this.playStand(this.p.dir);
+        this.p.loc=this.setLocation();
         
         this.p.initialize = false;
     },
@@ -1758,7 +1797,6 @@ Q.Sprite.extend("Player",{
         
         this.p.graphWithWeight = new Graph(this.getWalkMatrix(true));
         this.playStand(this.p.dir);
-        
         
     },
     turnOver:function(){
@@ -1914,29 +1952,42 @@ Q.Sprite.extend("NPC",{
     init: function(p) {
         this._super(p, {
             sheet:"objects",
-            frame:1,
             type:Q.SPRITE_NPC|Q.SPRITE_INTERACTABLE,
-            getInfo:true,
             w:70,h:70
         });
         this.add("2d");
+        this.p.frame = this.getFrame(this.p.npcType);
+        this.setXY(this.p.loc);
+        this.getText(this.p.text,this.p.textNum);
     },
-    getInfo:function(){
-        var data = Q.intData[this.stage.scene.name][this.p.name];
-        this.p.textNum=data.textNum;
-        this.p.items=data.items;
-        this.getText(data,this.p.textNum);
-        
-        this.p.getInfo=false;
+    setXY:function(loc){
+        this.p.x=loc[0]*70+35;
+        this.p.y=loc[1]*70+35;
+    },
+    getFrame:function(type){
+        var frame = 0;
+        switch(type){
+            case "StickMan":
+                frame = 1;
+                break;
+        }
+        return frame;
     },
     getText:function(data,num){
-        this.p.text=data.text[num];
+        this.p.curText=data[num];
     },
     changeText:function(num){
         this.p.textNum=num;
-        this.getText(Q.intData[this.stage.scene.name][this.p.name],this.p.textNum);
+        this.getText(this.p.text,this.p.textNum);
     },
     interact:function(player){
+        this.p.player = player;
+        //Get the textnum from the server
+        Q.state.get("playerConnection").socket.emit('getTextNum',{stageName:Q.stage(1).scene.name,npcId:this.p.npcId});
+    },
+    checkedServer:function(textNum){
+        this.changeText(textNum);
+        var player = this.p.player;
         if(this.p.items){
             for(i=0;i<this.p.items.length;i++){
                 if(this.p.items[i][0]===this.p.textNum){
@@ -1945,20 +1996,18 @@ Q.Sprite.extend("NPC",{
                 }
             }
         }
-        if(Q._isObject(this.p.text[this.p.text.length-1])){
-            var newTextNum = this.p.text[this.p.text.length-1].changeText;
-            this.p.text.splice(this.p.text.length-1,1);
+        if(Q._isObject(this.p.curText[this.p.curText.length-1])){
+            var newTextNum = this.p.curText[this.p.curText.length-1].changeText;
+            this.p.curText.splice(this.p.curText.length-1,1);
         }
+        
+        var txt = this.p.curText;
+        txt.push({addControls:[{Class:player.p.Class,id:player.p.playerId}]});
         //Show NPC Text
-        Q.stageScene("bottomhud",3,{text:this.p.text,player:player,obj:player});
+        Q.stageScene("bottomhud",3,{text:this.p.curText,player:player,obj:player});
         if(newTextNum){
             this.changeText(newTextNum);
-        }
-        Q.inputs['interact']=false;
-    },
-    step:function(dt){
-        if(this.p.getInfo){
-            this.getInfo();
+            Q.state.get("playerConnection").socket.emit('setTextNum',{stageName:Q.stage(1).scene.name,npcId:this.p.npcId,textNum:newTextNum});
         }
     }
 });
@@ -1998,7 +2047,7 @@ Q.Sprite.extend("TrashCan",{
     }
 });
 
-Q.Sprite.extend("Berry",{
+Q.Sprite.extend("Pickup",{
     init: function(p) {
         this._super(p, {
             sheet:"berries",
@@ -2008,10 +2057,18 @@ Q.Sprite.extend("Berry",{
         this.add("2d");
         if(!this.p.amount){this.p.amount=1;};
         this.p.frame = this.getFrame();
+        this.setXY(this.p.loc);
     },
     interact:function(player){
         this.p.player = player;
         player.getItem(this);
+        //Send status off to the server and destroy the pickup on all other clients in this area.
+        var id = this.p.pickupId;
+        Q.state.get("playerConnection").socket.emit('pickUpItem',{pickupId:id,playerId:Q.state.get("playerConnection").id});
+    },
+    setXY:function(loc){
+        this.p.x=loc[0]*70+35;
+        this.p.y=loc[1]*70+35;
     },
     //Get the proper frame from the spritesheet
     getFrame:function(){
