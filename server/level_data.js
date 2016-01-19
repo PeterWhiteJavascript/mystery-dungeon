@@ -172,8 +172,8 @@
                         ],
                         turnOrder:[]
                     }
-                },
-                {
+                }
+                /*{
                     trigger:{type:"onLocation"},
                     locations:[[13,10],[13,9],[13,6],[14,4],[15,4],[16,4]],
                     eventType:"spawnEnemies",
@@ -187,7 +187,7 @@
                         ],
                         turnOrder:[]
                     }
-                }
+                }*/
             ],
             npcs:[
             ],
