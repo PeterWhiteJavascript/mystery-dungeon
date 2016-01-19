@@ -1506,6 +1506,7 @@ Q.component("commonPlayer", {
 
         getPath:function(toLoc,graph,prop,score){
             var loc = [(this.p.x-this.p.w/2)/this.p.tileSize,(this.p.y-this.p.h/2)/this.p.tileSize];
+            console.log(graph)
             var start = graph.grid[loc[0]][loc[1]];
             var end = graph.grid[toLoc[0]][toLoc[1]];
             var result;

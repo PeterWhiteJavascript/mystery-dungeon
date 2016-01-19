@@ -403,18 +403,21 @@ Q.scene("fog",function(stage){
     stage.insert(new Q.Sprite({x:0,y:0,cx:0,cy:0,asset:"fog.png"}));
 });
 Q.addViewport=function(obj){
-    if(Q.stage(1).viewport.following&&Q.stage(1).viewport.following.p.x===obj.p.x&&Q.stage(1).viewport.following.p.y===obj.p.y){
-        return;
-    } else {
-        var stage = Q.stage(1);
-        obj.p.stageMaxX=stage.lists.TileLayer[1].p.w;
-        var minX=0;
-        var maxX=stage.lists.TileLayer[1].p.w;
-        var minY=0;
-        var maxY=stage.lists.TileLayer[1].p.h;
-        if(stage.lists.TileLayer[1].p.w<Q.width){minX=-(Q.width-stage.lists.TileLayer[1].p.w),maxX=Q.width;};
-        if(stage.lists.TileLayer[1].p.h<Q.height){minY=-Q.height;maxY=stage.lists.TileLayer[1].p.h;};
-        Q.stage(1).follow(obj,{x:true,y:true},{minX: minX, maxX: maxX, minY: minY,maxY:maxY});
+    if(obj){
+        if(Q.stage(1).viewport.following&&Q.stage(1).viewport.following.p.x===obj.p.x&&Q.stage(1).viewport.following.p.y===obj.p.y){
+            return;
+        } else {
+            var stage = Q.stage(1);
+
+            obj.p.stageMaxX=stage.lists.TileLayer[1].p.w;
+            var minX=0;
+            var maxX=stage.lists.TileLayer[1].p.w;
+            var minY=0;
+            var maxY=stage.lists.TileLayer[1].p.h;
+            if(stage.lists.TileLayer[1].p.w<Q.width){minX=-(Q.width-stage.lists.TileLayer[1].p.w),maxX=Q.width;};
+            if(stage.lists.TileLayer[1].p.h<Q.height){minY=-Q.height;maxY=stage.lists.TileLayer[1].p.h;};
+            Q.stage(1).follow(obj,{x:true,y:true},{minX: minX, maxX: maxX, minY: minY,maxY:maxY});
+        }
     }
 };
 Q.getPath = function(to){
