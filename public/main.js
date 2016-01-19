@@ -361,7 +361,9 @@ require(objectFiles, function () {
             var item = Q("Pickup",1).items.filter(function (obj) {
                 return obj.p.pickupId === data['pickupId'];
             })[0];
-            item.destroy();
+            if(item){
+                item.destroy();
+            }
         });
         
         socket.on('gotTextNum',function(data){
