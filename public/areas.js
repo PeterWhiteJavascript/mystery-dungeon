@@ -1,20 +1,5 @@
 Quintus.Areas = function(Q){
-Q.setPosition = function(player,loc){
-    if(loc[0]==='x'){
-        loc[0]=Q("TileLayer").items[0].p.tiles[0].length-1;
-        player.p.x=loc[0]*70+35;
-        player.p.y=loc[1]*70+35;
-    } else if(loc[1]==='y'){
-        loc[1]=Q("TileLayer").items[0].p.tiles.length-1;
-        player.p.x=loc[0]*70+35;
-        player.p.y=loc[1]*70+35;
-    } else {
-        player.p.x=loc[0]*70+35;
-        player.p.y=loc[1]*70+35;
-    }
-    
-    return player;
-};
+
 Q.givePlayerProperties=function(stage,loc){
     var conn = Q.state.get("playerConnection");
     //Set the players' properties
@@ -29,7 +14,7 @@ Q.givePlayerProperties=function(stage,loc){
     }
     player.p.loc=player.confirmLocation(loc);
     if(loc&&loc!==player.p.loc){
-        player = Q.setPosition(player,[player.p.loc[0]*70+35,player.p.loc[1]*70+35]);
+        player = Q.setPosition(player,[player.p.loc[0]*Q.tileH+Q.tileH/2,player.p.loc[1]*Q.tileH+Q.tileH/2]);
     }
     player.p.area=stage.scene.name;
     player.add("protagonist");
@@ -49,10 +34,11 @@ Q.Sprite.extend("Trigger",{
     checkLocation:function(){
         for(i=0;i<this.p.loc.length;i++){
             var loc = this.p.loc[i];
-            var obj = Q.stage(1).locate(loc[0]*70+35,loc[1]*70+35,Q.SPRITE_INTERACTABLE);
+            var obj = Q.getTargetAt(loc[0],loc[1]);
             if(obj&&obj.has('protagonist')&&this.p.status===0){
                 this.p.status=1;
-                Q.eventFuncs[this.p.eventObj.eventType](this.p.eventObj,Q.state.get("playerConnection").id);
+                //Make sure the event hasn't been triggered
+                Q.state.get("playerConnection").socket.emit('setEvent',{eventId:this.p.eventId,stageName:Q.stage(1).scene.name,host:Q.state.get("playerConnection").id});
             }
         }
     }
@@ -78,6 +64,13 @@ Q.eventCompleted=function(eventId,onComplete){
                 battle = true;
             }
             if(!battle){
+                Q.stopMusic("scenes/"+Q.state.get("currentMusic"));
+                Q.playSound("battle_complete.mp3",function(){
+                    setTimeout(function(){
+                        Q.getMusic(Q.state.get("currentStageName"));
+                    },1300);
+                });
+                if(!Q.state.get("soundEnabled")){Q.getMusic(Q.state.get("currentStageName"));};
                 Q.stageScene('customAnimate',4,{anim:onComplete});
                 Q.state.set("battle",false);
                 Q.toAdventuringPhase();
@@ -100,7 +93,15 @@ Q.eventFuncs= {
             var phaseChange = true;
         }
         Q.state.set("battle",true);
+        clearInterval(Q.updateInterval);
         Q.setPhase(2);
+        if(event.music){
+            Q.playMusic(event.music);
+        } else {
+            var rand = Math.ceil(Math.random()*2);
+            Q.playMusic("battle"+rand+".mp3");
+        }
+        //Do this to set the enemies stats and other things that should be calculated once and then sent to the other clients
         if(Q.state.get("playerConnection").id===hostId){
             var curEvent = Q.state.get("levelData").events[event.eventId];
             curEvent.status = 1;
@@ -112,11 +113,11 @@ Q.eventFuncs= {
             enm[event.eventId]=[];
             for(jj=0;jj<enemies.length;jj++){
                 var enemy = stage.insert(new Q.Enemy({
+                    className:enemies[jj].className,
                     eventId:event.eventId,
                     loc:enemies[jj].p.loc,
                     gender:enemies[jj].gender||"M",
                     level:enemies[jj].p.level,
-                    character:enemies[jj].character,
                     playerId:jj+"e",
                     onCompleted:event.onCompleted,
                     drop:enemies[jj].p.drop||false,
@@ -135,10 +136,9 @@ Q.eventFuncs= {
             var e = enm[event.eventId];
             for(i=0;i<e.length;i++){
                 var enemy = {
-                    
+                    className:e[i].p.className,
                     eventId:e[i].p.eventId,
                     playerId:e[i].p.playerId,
-                    character:e[i].p.character,
                     onCompleted:e[i].p.onCompleted,
                     
                     gender:e[i].p.gender,
@@ -168,7 +168,7 @@ Q.eventFuncs= {
         } else {
             var curEvent = Q.state.get("levelData").events[event.p.eventId];
             curEvent.status = 1;
-            Q.state.set("battleHost",curEvent.p.host)
+            Q.state.set("battleHost",curEvent.p.host);
             Q.state.set("turnOrder",curEvent.p.turnOrder);
             var enemies = curEvent.p.enemies;
             var stage = Q.stage(1);
@@ -176,10 +176,9 @@ Q.eventFuncs= {
             enm[curEvent.p.eventId]=[];
             for(jj=0;jj<enemies.length;jj++){
                 var enemy = stage.insert(new Q.Enemy({
-
+                    className:enemies[jj].className,
                     eventId:enemies[jj].eventId,
                     playerId:enemies[jj].playerId,
-                    character:enemies[jj].character,
                     onCompleted:enemies[jj].onCompleted,
                     loc:enemies[jj].p.loc,
                     
@@ -208,7 +207,6 @@ Q.eventFuncs= {
             }
             var battles = Q.state.get("currentBattles");
             battles.push(event.p.eventId);
-            //clearInterval(Q.updateInterval);
         }
     }
 };
@@ -278,7 +276,6 @@ Q.afterDir=function(newHost){
     if(enemies.length<1){
         //Broadcast that this event is done
         var battles = Q.state.get("currentBattles");
-        console.log(battles)
         for(i=0;i<battles.length;i++){
             var event = Q.state.get("events")[battles[i]];
             Q.state.get("playerConnection").socket.emit('eventComplete',{playerId:Q.state.get("playerConnection").id,stageName:Q.stage(1).scene.name,eventId:event.eventId,onCompleted:event.onCompleted});
@@ -314,10 +311,9 @@ Q.afterDir=function(newHost){
         for(i=0;i<e[cb[j]].length;i++){
             var en = e[cb[j]][i];
             var enemy = {
-                
+                className:en.p.className,
                 eventId:en.p.eventId,
                 playerId:en.p.playerId,
-                character:en.p.character,
                 onCompleted:en.p.onCompleted,
                 
                 p:{
@@ -369,8 +365,21 @@ Q.afterDir=function(newHost){
             area:Q.stage(1).scene.name
         }
     });
-    
-    
+    Q.state.get("playerConnection").socket.emit('updateStats',{
+        stats:{
+            level:player.p.level,
+            ofn:player.p.ofn,
+            dfn:player.p.dfn,
+            spd:player.p.spd,
+            mod_ofn:player.p.mod_ofn,
+            mod_dfn:player.p.mod_dfn,
+            mod_spd:player.p.mod_spd,
+            curHp:player.p.curHp,
+            maxHp:player.p.maxHp,
+            exp:player.p.exp
+        },
+        playerId:player.p.playerId
+    });
 };
 
 Q.generateTurnOrder=function(activePlayers,enemies){
@@ -407,15 +416,13 @@ Q.addViewport=function(obj){
         if(Q.stage(1).viewport.following&&Q.stage(1).viewport.following.p.x===obj.p.x&&Q.stage(1).viewport.following.p.y===obj.p.y){
             return;
         } else {
-            var stage = Q.stage(1);
-
-            obj.p.stageMaxX=stage.lists.TileLayer[1].p.w;
+            obj.p.stageMaxX=Q.TL.p.w;
             var minX=0;
-            var maxX=stage.lists.TileLayer[1].p.w;
+            var maxX=Q.TL.p.w;
             var minY=0;
-            var maxY=stage.lists.TileLayer[1].p.h;
-            if(stage.lists.TileLayer[1].p.w<Q.width){minX=-(Q.width-stage.lists.TileLayer[1].p.w),maxX=Q.width;};
-            if(stage.lists.TileLayer[1].p.h<Q.height){minY=-Q.height;maxY=stage.lists.TileLayer[1].p.h;};
+            var maxY=Q.TL.p.h;
+            if(Q.TL.p.w<Q.width){minX=-(Q.width-Q.TL.p.w),maxX=Q.width;};
+            if(Q.TL.p.h<Q.height){minY=-Q.height;maxY=Q.TL.p.h;};
             Q.stage(1).follow(obj,{x:true,y:true},{minX: minX, maxX: maxX, minY: minY,maxY:maxY});
         }
     }

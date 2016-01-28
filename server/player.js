@@ -1,31 +1,14 @@
 var users = {
     "Saito": {
         "name": "Saito",
-        "species": "Aipom",
+        "className":"Professor",
+        "sheet":"Professor",
         "level": 1,
         "exp": 0,
         "curHp": 25,
         "gender": "M",
         "types": [
             "Normal"
-        ],
-        "pp": [
-            [
-                35,
-                35
-            ],
-            [
-                30,
-                30
-            ],
-            [
-                0,
-                0
-            ],
-            [
-                0,
-                0
-            ]
         ],
         "iv": {
             "hp": 8,
@@ -56,37 +39,20 @@ var users = {
         "text": [
             "Hello, I'm Saito!"
         ],
-        "loc":[7,10],
+        "loc":[9,7],
         "area":"first_demo1_2",
         "file":"BigGame"
     },
     "Estevan": {
         "name": "Estevan",
-        "species": "Totodile",
+        "className":"Professor",
+        "sheet":"Professor",
         "level": 1,
         "exp": 0,
-        "curHp": 22,
+        "curHp": 23,
         "gender": "M",
         "types": [
             "Water"
-        ],
-        "pp": [
-            [
-                35,
-                35
-            ],
-            [
-                30,
-                30
-            ],
-            [
-                99,
-                99
-            ],
-            [
-                0,
-                0
-            ]
         ],
         "iv": {
             "hp": 6,
@@ -118,37 +84,20 @@ var users = {
         "text": [
             "Hello, I'm Estevan!"
         ],
-        "loc":[8,10],
+        "loc":[9,10],
         "area":"first_demo1_2",
         "file":"BigGame"
     },
     "Lan": {
         "name": "Lan",
-        "species": "Chimchar",
+        "className":"Professor",
+        "sheet":"Professor",
         "level": 1,
         "exp": 0,
         "curHp": 20,
         "gender": "M",
         "types": [
             "Fire"
-        ],
-        "pp": [
-            [
-                35,
-                35
-            ],
-            [
-                30,
-                30
-            ],
-            [
-                0,
-                0
-            ],
-            [
-                0,
-                0
-            ]
         ],
         "iv": {
             "hp": 5,
@@ -179,7 +128,7 @@ var users = {
         "text": [
             "Hello, I'm Lan!"
         ],
-        "loc":[8,11],
+        "loc":[8,10],
         "area":"first_demo1_2",
         "file":"BigGame"
     }

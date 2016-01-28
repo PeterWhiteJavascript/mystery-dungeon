@@ -28,10 +28,14 @@
         
         return evs;
     };
-    this.triggerEvent=function(event){
-        this.levelData[event.stageName].events[event.eventId].p.status=1;
-        this.levelData[event.stageName].events[event.eventId].p.host=event.host;
-        return this.updateEvent(event);
+    this.setEvent=function(event){
+        var ev = this.levelData[event.stageName].events[event.eventId];
+        if(ev.p.status===0){
+            ev.p.status=1;
+            ev.p.host=event.host;
+            ev.eventId=event.eventId;
+            return ev;
+        }
     };
     this.completeEvent=function(eventId,stageName){
         this.levelData[stageName].events[eventId].p.status=2;
@@ -66,9 +70,9 @@
                     p:{
                         status:0,
                         enemies:[
-                            {character:"Spinarak",p:{loc:[9,1],level:1,dir:"Right"}},
-                            {character:"Spinarak",p:{loc:[9,2],level:1,dir:"Right"}},
-                            {character:"Spinarak",p:{loc:[9,3],level:1,dir:"Right",drop:{p:{item:"OranBerry",amount:1}}}}
+                            {className:"Professor",p:{loc:[9,1],level:1,dir:"Right"}},
+                            {className:"Professor",p:{loc:[9,2],level:1,dir:"Right"}},
+                            {className:"Professor",p:{loc:[9,3],level:1,dir:"Right",drop:{p:{item:"OranBerry",amount:1}}}}
                         ],
                         turnOrder:[]
                     }
@@ -104,9 +108,9 @@
                     p:{
                         status:0,
                         enemies:[
-                            {character:"Spinarak",gender:'M',p:{loc:[2,7],level:1,dir:'Left'}},
-                            {character:"Grimer",gender:'M',p:{loc:[4,9],level:2,dir:'Right',drop:{p:{item:"OranBerry",amount:1}}}},
-                            {character:"Spinarak",gender:'M',p:{loc:[6,10],level:1}}
+                            {className:"Professor",p:{loc:[4,6],level:1,dir:'Left'}},
+                            {className:"Professor",p:{loc:[4,5],level:2,dir:'Right',drop:{p:{item:"OranBerry",amount:1}}}},
+                            {className:"Professor",p:{loc:[5,5],level:1}}
                         ],
                         turnOrder:[]
                     }
@@ -119,9 +123,9 @@
                     p:{
                         status:0,
                         enemies:[
-                            {character:"Spinarak",p:{loc:[20,10],level:1,dir:"Left"}},
-                            {character:"Spinarak",p:{loc:[18,11],level:1,dir:"Left"}},
-                            {character:"Spinarak",p:{loc:[21,9],level:1,drop:{p:{item:"OranBerry",amount:1}}}}
+                            {className:"Professor",p:{loc:[20,10],level:1,dir:"Left"}},
+                            {className:"Professor",p:{loc:[18,11],level:1,dir:"Left"}},
+                            {className:"Professor",p:{loc:[21,9],level:1,drop:{p:{item:"OranBerry",amount:1}}}}
                         ],
                         turnOrder:[]
                     }
@@ -130,8 +134,6 @@
             npcs:[
             ],
             pickups:[
-                {item:"OranBerry",amount:1,loc:[4,9],p:{status:0}},
-                {item:"OranBerry",amount:1,loc:[20,11],p:{status:0}}
             ]
         },
         first_demo1_2:{
@@ -167,13 +169,13 @@
                     p:{
                         status:0,
                         enemies:[
-                            {character:"Spinarak",p:{loc:[3,12],level:2,dir:"Left"}},
-                            {character:"Spinarak",p:{loc:[4,13],level:2,dir:"Left"}}
+                            {className:"Professor",p:{loc:[3,12],level:2,dir:"Left"}},
+                            {className:"Professor",p:{loc:[4,13],level:2,dir:"Left"}}
                         ],
                         turnOrder:[]
                     }
-                }
-                /*{
+                },
+                {
                     trigger:{type:"onLocation"},
                     locations:[[13,10],[13,9],[13,6],[14,4],[15,4],[16,4]],
                     eventType:"spawnEnemies",
@@ -181,13 +183,13 @@
                     p:{
                         status:0,
                         enemies:[
-                            {character:"Grimer",p:{loc:[7,10],level:2,dir:"Left"}},
-                            {character:"Grimer",p:{loc:[2,18],level:4,dir:"Left",drop:{p:{item:"Potion",amount:1}}}},
-                            {character:"Grimer",p:{loc:[20,5],level:4,dir:"Left"}}
+                            {className:"Professor",p:{loc:[19,11],level:2,dir:"Left"}},
+                            {className:"Professor",p:{loc:[17,9],level:4,dir:"Left",drop:{p:{item:"Potion",amount:1}}}},
+                            {className:"Professor",p:{loc:[20,5],level:4,dir:"Left"}}
                         ],
                         turnOrder:[]
                     }
-                }*/
+                }
             ],
             npcs:[
             ],
@@ -206,10 +208,10 @@
                     p:{
                         status:0,
                         enemies:[
-                            {character:"Spinarak",p:{loc:[2,13],level:3,dir:"Up"}},
-                            {character:"Spinarak",p:{loc:[4,12],level:3,dir:"Left"}},
-                            {character:"Spinarak",p:{loc:[6,10],level:3,dir:"Up"}},
-                            {character:"Spinarak",p:{loc:[8,13],level:3,dir:"Right"}}
+                            {className:"Professor",p:{loc:[2,13],level:3,dir:"Up"}},
+                            {className:"Professor",p:{loc:[4,12],level:3,dir:"Left"}},
+                            {className:"Professor",p:{loc:[6,10],level:3,dir:"Up"}},
+                            {className:"Professor",p:{loc:[8,13],level:3,dir:"Right"}}
                         ],
                         turnOrder:[]
                     }
@@ -222,8 +224,8 @@
                     p:{
                         status:0,
                         enemies:[
-                            {character:"Grimer",p:{loc:[7,1],level:4,dir:"Left"}},
-                            {character:"Grimer",p:{loc:[8,2],level:4,dir:"Left",drop:{p:{item:"Potion",amount:1}}}}
+                            {className:"Professor",p:{loc:[7,1],level:4,dir:"Left"}},
+                            {className:"Professor",p:{loc:[8,2],level:4,dir:"Left",drop:{p:{item:"Potion",amount:1}}}}
                         ],
                         turnOrder:[]
                     }
@@ -236,8 +238,8 @@
                     p:{
                         status:0,
                         enemies:[
-                            {character:"Aipom",p:{loc:[15,5],level:4,dir:"Up"}},
-                            {character:"Aipom",p:{loc:[16,5],level:4,dir:"Down"}}
+                            {className:"Professor",p:{loc:[15,5],level:4,dir:"Up"}},
+                            {className:"Professor",p:{loc:[16,5],level:4,dir:"Down"}}
                         ],
                         turnOrder:[]
                     }
@@ -250,11 +252,11 @@
                     p:{
                         status:0,
                         enemies:[
-                            {character:"Aipom",p:{loc:[23,6],level:3,dir:"Up"}},
-                            {character:"Grimer",p:{loc:[19,5],level:3,dir:"Down"}},
-                            {character:"Spinarak",p:{loc:[20,13],level:3,dir:"Right"}},
-                            {character:"Chimchar",p:{loc:[20,8],level:5,dir:"Right",drop:{p:{item:"Potion",amount:1}}}},
-                            {character:"Spinarak",p:{loc:[19,13],level:3,dir:"Right"}}
+                            {className:"Professor",p:{loc:[23,6],level:3,dir:"Up"}},
+                            {className:"Professor",p:{loc:[19,5],level:3,dir:"Down"}},
+                            {className:"Professor",p:{loc:[20,13],level:3,dir:"Right"}},
+                            {className:"Professor",p:{loc:[20,8],level:5,dir:"Right",drop:{p:{item:"Potion",amount:1}}}},
+                            {className:"Professor",p:{loc:[19,13],level:3,dir:"Right"}}
                         ],
                         turnOrder:[]
                     }
@@ -276,8 +278,8 @@
                     p:{
                         status:0,
                         enemies:[
-                            {character:"Spinarak",p:{loc:[3,12],level:2,dir:"Left"}},
-                            {character:"Spinarak",p:{loc:[4,13],level:2,dir:"Left"}}
+                            {className:"Professor",p:{loc:[3,12],level:2,dir:"Left"}},
+                            {className:"Professor",p:{loc:[4,13],level:2,dir:"Left"}}
                         ],
                         turnOrder:[]
                     }
@@ -290,12 +292,12 @@
                     p:{
                         status:0,
                         enemies:[
-                            {character:"Spinarak",p:{loc:[21,4],level:4,dir:"Left"}},
-                            {character:"Spinarak",p:{loc:[10,2],level:4,dir:"Right"}},
-                            {character:"Totodile",p:{loc:[21,12],level:5,dir:"Up"}},
-                            {character:"Totodile",p:{loc:[4,12],level:5,dir:"Up"}},
-                            {character:"Totodile",p:{loc:[3,5],level:2,dir:"Right"}},
-                            {character:"Totodile",p:{loc:[22,7],level:2,dir:"Left"}}
+                            {className:"Professor",p:{loc:[21,4],level:4,dir:"Left"}},
+                            {className:"Professor",p:{loc:[10,2],level:4,dir:"Right"}},
+                            {className:"Professor",p:{loc:[21,12],level:5,dir:"Up"}},
+                            {className:"Professor",p:{loc:[4,12],level:5,dir:"Up"}},
+                            {className:"Professor",p:{loc:[3,5],level:2,dir:"Right"}},
+                            {className:"Professor",p:{loc:[22,7],level:2,dir:"Left"}}
                         ],
                         turnOrder:[]
                     }
@@ -318,12 +320,12 @@
                     p:{
                         status:0,
                         enemies:[
-                            {character:"Spinarak",p:{loc:[7,8],level:4,dir:"Up"}},
-                            {character:"Spinarak",p:{loc:[17,8],level:4,dir:"Up"}},
-                            {character:"Aipom",p:{loc:[9,8],level:5,dir:"Up"}},
-                            {character:"Aipom",p:{loc:[15,8],level:5,dir:"Up"}},
-                            {character:"Dratini",p:{loc:[11,9],level:6,dir:"Up"}},
-                            {character:"Dratini",p:{loc:[13,9],level:6,dir:"Up"}}
+                            {className:"Professor",p:{loc:[7,8],level:4,dir:"Up"}},
+                            {className:"Professor",p:{loc:[17,8],level:4,dir:"Up"}},
+                            {className:"Professor",p:{loc:[9,8],level:5,dir:"Up"}},
+                            {className:"Professor",p:{loc:[15,8],level:5,dir:"Up"}},
+                            {className:"Professor",p:{loc:[11,9],level:6,dir:"Up"}},
+                            {className:"Professor",p:{loc:[13,9],level:6,dir:"Up"}}
                         ],
                         turnOrder:[]
                     }
@@ -336,18 +338,18 @@
                     p:{
                         status:0,
                         enemies:[
-                            {character:"Deino",p:{loc:[4,22],level:8,dir:"Up",drop:{p:{item:"Diamond",amount:1}}}},
-                            {character:"Dratini",p:{loc:[11,19],level:4,dir:"Up"}},
-                            {character:"Dratini",p:{loc:[13,19],level:4,dir:"Up"}},
-                            {character:"Dratini",p:{loc:[10,21],level:6,dir:"Up"}},
-                            {character:"Dratini",p:{loc:[12,22],level:6,dir:"Up"}},
-                            {character:"Dratini",p:{loc:[14,21],level:6,dir:"Up"}},
-                            {character:"Spinarak",p:{loc:[20,21],level:4,dir:"Left"}},
-                            {character:"Spinarak",p:{loc:[20,22],level:4,dir:"Left"}},
+                            {className:"Professor",p:{loc:[4,22],level:8,dir:"Up",drop:{p:{item:"Diamond",amount:1}}}},
+                            {className:"Professor",p:{loc:[11,19],level:4,dir:"Up"}},
+                            {className:"Professor",p:{loc:[13,19],level:4,dir:"Up"}},
+                            {className:"Professor",p:{loc:[10,21],level:6,dir:"Up"}},
+                            {className:"Professor",p:{loc:[12,22],level:6,dir:"Up"}},
+                            {className:"Professor",p:{loc:[14,21],level:6,dir:"Up"}},
+                            {className:"Professor",p:{loc:[20,21],level:4,dir:"Left"}},
+                            {className:"Professor",p:{loc:[20,22],level:4,dir:"Left"}},
                             
-                            {character:"Totodile",p:{loc:[2,15],level:5,dir:"Down"}},
-                            {character:"Totodile",p:{loc:[3,15],level:5,dir:"Down"}},
-                            {character:"Totodile",p:{loc:[4,15],level:5,dir:"Down"}},
+                            {className:"Professor",p:{loc:[2,15],level:5,dir:"Down"}},
+                            {className:"Professor",p:{loc:[3,15],level:5,dir:"Down"}},
+                            {className:"Professor",p:{loc:[4,15],level:5,dir:"Down"}},
                         ],
                         turnOrder:[]
                     }

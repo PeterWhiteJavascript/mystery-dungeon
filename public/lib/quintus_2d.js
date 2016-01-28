@@ -394,10 +394,11 @@ Quintus["2D"] = function(Q) {
       var p = this.p,
           startX = Math.floor(blockX * p.blockW + p.x),
           startY = Math.floor(blockY * p.blockH + p.y);
-          
+
       if(!this.blocks[blockY] || !this.blocks[blockY][blockX]) {
         this.prerenderBlock(blockX,blockY);
       }
+
       if(this.blocks[blockY]  && this.blocks[blockY][blockX]) {
         ctx.drawImage(this.blocks[blockY][blockX],startX,startY);
       }
@@ -415,6 +416,7 @@ Quintus["2D"] = function(Q) {
           startBlockY = Math.floor((y - p.y) / p.blockH),
           endBlockX = Math.floor((x + viewW - p.x) / p.blockW),
           endBlockY = Math.floor((y + viewH - p.y) / p.blockH);
+
       for(var iy=startBlockY;iy<=endBlockY;iy++) {
         for(var ix=startBlockX;ix<=endBlockX;ix++) {
           this.drawBlock(ctx,ix,iy);

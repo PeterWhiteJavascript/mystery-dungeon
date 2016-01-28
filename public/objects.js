@@ -55,14 +55,14 @@ Q.checkGroundPos={
 Q.buildCharacter=function(data){
     var player={p:{}};
     //Get the user data
-    player.p.species = data.species;
-    var sData = RP.monsters[player.p.species];
+    player.p.sheet=data.sheet;
+    player.p.className = data.className;
+    var sData = RP.classes[player.p.className];
     player.p.name = data.name;
     player.p.exp = data.exp;
     player.p.level= data.level;
     player.p.curHp = data.curHp;
     player.p.gender = data.gender;
-    player.p.pp = data.pp;
     player.p.ability = RP.abilities[data.ability];
     var attacks = data.attacks;
     player.p.attacks=[];
@@ -100,15 +100,12 @@ Q.buildCharacter=function(data){
     player.p.mod_spd = player.p.spd;
 
     player.p.sightRange = player.p.stats.other.mind;
-    player.p.dexNum = RP.monsters[player.p.species].dexNum;
-    player.p.types = RP.monsters[player.p.species].types;
-    player.p.sheet=player.p.species;
+    player.p.types = RP.classes[player.p.className].types;
     //[x,y]
     player.p.loc = data.loc;
-    player.p.x=player.p.loc[0]*70+35;
-    player.p.y=player.p.loc[1]*70+35;
+    //var player = Q.setPosition(player,player.p.loc);
     player.p.area = data.area;
-    
+    player.p.dir=data.dir;
     player.p.playerId=data.playerId;
     return player;
 };
@@ -167,13 +164,13 @@ Q.component("AI", {
             //2 - Bottom
             //3 - Left
             var outline = [];
-            outline.push(Q.stage(1).locate(p.x,p.y-70,Q.SPRITE_INTERACTABLE));
-            outline.push(Q.stage(1).locate(p.x+70,p.y,Q.SPRITE_INTERACTABLE));
-            outline.push(Q.stage(1).locate(p.x,p.y+70,Q.SPRITE_INTERACTABLE));
-            outline.push(Q.stage(1).locate(p.x-70,p.y,Q.SPRITE_INTERACTABLE));
+            outline.push(Q.stage(1).locate(p.x,p.y-Q.tileH,Q.SPRITE_INTERACTABLE));
+            outline.push(Q.stage(1).locate(p.x+Q.tileH,p.y,Q.SPRITE_INTERACTABLE));
+            outline.push(Q.stage(1).locate(p.x,p.y+Q.tileH,Q.SPRITE_INTERACTABLE));
+            outline.push(Q.stage(1).locate(p.x-Q.tileH,p.y,Q.SPRITE_INTERACTABLE));
 
             for(i=0;i<outline.length;i++){
-                if(outline[i]){
+                if(outline[i]){console.log(outline[i].p.character,p.target.p.character)
                     if(outline[i].p.character===p.target.p.character){
                         //Obviously we will want to run a function here to determine the best attack.
                         //Also, the first parameter is 'targets' so we still need to check the attack area to find more targets
@@ -219,13 +216,13 @@ Q.setPhaseOneUpdating=function(){
                 }
             });
         }
-    },50);
+    },25);
 };
     
 Q.component("autoMove", {
     added: function() {
         var p = this.entity.p;
-        if(!p.stepDistance) { p.stepDistance = 70; }
+        if(!p.stepDistance) { p.stepDistance = Q.tileH; }
         //if(!p.stepDelay) { p.stepDelay = 0.3; }
         p.stepDelay = 0.3; 
         p.stepWait = 0;
@@ -403,7 +400,7 @@ Q.component("autoMove", {
 Q.component("stepControls", {
     added: function() {
         var p = this.entity.p;
-        if(!p.stepDistance) { p.stepDistance = 70; }
+        if(!p.stepDistance) { p.stepDistance = Q.tileH; }
         if(!p.stepDelay) { p.stepDelay = 0.3; }
         p.stepWait = 0;
         p.diffX = 0;
@@ -426,6 +423,7 @@ Q.component("stepControls", {
     },
     
     goOffscreen:function(x,y){
+        Q.playSound("enter_door.mp3");
         var level = Q.stage(1).options.path;
         var pathNum = Q.stage(1).options.pathNum;
         var newPathNum = [pathNum[0]+x,pathNum[1]+y];
@@ -438,7 +436,7 @@ Q.component("stepControls", {
                 break;
             //Player is going off from the top or bottom of this level
             case x===0:
-                playerLoc[0]=(p.x-35)/70;
+                playerLoc[0]=(p.x-Q.tileH/2)/Q.tileH;
                 break;
             case x<0:
                 //This string means that we need to figure out the maxX of the tilelayer on the next stage.
@@ -452,7 +450,7 @@ Q.component("stepControls", {
                 break;
             //Player is going off from the right or left of this level
             case y===0:
-                playerLoc[1]=(p.y-35)/70;
+                playerLoc[1]=(p.y-Q.tileH/2)/Q.tileH;
                 break;
             case y<0:
                 //This string means that we need to figure out the maxY of the tilelayer on the next stage.
@@ -462,7 +460,21 @@ Q.component("stepControls", {
         var newArea = level+newPathNum[0]+"_"+newPathNum[1];
         var player = this.entity;
         player.p.loc = playerLoc;
-        player.p.area=newArea;
+        clearInterval(Q.updateInterval);
+        //we should do some kind of segue into the next area
+        Q.stageScene("customAnimate",4,{anim:"changeArea"});
+        Q.state.get("playerConnection").socket.emit('changeArea',{
+            playerId:Q.state.get("playerConnection").id,
+            props:{
+                x:player.p.x,
+                y:player.p.y,
+                dir:player.p.dir,
+                loc:player.p.loc,
+                animation:player.p.animation,
+                area:newArea
+            }
+        }); 
+        
         return true;
     },
     
@@ -512,9 +524,9 @@ Q.component("stepControls", {
                 p.destX = p.x + p.diffX;
                 p.destY = p.y + p.diffY;
                 //Set the destination location
-                var locTo=[Math.round((p.destX-(p.h/2))/70),Math.round((p.destY-(p.w/2))/70)];
+                var locTo=Q.getLoc(p.destX,p.destY);
                 //Get the tiles
-                var tiles = this.entity.stage.lists.TileLayer[1].p.tiles;
+                var tiles = Q.TL.p.tiles;
                 //Check to make sure locTo to is on this stage
                 if(this.checkOffscreen(locTo,tiles)){
                     p.canMove=false;
@@ -522,12 +534,12 @@ Q.component("stepControls", {
                 };
                 //Make sure we aren't going to crash into an interactable
                 //Don't collide with players
-                //THIS NEEDS TO BE CHANGED TO CHECK THE LOCATION AND NOT XY POSITION
-                if(obj = Q.stage(1).locate(p.x+p.diffX,p.y+p.diffY,Q.SPRITE_INTERACTABLE)){
+                if(Q.getTarget(p.destX,p.destY)||Q.getObjectAt(p.destX,p.destY)){
                     this.entity.playWalk(p.dir);
                     this.atDest();
                     return;
                 }
+                /*
                 var pls = Q("Player",1).items;
                 var invalid = false;
                 for(i=0;i<pls.length;i++){
@@ -539,13 +551,14 @@ Q.component("stepControls", {
                     this.entity.playWalk(p.dir);
                     this.atDest();
                     return;
-                }
-                //Set the tile type that this player is going to
-                p.tileTo = this.entity.stage.lists.TileLayer[1].tileCollisionObjects[tiles[locTo[1]][locTo[0]]].p.type;
+                }*/
+                //Get the tile type that this player is going to
+                p.tileTo = Q.getTileType(locTo[0],locTo[1]);
                 //Calculate how fast the player moves on this tile
                 p.stepDelay = Q.getMoveSpeed(p.tileTo,this.entity);
                 //Check if we can't go to that tile and make sure we can actually walk
                 //This func is stored in tile_costs.js and just checks the next tile's type to see if the tile is walkable by this type of player
+                
                 if(!Q.processTileTo(p.tileTo,this.entity)){
                     this.entity.playWalk(p.dir);
                     this.atDest();
@@ -637,13 +650,13 @@ Q.component('actor', {
         this.entity.p.update=true;
         var temp = this.entity;
         //Automatically destroys the actor if it has not moved in 10 seconds
-        setInterval(function () {
+        /*setInterval(function () {
             if(Q.state.get("phase")===2){temp.p.update=true;};
             if (!temp.p.update) {
               temp.destroy();
             }
             temp.p.update = false;
-        }, 3000);
+        }, 3000);*/
     } 
 });
 
@@ -803,7 +816,7 @@ Q.component("attacker",{
                 var targets = [];
                 for(i=-attack.area-1;i<attack.area-1;i++){
                     for(j=-attack.area-1;j<attack.area-1;j++){
-                        var obj = Q.stage(1).locate(center.p.x+(i*70),center.p.y+(j*70),Q.SPRITE_INTERACTABLE);
+                        var obj = Q.stage(1).locate(center.p.x+(i*Q.tileH),center.p.y+(j*Q.tileH),Q.SPRITE_INTERACTABLE);
                         
                         if(obj&&obj.has("attacker")){
                             targets.push(obj);
@@ -834,7 +847,7 @@ Q.component("attacker",{
             this.clearGuide();
 
             var minTile = 0;
-            var tileLayer = Q.stage(1).lists.TileLayer[1];
+            var tileLayer = Q.TL;
             var maxTileRow = tileLayer.p.tiles[0].length;
             var maxTileCol = tileLayer.p.tiles.length;
             var rows=mov*2+1,
@@ -905,7 +918,7 @@ Q.component("attacker",{
                                     //Mark this direction as finished
                                     canCheck[check]=false;
                                     //Find if there's an object
-                                    var obj = Q.stage(1).locate(graph.grid[tileStartX+startX][tileStartY+startY].x*70+35,graph.grid[tileStartX + startX][tileStartY + startY].y*70+35,Q.SPRITE_INTERACTABLE);
+                                    var obj = Q.stage(1).locate(graph.grid[tileStartX+startX][tileStartY+startY].x*Q.tileH+Q.tileH/2,graph.grid[tileStartX + startX][tileStartY + startY].y*Q.tileH+Q.tileH/2,Q.SPRITE_INTERACTABLE);
                                     
                                     //If there's an object, add it to the possible targets array
                                     //Also make sure to not add this object
@@ -952,13 +965,13 @@ Q.component("attacker",{
             if(attackTiles.length){
                 //Loop through the possible tiles
                 for(i=0;i<attackTiles.length;i++){
-                    this.p.guide.push(Q.stage(1).insert(new Q.PathBox({x:attackTiles[i].x*70+35,y:attackTiles[i].y*70+35}),false,true));
+                    this.p.guide.push(Q.stage(1).insert(new Q.PathBox({x:attackTiles[i].x*Q.tileH+Q.tileH/2,y:attackTiles[i].y*Q.tileH+Q.tileH/2}),false,true));
                 }
             }
             this.p.possTargets=possibleTargets;
         },
         faceTarget:function(pos){
-            var tLoc = [(pos.x-35)/70,(pos.y-35)/70];
+            var tLoc = [(pos.x-Q.tileH/2)/Q.tileH,(pos.y-Q.tileH/2)/Q.tileH];
             var pLoc = this.p.loc;
             var xDif = tLoc[0]-pLoc[0];
             var yDif = tLoc[1]-pLoc[1];
@@ -1006,13 +1019,11 @@ Q.component("attacker",{
             //1.50 is from front
             //Set values that we will multiply accuracy and power by later on
             var back = 0.5;
-            var backSide = 0.75;
             var side = 1;
-            var frontSide = 1.25;
             var front = 1.5;
             
             //Array of possible directions clockwise from 12 o'clock
-            var dirs = ["Up", "UpRight", "Right", "DownRight", "Down", "DownLeft", "Left", "UpLeft"];
+            var dirs = ["Up", "Right", "Down", "Left"];
             //Get the number for the user dir
             var userDir = getDirection(user.p.dir,dirs);
             //Get the number for the target dir
@@ -1020,7 +1031,7 @@ Q.component("attacker",{
             //An array of the values (also clockwise from 12 o'clock)
             //EX:
             //if both user and target are 'Up', they will both be 0 and that will give the back value (since they are both facing up, the user has attacked from behind).
-            var values = [back,backSide,side,frontSide,front,frontSide,side,backSide];
+            var values = [back,side,front,side];
             for(j=0;j<values.length;j++){
                 //Make sure we are in bounds, else loop around to the start of the array
                 if(checkBounds(userDir+j)===targetDir){
@@ -1031,7 +1042,7 @@ Q.component("attacker",{
         },
         useAttack:function(targets,attack,center){
             //Check to see if we have enough pp to use the move.
-            for(i=0;i<this.p.attacks.length;i++){
+            /*for(i=0;i<this.p.attacks.length;i++){
                 if(attack.id===this.p.attacks[i].id){
                     if(this.p.pp[i][0]>=1){
                         //Decrease PP for move
@@ -1044,7 +1055,7 @@ Q.component("attacker",{
                         return;
                     }
                 }
-            }
+            }*/
             //Set the direction we need to be facing
             this.faceTarget({x:center.p.x,y:center.p.y});
             //Play the attack animation
@@ -1077,14 +1088,13 @@ Q.component("attacker",{
                         }
                         //We hit!
                         if(damageCalc.damage>0){
-                            text.push("Hit "+target.p.name+" for "+damageCalc.damage+" damage!",{lowerHp:[{Class:target.p.Class,id:target.p.playerId},damageCalc.damage]});
+                            text.push({playSound:"attack.mp3"},"Hit "+target.p.name+" for "+damageCalc.damage+" damage!",{lowerHp:[{Class:target.p.Class,id:target.p.playerId},damageCalc.damage]});
                             if(target.p.curHp-damageCalc.damage<=0){
                                 text.push({faint:[{Class:target.p.Class,id:target.p.playerId}]},target.p.name+" fainted!");
                                 target.p.defeated=true;
                                 target.removeFromTurnOrder();
                                 target.checkDrop(this);
                                 var expText = target.giveExp();
-                                //If someone leveled up
                                 if(expText&&expText.length>0){
                                     for(jjj=0;jjj<expText.length;jjj++){
                                         text.push(expText[jjj]);
@@ -1119,7 +1129,7 @@ Q.component("attacker",{
 
                             if(effectText.length>0){
                                 for(kk=0;kk<effectText.length;kk++){
-                                    text.push(effectText[kk]);
+                                    text.push({playSound:"attack.mp3"},effectText[kk]);
                                 }
                             }
                         }
@@ -1128,7 +1138,7 @@ Q.component("attacker",{
                 }
                 //Missed
                 else {
-                    text.push("Missed "+target.p.name+"...");
+                    text.push({playSound:"attack.mp3"},"Missed "+target.p.name+"...");
                     hit = false;
                 }
             }
@@ -1162,7 +1172,7 @@ Q.component("attacker",{
 Q.component("commonPlayer", {
     extend:{
         confirmLocation:function(loc){
-            while(Q.stage(1).locate(loc[0]*70+35,loc[1]*70+35,Q.SPRITE_INTERACTABLE)){
+            while(Q.stage(1).locate(loc[0]*Q.tileH+Q.tileH/2,loc[1]*Q.tileH+Q.tileH/2,Q.SPRITE_INTERACTABLE)){
                 var newLoc = [loc[0]+Math.floor(Math.random()*3)-1,loc[1]+Math.floor(Math.random()*3)-1];
                 loc=newLoc;
             }
@@ -1198,7 +1208,7 @@ Q.component("commonPlayer", {
                 Q("Player",1).each(function(){
                     var up = this.checkExp(exp);
                     if(up){
-                        leveledUp.push(this.p.name+" grew to level "+this.p.level+"!",
+                        leveledUp.push({playSound:"level_up.mp3"},this.p.name+" grew to level "+this.p.level+"!",
                         {gainExp:[{Class:this.p.Class,id:this.p.playerId},exp]});
                     } else {
                         leveledUp.push({gainExp:[{Class:this.p.Class,id:this.p.playerId},exp]});
@@ -1209,7 +1219,7 @@ Q.component("commonPlayer", {
                 Q("Enemy",1).each(function(){
                     var up = this.checkExp(exp);
                     if(up){
-                        leveledUp.push(this.p.name+" grew to level "+this.p.level+"!",
+                        leveledUp.push({playSound:"level_up.mp3"},this.p.name+" grew to level "+this.p.level+"!",
                         {gainExp:[{Class:this.p.Class,id:this.p.playerId},Math.round(exp)]});
                     } else {
                         leveledUp.push({gainExp:[{Class:this.p.Class,id:this.p.playerId},exp]});
@@ -1292,25 +1302,21 @@ Q.component("commonPlayer", {
         
         getTileLocation:function(){
             var loc = this.setLocation();
-            var tiles = this.stage.lists.TileLayer[1].p.tiles;
-            return this.stage.lists.TileLayer[1].tileCollisionObjects[tiles[loc[1]][loc[0]]].p.type;
+            return Q.getTileType(loc[0],loc[1]);
         },
         getWalkMatrix:function(){
             function getWalkable(tiles,obj){
-                if(Q.stage(1).lists.TileLayer[1].tileCollisionObjects[tiles[j][i]]){
-                    return Q.getTileCost(Q.stage(1).lists.TileLayer[1].tileCollisionObjects[tiles[j][i]].p.type,obj.p);
-                }
-                return 10000;
+                return Q.getTileCost(Q.getTileType(i,j),obj.p);
             }
 
-            var tiles=Q.stage(1).lists.TileLayer[1].p.tiles;
+            var tiles=Q.TL.p.tiles;
             var cM=[];
             if(tiles){
                 for(i=0;i<tiles[0].length;i++){
                     var costRow = [];
-                    var colLoc = i*70+35;
+                    var colLoc = i*Q.tileH+Q.tileH/2;
                     for(j=0;j<tiles.length;j++){
-                        var rowLoc=j*70+35;
+                        var rowLoc=j*Q.tileH+Q.tileH/2;
                         var cost = getWalkable(tiles,this);
                         var objOn=false;
                         objOn = Q.stage(1).locate(colLoc,rowLoc,Q.SPRITE_INTERACTABLE);
@@ -1318,7 +1324,7 @@ Q.component("commonPlayer", {
                         //Mark the square that the player is standing on as no object.
                         //In our auto move, if AITo is set, short by 1
                         if(objOn&&this.p.AITo){
-                            if((objOn.p.x-35)/70===this.p.AITo.x&&(objOn.p.y-35)/70===this.p.AITo.y){
+                            if((objOn.p.x-Q.tileH/2)/Q.tileH===this.p.AITo.x&&(objOn.p.y-Q.tileH/2)/Q.tileH===this.p.AITo.y){
                                 objOn=false;
                             }
                         }
@@ -1360,8 +1366,9 @@ Q.component("commonPlayer", {
                     }
                 }
             }
-            Q.state.get("playerConnection").socket.emit('updateItems',{items:player.p.items,playerId:player.p.playerId});
             var text = RP.itemFuncs[itm.p.effect[0]](itm.p,this);
+            Q.state.get("playerConnection").socket.emit('updateItems',{items:player.p.items,playerId:player.p.playerId,text:text});
+            
             return text;
         },
         clearGuide:function(){
@@ -1379,7 +1386,7 @@ Q.component("commonPlayer", {
             this.p.sightTiles=[];
 
             var minTile = 0;
-            var tileLayer = Q.stage(1).lists.TileLayer[1];
+            var tileLayer = Q.TL;
             var maxTileRow = tileLayer.p.tiles[0].length;
             var maxTileCol = tileLayer.p.tiles.length;
             var rows=sight*2+1,
@@ -1410,7 +1417,7 @@ Q.component("commonPlayer", {
             if(rows>maxTileRow){rows=maxTileRow;};
             if(cols>maxTileCol){cols=maxTileCol;};
             this.p.sightTiles=[];
-            var graph = new Graph(this.getWalkMatrix(true));
+            var graph = new Graph(this.getWalkMatrix());
             for(i=0;i<sight+1;i++){
                 var checking = i*2+1;
                 for(j=0;j<checking;j++){
@@ -1432,7 +1439,7 @@ Q.component("commonPlayer", {
             this.clearGuide();
 
             var minTile = 0;
-            var tileLayer = Q.stage(1).lists.TileLayer[1];
+            var tileLayer = Q.TL;
             var maxTileRow = tileLayer.p.tiles.length;//25
             var maxTileCol = tileLayer.p.tiles[0].length;//15
             var rows=mov*2+1,
@@ -1483,7 +1490,7 @@ Q.component("commonPlayer", {
                         pathCost+=path[j].weight;
                     }
                     if(path.length>0&&path.length<=mov&&pathCost<=this.p.myTurnTiles){
-                        this.p.guide.push(Q.stage(1).insert(new Q.PathBox({x:movTiles[i].x*70+35,y:movTiles[i].y*70+35}),false,true));
+                        this.p.guide.push(Q.stage(1).insert(new Q.PathBox({x:movTiles[i].x*Q.tileH+Q.tileH/2,y:movTiles[i].y*Q.tileH+Q.tileH/2}),false,true));
                         this.p.movTiles.push(movTiles[i]);
                     }
                 }
@@ -1497,7 +1504,7 @@ Q.component("commonPlayer", {
             this.clearGuide();
             if(this.p.menuPath.length){
                 for(i=0;i<this.p.menuPath.length;i++){
-                    this.p.guide.push(this.stage.insert(new Q.PathBox({x:this.p.menuPath[i].x*70+35,y:this.p.menuPath[i].y*70+35}),false,true));
+                    this.p.guide.push(this.stage.insert(new Q.PathBox({x:this.p.menuPath[i].x*Q.tileH+Q.tileH/2,y:this.p.menuPath[i].y*Q.tileH+Q.tileH/2}),false,true));
                 }
             }
             Q.addViewport(this);
@@ -1505,8 +1512,7 @@ Q.component("commonPlayer", {
         },
 
         getPath:function(toLoc,graph,prop,score){
-            var loc = [(this.p.x-this.p.w/2)/this.p.tileSize,(this.p.y-this.p.h/2)/this.p.tileSize];
-            if(!graph.grid[loc[0]][loc[1]]){graph = new Graph(this.getWalkMatrix(true));};
+            var loc = this.setLocation();
             var start = graph.grid[loc[0]][loc[1]];
             var end = graph.grid[toLoc[0]][toLoc[1]];
             var result;
@@ -1523,7 +1529,7 @@ Q.component("commonPlayer", {
             Q.inputs['interact']=false;
         },
         setLocation:function(){
-            return [Math.round((this.p.x-this.p.w/2)/this.p.tileSize),Math.round((this.p.y-this.p.h/2)/this.p.tileSize)];
+            return [Math.round((this.p.x-Q.tileH/2)/Q.tileH),Math.round((this.p.y-Q.tileH/2)/Q.tileH)];
         },
         addViewport:function(){
             Q.addViewport(this);
@@ -1552,8 +1558,8 @@ Q.Sprite.extend("Enemy",{
             possTargets:[],
             
             type:Q.SPRITE_INTERACTABLE,
-            tileSize:70,
-            w:70,h:70,//ALL OBJECTS MUST BE 70x70 SO THAT THEY MOVE PROPERLY
+            tileSize:Q.tileH,
+            w:Q.tileH,h:Q.tileH,
             
             //Character stats
             statsModified:{
@@ -1573,9 +1579,9 @@ Q.Sprite.extend("Enemy",{
     initialize:function(){
         //Make sure that there's nothing standing on the spawn point, else move this enemy
         this.p.loc = this.confirmLocation(this.p.loc);
-        this.p.x=this.p.loc[0]*70+35;
-        this.p.y=this.p.loc[1]*70+35;
-        var data = RP.monsters[this.p.character];
+        this.p.x=this.p.loc[0]*Q.tileH+Q.tileH/2;
+        this.p.y=this.p.loc[1]*Q.tileH+Q.tileH/2;
+        var data = RP.classes[this.p.className];
         this.p.name = this.p.character;
         this.p.expGiven = data.exp;
         
@@ -1584,12 +1590,11 @@ Q.Sprite.extend("Enemy",{
         this.p.ability = RP.abilities[data.abilities[Math.floor(Math.random()*data.abilities.length)]];
         var attacks = data.attacks;
         this.p.attacks = [];
-        this.p.pp=[];
+        
         for(i=0;i<attacks.length;i++){
             //Right now just push all possible attacks
             if(attacks[i][1]<=this.p.level){
                 this.p.attacks.push(RP.moves[attacks[i][0]]);
-                this.p.pp.push([RP.moves[attacks[i][0]].pp,RP.moves[attacks[i][0]].pp]);
             }
         }
         this.p.items = this.p.items || [];
@@ -1631,12 +1636,12 @@ Q.Sprite.extend("Enemy",{
         
         this.p.curHp = this.p.maxHp;
         
-        this.p.dexNum = RP.monsters[this.p.species].dexNum;
-        this.p.types = RP.monsters[this.p.species].types;
+        this.p.types = RP.classes[this.p.className].types;
         
-        this.p.sheet=this.p.species;
-        
-        this.p.graphWithWeight = new Graph(this.getWalkMatrix(true));
+        this.p.sheet=this.p.className;
+        this.p.name = this.p.className+" "+this.p.playerId;
+                
+        this.p.graphWithWeight = new Graph(this.getWalkMatrix());
         this.playStand(this.p.dir);
         this.p.initialize = false;
     },
@@ -1666,7 +1671,7 @@ Q.Sprite.extend("Enemy",{
          
         this.add("AI");
         
-        this.p.graphWithWeight = new Graph(this.getWalkMatrix(true));
+        this.p.graphWithWeight = new Graph(this.getWalkMatrix());
         this.p.menuPath = this.getPath(this.p.AITo,this.p.graphWithWeight);
         this.add("autoMove");
         
@@ -1698,8 +1703,8 @@ Q.Sprite.extend("Player",{
             possTargets:[],
             
             type:Q.SPRITE_INTERACTABLE,
-            tileSize:70,
-            w:70,h:70,//ALL OBJECTS MUST BE 70x70 SO THAT THEY MOVE PROPERLY
+            tileSize:Q.tileH,
+            w:Q.tileH,h:Q.tileH,
             
             //Character stats
             statsModified:{
@@ -1718,7 +1723,6 @@ Q.Sprite.extend("Player",{
         this.on("step",this,"checkMenu");
         this.on("atDest",this,"checkTrigger");
         this.p.num=0;
-        
     },
     checkTrigger:function(){
         Q("Trigger",1).invoke("checkLocation");
@@ -1727,11 +1731,11 @@ Q.Sprite.extend("Player",{
         var dir;
         if(loc[0]>0&&loc[1]===0){
             dir='Down';
-        } else if(loc[0]===this.stage.lists.TileLayer[1].p.tiles[0].length-1&&loc[1]>0){
+        } else if(loc[0]===Q.TL.p.tiles[0].length-1&&loc[1]>0){
             dir='Left';
         } else if(loc[1]>0&&loc[0]===0){
             dir='Right';
-        } else if(loc[1]===this.stage.lists.TileLayer[1].p.tiles.length-1&&loc[0]>0){
+        } else if(loc[1]===Q.TL.p.tiles.length-1&&loc[0]>0){
             dir='Up';
         } else {
             dir='Down';
@@ -1742,7 +1746,7 @@ Q.Sprite.extend("Player",{
     initialize:function(){
         this.p.dir = this.getDir(this.p.loc);
         this.p.area=Q.stage(1).scene.name;
-        this.p.graphWithWeight = new Graph(this.getWalkMatrix(true));
+        this.p.graphWithWeight = new Graph(this.getWalkMatrix());
         this.p.canMove=true;
         this.p.canInput=true;
         
@@ -1796,7 +1800,7 @@ Q.Sprite.extend("Player",{
         this.p.canRedo=true;
         this.p.canInput=false;
         
-        this.p.graphWithWeight = new Graph(this.getWalkMatrix(true));
+        this.p.graphWithWeight = new Graph(this.getWalkMatrix());
         this.playStand(this.p.dir);
         
     },
@@ -1817,9 +1821,9 @@ Q.Sprite.extend("Player",{
     resetMovement:function(){
         //Only reset if the this can redo (he hasn't done anything that cannot be reversed just by moving back)
         if(this.p.canRedo){
-            this.p.x=this.p.w/2+this.p.startLocation[0]*70;
-            this.p.y=this.p.h/2+this.p.startLocation[1]*70;
-            this.p.loc = [(this.p.x-this.p.w/2)/70,(this.p.y-this.p.h/2)/70];
+            this.p.x=this.p.w/2+this.p.startLocation[0]*Q.tileH;
+            this.p.y=this.p.h/2+this.p.startLocation[1]*Q.tileH;
+            this.p.loc = [(this.p.x-this.p.w/2)/Q.tileH,(this.p.y-this.p.h/2)/Q.tileH];
             this.resetMove();
         } else {
             //Play can't do that sound
@@ -1909,7 +1913,7 @@ Q.Sprite.extend("Player",{
         var func;
         var props;
         var player = this;
-        var itm = Q.stage(1).locate((player.p.loc[0]*70)+player.p.w/2,(player.p.loc[1]*70)+player.p.h/2,Q.SPRITE_NPC);
+        var itm = Q.stage(1).locate((player.p.loc[0]*Q.tileH)+player.p.w/2,(player.p.loc[1]*Q.tileH)+player.p.h/2,Q.SPRITE_NPC);
         if(itm){
             func="getItem";
             props=itm;
@@ -1954,7 +1958,7 @@ Q.Sprite.extend("NPC",{
         this._super(p, {
             sheet:"objects",
             type:Q.SPRITE_NPC|Q.SPRITE_INTERACTABLE,
-            w:70,h:70
+            w:Q.tileH,h:Q.tileH
         });
         this.add("2d");
         this.p.frame = this.getFrame(this.p.npcType);
@@ -1962,8 +1966,8 @@ Q.Sprite.extend("NPC",{
         this.getText(this.p.text,this.p.textNum);
     },
     setXY:function(loc){
-        this.p.x=loc[0]*70+35;
-        this.p.y=loc[1]*70+35;
+        this.p.x=loc[0]*Q.tileH+Q.tileH/2;
+        this.p.y=loc[1]*Q.tileH+Q.tileH/2;
     },
     getFrame:function(type){
         var frame = 0;
@@ -2019,7 +2023,7 @@ Q.Sprite.extend("TrashCan",{
             sheet:"objects",
             frame:2,
             type:Q.SPRITE_NPC|Q.SPRITE_INTERACTABLE,
-            w:70,h:70,
+            w:Q.tileH,h:Q.tileH,
             amount:1
         });
         this.add("2d");
@@ -2053,7 +2057,7 @@ Q.Sprite.extend("Pickup",{
         this._super(p, {
             sheet:"berries",
             type:Q.SPRITE_NPC,
-            w:70,h:70
+            w:Q.tileH,h:Q.tileH
         });
         this.add("2d");
         if(!this.p.amount){this.p.amount=1;};
@@ -2068,8 +2072,8 @@ Q.Sprite.extend("Pickup",{
         Q.state.get("playerConnection").socket.emit('pickUpItem',{pickupId:id,playerId:Q.state.get("playerConnection").id});
     },
     setXY:function(loc){
-        this.p.x=loc[0]*70+35;
-        this.p.y=loc[1]*70+35;
+        this.p.x=loc[0]*Q.tileH+Q.tileH/2;
+        this.p.y=loc[1]*Q.tileH+Q.tileH/2;
     },
     //Get the proper frame from the spritesheet
     getFrame:function(){

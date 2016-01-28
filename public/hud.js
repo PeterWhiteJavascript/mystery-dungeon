@@ -3,7 +3,7 @@ Quintus.HUD = function(Q){
         added: function() {
           var p = this.entity.p;
 
-          if(!p.stepDistance) { p.stepDistance = 70; }
+          if(!p.stepDistance) { p.stepDistance = Q.tileH; }
           if(!p.stepDelay) { p.stepDelay = 0.2; }
 
           p.stepWait = 0;
@@ -16,7 +16,7 @@ Quintus.HUD = function(Q){
           this.entity.on("unflash",this,"unFlashObjs");
         },
         flashObjs:function(guide){
-            var obj = Q.stage(1).locate(guide.p.x,guide.p.y,Q.SPRITE_INTERACTABLE);
+            var obj = Q.getTarget(guide.p.x,guide.p.y);
             if(obj&&this.entity.validTarget(obj)){
                 obj.flash();
                 this.entity.p.flashObjs.push(obj);
@@ -97,7 +97,7 @@ Quintus.HUD = function(Q){
                 p.origY = p.y;
                 p.destX = p.x + p.diffX;
                 p.destY = p.y + p.diffY;
-                p.target=this.entity.getTarget(p.destX,p.destY);
+                p.target=Q.getTargetAt(p.loc[0],p.loc[1]);
                 if(p.target&&p.target.has("attacker")){
                     Q.stageScene("tophud",3,{target:p.target});
                 } else {
@@ -118,7 +118,7 @@ Quintus.HUD = function(Q){
                 sheet:"objects",
                 frame:4,
                 type:Q.SPRITE_NONE,
-                w:70,h:70,
+                w:Q.tileH,h:Q.tileH,
                 
                 guide:[],
                 movTiles:[],
@@ -129,9 +129,10 @@ Quintus.HUD = function(Q){
             this.p.x=this.p.player.p.x;
             this.p.y=this.p.player.p.y;
             
-            this.p.tileSize=this.p.player.p.tileSize;
-            this.p.loc =[this.p.player.p.loc[0],this.p.player.p.loc[1]];
-            var tileLayer = Q.stage(1).lists.TileLayer[1];
+            this.p.tileSize=Q.tileH;
+            this.p.loc=this.p.player.setLocation();
+            this.p.player.p.loc=this.p.player.setLocation();
+            var tileLayer = Q.TL;
             this.p.rangeMinX=0;
             this.p.rangeMaxX=tileLayer.p.tiles[0].length;
             this.p.rangeMinY=0;
@@ -139,12 +140,12 @@ Quintus.HUD = function(Q){
             this.p.player.p.graphWithWeight = new Graph(this.p.player.getWalkMatrix());
             
             if(this.p.freeSelecting){
-                Q.stageScene("tophud",3,{target:this.getTarget(this.p.player.p.x,this.p.player.p.y)});
+                Q.stageScene("tophud",3,{target:Q.getTargetAt(this.p.loc[0],this.p.loc[1])});
             }
             else if(this.p.attack){
                 this.p.player.getAttackRange(this.p.attack);
                 this.createAttackArea(this.p.player.getAttackArea(this.p.attack));
-                Q.stageScene("tophud",3,{target:this.getTarget(this.p.player.p.x,this.p.player.p.y)});
+                Q.stageScene("tophud",3,{target:Q.getTargetAt(this.p.loc[0],this.p.loc[1])});
             } else {
                 this.p.player.getRange();
             }
@@ -154,11 +155,8 @@ Quintus.HUD = function(Q){
         //This function displays the attack area and moves with the pointer
         createAttackArea:function(areas){
             for(i=0;i<areas.length;i++){
-                this.p.guide.push(Q.stage(1).insert(new Q.PathBox({x:(this.p.loc[0]+areas[i][0])*70+35,y:(this.p.loc[1]+areas[i][1])*70+35,loc:this.p.loc}),false,true));
+                this.p.guide.push(Q.stage(1).insert(new Q.PathBox({x:(this.p.loc[0]+areas[i][0])*Q.tileH+Q.tileH/2,y:(this.p.loc[1]+areas[i][1])*Q.tileH+Q.tileH/2,loc:this.p.loc}),false,true));
             }
-        },
-        getTarget:function(x,y){
-            return Q.stage(1).locate(x,y,Q.SPRITE_INTERACTABLE);
         },
         clearGuide:function(){
             if(this.p.guide.length>0){
@@ -217,7 +215,7 @@ Quintus.HUD = function(Q){
             var guide = this.p.player.p.guide;
             var valid = false;
             for(i=0;i<guide.length;i++){
-                if((guide[i].p.x-35)/70===(this.p.x-35)/70&&(guide[i].p.y-35)/70===(this.p.y-35)/70){
+                if((guide[i].p.x-Q.tileH/2)/Q.tileH===(this.p.x-Q.tileH/2)/Q.tileH&&(guide[i].p.y-Q.tileH/2)/Q.tileH===(this.p.y-Q.tileH/2)/Q.tileH){
                     valid = true;
                 }
             }
@@ -262,7 +260,7 @@ Quintus.HUD = function(Q){
                     //Get the target and make sure the target is valid
                     var targets = [];
                     for(i=0;i<this.p.guide.length;i++){
-                        var target = this.getTarget(this.p.guide[i].p.x,this.p.guide[i].p.y);
+                        var target = Q.getTarget(this.p.guide[i].p.x,this.p.guide[i].p.y);
                         if(target&&this.validTarget(target)){
                             targets.push(target);
                             
@@ -278,9 +276,11 @@ Quintus.HUD = function(Q){
                 //If we are moving
                 } else if(this.p.freeSelecting){
                     if(this.p.destX||this.p.destY){
-                        var target = this.getTarget(this.p.destX,this.p.destY);
+                        //I don't think this is in use anymore.
+                        //It was used to move in adventuring phase from the menu
+                        var target = Q.getTarget(this.p.destX,this.p.destY);
                     } else {
-                        var target = this.getTarget(this.p.x,this.p.y);
+                        var target = Q.getTargetAt(this.p.loc[0],this.p.loc[1]);
                     }
                     //Make sure the target is valid
                     if(target&&(target.p.id===this.p.player.p.id)){
@@ -350,7 +350,7 @@ Quintus.HUD = function(Q){
             this._super(p,{
                 sheet:"objects",
                 frame:5,
-                w:70,h:70,
+                w:Q.tileH,h:Q.tileH,
                 opacity:0.3,
                 radius:0,
                 type:Q.SPRITE_NONE
@@ -522,14 +522,19 @@ Quintus.HUD = function(Q){
                 function checkObject(object){
                     if(Q._isObject(object.stage.options.text[object.p.textNum])){
                         var keys = Object.keys(object.stage.options.text[object.p.textNum]);
+                        var p = object.p;
+                        var stage = object.stage;
                         for(i=0;i<keys.length;i++){
-                            var p = object.p;
-                            var stage = object.stage;
-                            var obj = Q(stage.options.text[p.textNum][keys[i]][0].Class,1).items.filter(function(o){
-                                return o.p.playerId===stage.options.text[p.textNum][keys[i]][0].id;
-                            })[0];
-                            if(obj){
-                                obj[keys[i]](stage.options.text[p.textNum][keys[i]][1]);
+                            if(Q._isString(stage.options.text[p.textNum][keys[i]])){
+                                Q[keys[i]](stage.options.text[p.textNum][keys[i]]);
+                            } else {
+                                
+                                var obj = Q(stage.options.text[p.textNum][keys[i]][0].Class,1).items.filter(function(o){
+                                    return o.p.playerId===stage.options.text[p.textNum][keys[i]][0].id;
+                                })[0];
+                                if(obj){
+                                    obj[keys[i]](stage.options.text[p.textNum][keys[i]][1]);
+                                }
                             }
                         }
                         object.p.textNum++;
@@ -587,7 +592,6 @@ Quintus.HUD = function(Q){
                 this.p.curText=0;
                 for(i=0;i<p.player.p.attacks.length;i++){
                     this.p.texts.push(this.stage.insert(new Q.MenuText({x:this.p.x-this.p.w/2+this.p.spacing,y:this.p.y-this.p.h/2+this.p.spacing+(this.p.textH*i),label:p.player.p.attacks[i].name,func:"useAttack",params:["player",p.player.p.attacks[i]],align:"left"})));
-                    this.p.otherTexts.push(this.stage.insert(new Q.MenuText({x:this.p.x+this.p.w/2-this.p.spacing,y:this.p.y-this.p.h/2+this.p.spacing+(this.p.textH*i),label:""+p.player.p.pp[i][0]+"/"+p.player.p.pp[i][1],align:"right"})));
                 }
 
                 this.createSel();
@@ -612,7 +616,7 @@ Quintus.HUD = function(Q){
                 //Make a variable for 'used' 'threw' etc
                 var player = props.player;
                 var text = [];
-                text.push(player.p.name+" used "+props.p.p.name);
+                text.push({playSound:"use_item.mp3"},player.p.name+" used "+props.p.p.name);
                 var itemText = player.useItem(props.p);
                 text.push(itemText);
                 var endFuncs = {endTurn:[{Class:player.p.Class,id:player.p.playerId}]};
@@ -684,9 +688,9 @@ Quintus.HUD = function(Q){
                 //Only reset if the player can redo (he hasn't done anything that cannot be reversed just by moving back)
                 //Also, can only do this in the battle phase
                 if(p.player.p.canRedo&&Q.state.get("phase")===2){
-                    p.player.p.x=p.player.p.w/2+p.player.p.startLocation[0]*70;
-                    p.player.p.y=p.player.p.h/2+p.player.p.startLocation[1]*70;
-                    p.player.p.loc = [(p.player.p.x-p.player.p.w/2)/70,(p.player.p.y-p.player.p.h/2)/70];
+                    p.player.p.x=p.player.p.w/2+p.player.p.startLocation[0]*Q.tileH;
+                    p.player.p.y=p.player.p.h/2+p.player.p.startLocation[1]*Q.tileH;
+                    p.player.p.loc = [(p.player.p.x-p.player.p.w/2)/Q.tileH,(p.player.p.y-p.player.p.h/2)/Q.tileH];
                     p.player.resetMove();
                     //this.exitMenu();
                 } else {
@@ -963,9 +967,7 @@ Quintus.HUD = function(Q){
         },
 
         showStats:function(){
-            var cont = this.p.cont;
             var data = this.p.data;
-            var frame = this.p.data.dexNum-1;
             var imageCont = this.insert(new Q.UI.Container({
                 x:0,
                 y:0,
@@ -986,11 +988,14 @@ Quintus.HUD = function(Q){
                 size:18,
                 family:"Monaco"
             }));
-            imageCont.insert(new Q.Sprite({
+            var image = imageCont.insert(new Q.Sprite({
                 x:imageCont.p.w/2,
                 y:imageCont.p.h/3+6,
-                sheet:"sprites",frame:frame
+                sheet:"Professor",frame:0,
+                sprite:"player"
             }));
+            image.add("animation");
+            image.play("standingDown");
             
             for(i=0;i<data.attacks.length;i++){
                  var attack = data.attacks[i];
@@ -1020,6 +1025,7 @@ Quintus.HUD = function(Q){
                 radius:0
             }));
             var stats =[
+                "Class",
                 "Hit Points",
                 "Offense",
                 "Defense",
@@ -1032,6 +1038,7 @@ Quintus.HUD = function(Q){
                 "Next Lv."
             ];
             var statValues = [
+                data.className,
                 data.curHp+"/"+data.maxHp,
                 data.mod_ofn+" ("+data.ofn+")",
                 data.mod_dfn+" ("+data.dfn+")",
@@ -1081,7 +1088,6 @@ Quintus.HUD = function(Q){
             var stats =[
                 "Attack Name",
                 "Power",
-                "PP",
                 "Accuracy",
                 "Type",
                 "Category",
@@ -1091,7 +1097,6 @@ Quintus.HUD = function(Q){
             var keys = [
                 "name",
                 "power",
-                "pp",
                 "accuracy",
                 "type",
                 "cat",
@@ -1406,7 +1411,18 @@ Quintus.HUD = function(Q){
                         .chain({ angle: 0 },0.25) 
                         .chain({  x: 800, y:  200, scale:0.1  }, 1, Q.Easing.Quadratic.InOut,{callback:function(){animateBox(b);}});
                 }
-                animateBox(box)
+                animateBox(box);
+                break;
+            case "changeArea":
+                var fader = stage.insert(new Q.UI.Container({
+                    x:0,y:0,
+                    cx:0,cy:0,
+                    w:Q.width,h:Q.height,
+                    fill:"black",
+                    type:Q.SPRITE_NONE
+                }));
+                fader.add("tween");
+                fader.animate({opacity:0},1,Q.Easing.Out,{callback:function(){Q.clearStage(4);}});
                 break;
         }
     });

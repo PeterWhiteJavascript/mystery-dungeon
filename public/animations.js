@@ -3,8 +3,9 @@ Q.setUpAnimations=function(){
     var toSheet = [
         ['sprites','sprites.png',96,96],
         ['berries','berries.png',83,101],
+        ['objects','objects.png',64,64],
         
-        ['Aipom','Aipom60x60.png',60,60],
+        ['Professor','Aipom60x60.png',60,60],
         ['Totodile','Totodile60x60.png',60,60],
         ['Chimchar','Aipom60x60.png',60,60],
         ['Deino','Deino60x60.png',60,60],

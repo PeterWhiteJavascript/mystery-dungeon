@@ -58,8 +58,10 @@ io.on('connection', function (socket) {
         player.p.socketId=socket.id;
         setPlayer(data['playerId'],player);
         socket.leave('lobby');
+        socket.join(player.p.file);
         socket.join(player.p.file+player.p.area);
-        io.sockets.in(player.p.file+player.p.area).emit('startedGame',{player:player,players:_players,levelData:levelData.getLevelData(player.p.area)});
+        //io.sockets.in(player.p.file+player.p.area).emit('startedGame',{player:player,players:_players,levelData:levelData.getLevelData(player.p.area)});
+        io.sockets.in(player.p.file).emit('startedGame',{player:player,players:_players,levelData:levelData.getLevelData(player.p.area)});
     });
     
     socket.on('updateItems',function(data){
@@ -69,7 +71,7 @@ io.on('connection', function (socket) {
         if(player){
             player.p.items=data['items'];
         }
-        io.sockets.in(player.p.file+player.p.area).emit('updatePlayerItems',{items:player.p.items,playerId:data['playerId']});
+        socket.broadcast.to(player.p.file+player.p.area).emit('updatePlayerItems',{items:player.p.items,playerId:data['playerId'],text:data['text']});
     });
     
     socket.on('updateStats',function(data){
@@ -102,16 +104,33 @@ io.on('connection', function (socket) {
             player.p.loc=data['props']['loc'];
             player.p.animation = data['props']['animation'];
             if(area!==player.p.area){
-                socket.leave(player.p.file+player.p.area);
+               /* socket.leave(player.p.file+player.p.area);
                 socket.broadcast.to(player.p.file+player.p.area).emit('leftArea',{playerId:player.p.playerId,player:player});
                 player.p.area=data['props']['area'];
-                socket.emit('recievedLevelData',{levelData:levelData.getLevelData(player.p.area),player:player,players:_players});
-                socket.broadcast.to(player.p.file+player.p.area).emit('changedArea',{player:player});
+                socket.emit('recievedLevelData',{levelData:levelData.getLevelData(player.p.area),player:player});
+                socket.broadcast.to(player.p.file+player.p.area).emit('changedArea',{player:player});*/
             } else {
                 player.p.area=data['props']['area'];
                 io.sockets.in(player.p.file+player.p.area).emit('updated',{inputted:data['inputs'],playerId:data['playerId'],player:player});
             }
         }
+    });
+    
+    socket.on("changeArea",function(data){
+        var player = _players.filter(function(obj){
+            return obj.p.playerId==data['playerId'];
+        })[0];
+        player.p.x=data['props']['x'];
+        player.p.y=data['props']['y'];
+        player.p.dir=data['props']['dir'];
+        player.p.loc=data['props']['loc'];
+        player.p.animation = data['props']['animation'];
+        
+        socket.leave(player.p.file+player.p.area);
+        socket.broadcast.to(player.p.file+player.p.area).emit('leftArea',{playerId:player.p.playerId,player:player});
+        player.p.area=data['props']['area'];
+        socket.emit('recievedLevelData',{levelData:levelData.getLevelData(player.p.area),player:player});
+        socket.broadcast.to(player.p.file).emit('changedArea',{player:player});
     });
     
     socket.on('joinRoom',function(data){
@@ -154,13 +173,22 @@ io.on('connection', function (socket) {
             io.sockets.in(player.p.file+player.p.area).emit('startTurn',{turnOrder:data['turnOrder'],events:evs,stageName:data['stageName']});
         }
     });
+    //Gets the event data immediately after steeping on the event
+    //This also sets the status to 1
+    socket.on('setEvent',function(data){
+        var event = levelData.setEvent(data);
+        //If the status is 0
+        if(event){
+            socket.emit('setEvent', {stageName:data['stageName'],event:event,host:data['host']});
+        }
+    });
     
     socket.on('triggerEvent',function(data){
-        var ev = levelData.triggerEvent(data);
+        var event = levelData.updateEvent(data);
         var player = _players.filter(function(obj){
             return obj.p.playerId==data['host'];
         })[0];
-        socket.broadcast.to(player.p.file+player.p.area).emit('triggeredEvent', {stageName:data['stageName'],event:ev,host:data['host']});
+        socket.broadcast.to(player.p.file+player.p.area).emit('triggeredEvent', {stageName:data['stageName'],event:event,host:data['host']});
     });
     socket.on("updateEvent",function(data){
         levelData.updateEvent(data);
