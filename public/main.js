@@ -247,6 +247,7 @@ Q.addActor=function(actor){
         for(i=0;i<ps.length;i++){
             obj.p[ps[i]]=actor['p'][ps[i]];
         }
+        //CHangwe
         obj.p.sheet=actor.p.sheet;
         obj.p.playerId=actor.p.playerId;
         obj.p.area=actor.p.area;
