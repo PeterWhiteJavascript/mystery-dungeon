@@ -53,11 +53,26 @@
     this.setTextNum=function(data){
         this.levelData[data['stageName']].npcs[data['npcId']].p.textNum=data['textNum'];
     };
+    this.moveNPC=function(data){
+        this.levelData[data['stageName']].npcs[data['npcId']].p.loc=[data['moveTo'][0],data['moveTo'][1]];
+        this.levelData[data['stageName']].npcs[data['npcId']].p.dir=data['moveTo'][2];
+    };
      //status
      //0 waiting to be triggered
      //1 in progress
      //2 complete
     this.levelData={
+        //Template
+        /*first_demo:{
+            events:[
+        
+            ],
+            npcs:[
+            ],
+            pickups:[
+            ]
+        }
+        */
         //first_demo start
         //Anything not in p is a constant
         first_demo1_0:{
@@ -80,16 +95,17 @@
             ],
             npcs:[
                 {
-                    npcType:"StickMan",
+                    npcType:"Professor",
                     text:[
-                        ["Gets me a diamond and I might let you through!",{changeText:1}],
-                        ["TODO: Check the player's bag for diamond and code moving out of the way."]
-                        //[{checkItem:{item:"Diamond",amount:1,trigger:{moveTo:[[3,7],[3,6]],changeText:2}}},"You still don't got it?"],
-                        //["Thanks for the loot!"]
+                        ["Get me a cool Diamond!",{changeText:1}],
+                        [{checkItem:{item:"OranBerry",amount:1,trigger:{moveNPC:[3,6,"Down"],changeText:3},incomplete:{changeText:2}}}],
+                        ["I'll let you through if you bring me a diamond!",{changeText:1}],
+                        ["Thanks for the diamond!"]
                     ],
                     p:{
                         textNum:0,
-                        loc:[4,7]
+                        loc:[4,7],
+                        dir:"Right"
                     }
                 }
             ],
@@ -132,6 +148,20 @@
                 }
             ],
             npcs:[
+                {
+                    npcType:"Professor",
+                    text:[
+                        ["You're gonna need to be at least level 5 to make me move!",{changeText:1}],
+                        [{checkLevel:{amount:5,trigger:{moveNPC:[23,9,"Down"],changeText:3},incomplete:{changeText:2}}}],
+                        ["I'll let you through once you're level 5!",{changeText:1}],
+                        ["Don't get too rekt out there!"]
+                    ],
+                    p:{
+                        textNum:0,
+                        loc:[22,10],
+                        dir:"Left"
+                    }
+                }
             ],
             pickups:[
             ]
@@ -142,14 +172,15 @@
             npcs:[
                 {
                     items:[[0,{amount:1,item:"Potion"}]],
-                    npcType:"StickMan",
+                    npcType:"Professor",
                     text:[
                         ["Hello!","You look like you could use this!",{changeText:1}],
                         ["I've given away my potion already!"]
                     ],
                     p:{
                         textNum:0,
-                        loc:[12,7]
+                        loc:[12,7],
+                        dir:"Right"
                     }
                 }
             ],
@@ -196,6 +227,66 @@
             pickups:[
                 {item:"OranBerry",amount:1,loc:[4,12],p:{status:0}},
                 {item:"OranBerry",amount:1,loc:[13,13],p:{status:0}}
+            ]
+        },
+        first_demo2_1:{
+            events:[
+                {
+                    trigger:{type:"onLocation"},
+                    locations:[[7,7],[7,8]],
+                    eventType:"spawnEnemies",
+                    onCompleted:"doneBattle",
+                    p:{
+                        status:0,
+                        enemies:[
+                            {className:"Professor",p:{loc:[10,5],level:7,dir:"Left"}},
+                            {className:"Professor",p:{loc:[11,6],level:7,dir:"Left"}},
+                            {className:"Professor",p:{loc:[12,4],level:7,dir:"Down"}}
+                        ],
+                        turnOrder:[]
+                    }
+                }
+            ],
+            npcs:[
+            ],
+            pickups:[
+            ]
+        },
+        first_demo2_2:{
+            events:[
+                {
+                    trigger:{type:"onLocation"},
+                    locations:[[7,7]],
+                    eventType:"enterBuilding",
+                    enter:{name:"firstDemo2_2a",loc:[3,10],dir:"Up"}
+                }
+            ],
+            npcs:[
+                {
+                    npcType:"Professor",
+                    text:[
+                        ["Welcome to this awesome town!"]
+                    ],
+                    p:{
+                        textNum:0,
+                        loc:[15,4],
+                        dir:"Down"
+                    }
+                },
+                {
+                    npcType:"Professor",
+                    text:[
+                        ["Take one of these!",{changeText:1}],
+                        ["I've given away my potion already!"]
+                    ],
+                    p:{
+                        textNum:0,
+                        loc:[11,4],
+                        dir:"Down"
+                    }
+                }
+            ],
+            pickups:[
             ]
         },
         first_demo3_0:{
@@ -307,7 +398,8 @@
             ],
             pickups:[
                 {item:"OranBerry",amount:1,loc:[2,7],p:{status:0}},
-                {item:"OranBerry",amount:1,loc:[21,4],p:{status:0}}
+                {item:"OranBerry",amount:1,loc:[21,4],p:{status:0}},
+                {item:"OranBerry",amount:1,loc:[1,12],p:{status:0}}
             ]
         },
         first_demo3_2:{

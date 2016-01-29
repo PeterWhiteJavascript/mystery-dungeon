@@ -164,13 +164,13 @@ Q.component("AI", {
             //2 - Bottom
             //3 - Left
             var outline = [];
-            outline.push(Q.stage(1).locate(p.x,p.y-Q.tileH,Q.SPRITE_INTERACTABLE));
-            outline.push(Q.stage(1).locate(p.x+Q.tileH,p.y,Q.SPRITE_INTERACTABLE));
-            outline.push(Q.stage(1).locate(p.x,p.y+Q.tileH,Q.SPRITE_INTERACTABLE));
-            outline.push(Q.stage(1).locate(p.x-Q.tileH,p.y,Q.SPRITE_INTERACTABLE));
-
+            outline.push(Q.getTarget(p.x,p.y-Q.tileH));
+            outline.push(Q.getTarget(p.x+Q.tileH,p.y));
+            outline.push(Q.getTarget(p.x,p.y+Q.tileH));
+            outline.push(Q.getTarget(p.x-Q.tileH,p.y));
+            
             for(i=0;i<outline.length;i++){
-                if(outline[i]){console.log(outline[i].p.character,p.target.p.character)
+                if(outline[i]){console.log(outline[i],p.target)
                     if(outline[i].p.character===p.target.p.character){
                         //Obviously we will want to run a function here to determine the best attack.
                         //Also, the first parameter is 'targets' so we still need to check the attack area to find more targets
@@ -1169,138 +1169,9 @@ Q.component("attacker",{
     }
 });
 
-Q.component("commonPlayer", {
-    extend:{
-        confirmLocation:function(loc){
-            while(Q.stage(1).locate(loc[0]*Q.tileH+Q.tileH/2,loc[1]*Q.tileH+Q.tileH/2,Q.SPRITE_INTERACTABLE)){
-                var newLoc = [loc[0]+Math.floor(Math.random()*3)-1,loc[1]+Math.floor(Math.random()*3)-1];
-                loc=newLoc;
-            }
-            return loc;
-        },
-        faint:function(){
-            this.playFainting();
-            if(this.p.Class==="Enemy"){
-                this.removeFromEnemies();
-            }
-        },
-        fainted:function(){
-            this.stage.remove(this);
-        },
-        removeFromTurnOrder:function(){
-            //Remove from the turn order right away so that it won't be this's turn
-            var turnOrder = Q.state.get("turnOrder");
-            for(i=0;i<turnOrder.length;i++){
-                if(turnOrder[i]===this.p.playerId){
-                    turnOrder.splice(i,1);
-                }
-            }
-        },
-        checkDrop:function(obj){
-            if(this.p.drop){
-                obj.getItem(this.p.drop);
-            }
-        },
-        giveExp:function(){
-            var leveledUp = [];
-            if(this.p.Class==="Enemy"){
-                var exp=Math.round((this.p.expGiven*this.p.level)/Q("Player",1).items.length);
-                Q("Player",1).each(function(){
-                    var up = this.checkExp(exp);
-                    if(up){
-                        leveledUp.push({playSound:"level_up.mp3"},this.p.name+" grew to level "+this.p.level+"!",
-                        {gainExp:[{Class:this.p.Class,id:this.p.playerId},exp]});
-                    } else {
-                        leveledUp.push({gainExp:[{Class:this.p.Class,id:this.p.playerId},exp]});
-                    };
-                });
-            } else if(this.p.Class==="Player"){
-                var exp = Math.round((this.p.expGiven*this.p.level)/Q("Enemy",1).items.length)||50;
-                Q("Enemy",1).each(function(){
-                    var up = this.checkExp(exp);
-                    if(up){
-                        leveledUp.push({playSound:"level_up.mp3"},this.p.name+" grew to level "+this.p.level+"!",
-                        {gainExp:[{Class:this.p.Class,id:this.p.playerId},Math.round(exp)]});
-                    } else {
-                        leveledUp.push({gainExp:[{Class:this.p.Class,id:this.p.playerId},exp]});
-                    };
-                });
-            }
-            return leveledUp;
-        },
-        checkExp:function(exp){
-            var newExp = this.p.exp+exp;
-            //Check for level up
-            //If we leveled up
-            if(this.checkLevelUp(this.p.level,newExp)){
-                return true;
-            };
-        },
-        gainExp:function(exp){
-            this.p.exp+=exp;
-            //Check for level up
-            //If we leveled up
-            if(this.checkLevelUp(this.p.level,this.p.exp)){
-                return true;
-            };
-        },
-        checkLevelUp:function(level,exp){
-            var expNeeded=RP.expNeeded[level];
-            if(exp>=expNeeded){
-                var newLevel = this.levelUp();
-                //Check again (maybe we leveled up twice)
-                this.checkLevelUp(newLevel,exp);
-                return true;
-            }
-        },
-        levelUp:function(){
-            var newLevel = this.p.level+1;
-            this.p.level=newLevel;
-            if(this.p.playerId===Q.state.get("playerConnection").id){
-                //Increase stats here
-                var ofnInc = Math.ceil(Math.random()*3);
-                var dfnInc = Math.ceil(Math.random()*3);
-                var spdInc = Math.ceil(Math.random()*3);
-                this.p.ofn+=ofnInc;
-                this.p.mod_ofn+=ofnInc;
-                this.p.dfn+=dfnInc;
-                this.p.mod_dfn+=dfnInc;
-                this.p.spd+=spdInc;
-                this.p.mod_spd+=spdInc;
-
-                var hpInc = Math.ceil(Math.random()*5);
-                this.p.curHp+=hpInc;
-                this.p.maxHp+=hpInc;
-                var player = this;
-                Q.state.get("playerConnection").socket.emit('updateStats',{
-                    stats:{
-                        level:player.p.level,
-                        ofn:player.p.ofn,
-                        dfn:player.p.dfn,
-                        spd:player.p.spd,
-                        mod_ofn:player.p.mod_ofn,
-                        mod_dfn:player.p.mod_dfn,
-                        mod_spd:player.p.mod_spd,
-                        curHp:player.p.curHp,
-                        maxHp:player.p.maxHp,
-                        exp:player.p.exp
-                    },
-                    playerId:player.p.playerId
-                });
-            }
-            return newLevel;
-        },
-        //Used when this is a possible target for attack
-        flash:function(){
-            this.chain({opacity:0.3},0.5,Q.Easing.Quadratic.Linear)
-                .chain({opacity:0.8},0.5, Q.Easing.Quadratic.Linear,{callback:function(){this.flash();}});
-        },
-        stopFlash:function(){
-            this.stop();
-            this.p.opacity=1;
-        },
-        
-        getTileLocation:function(){
+Q.component("mover",{
+   extend:{
+       getTileLocation:function(){
             var loc = this.setLocation();
             return Q.getTileType(loc[0],loc[1]);
         },
@@ -1340,38 +1211,7 @@ Q.component("commonPlayer", {
             }
             return cM;
         },
-        tempChangeStat:function(props){
-            var player = this;
-            var text =  [player.p.name+" raised "+props.p.stat+" by "+props.p.amount+" temporarily.",{endTurn:[{Class:player.p.Class,id:player.p.playerId}]}];
-            Q.stageScene("bottomhud",3,{text:text,player:player,obj:player});
-            this.p.statsModified[props.p.stat]+=props.p.amount;
-        },
-        lowerHp:function(amount){
-            this.p.curHp-=amount;
-        },
-        changePP:function(props){
-            this.p.pp[props[0]][0]+=props[1];
-        },
-        useItem:function(item){
-            var itm = item;
-            var player = this;
-            //Decrease the inventory (obviously skip this if the item is not consumable)
-            if(itm.p.kind==="Consumable"){
-                for(i=0;i<player.p.items.length;i++){
-                    if(player.p.items[i].p.name===itm.p.name){
-                        player.p.items[i].amount--;
-                        if(player.p.items[i].amount===0){
-                            player.p.items.splice(i,1);
-                        }
-                    }
-                }
-            }
-            var text = RP.itemFuncs[itm.p.effect[0]](itm.p,this);
-            Q.state.get("playerConnection").socket.emit('updateItems',{items:player.p.items,playerId:player.p.playerId,text:text});
-            
-            return text;
-        },
-        clearGuide:function(){
+       clearGuide:function(){
             var p = this.p;
             if(p.guide&&p.guide.length>0){
                 for(i=0;i<p.guide.length;i++){
@@ -1523,13 +1363,194 @@ Q.component("commonPlayer", {
             }
             return result;
         },
+        
+        setLocation:function(){
+            return [Math.round((this.p.x-Q.tileH/2)/Q.tileH),Math.round((this.p.y-Q.tileH/2)/Q.tileH)];
+        }
+   } 
+});
+
+Q.component("commonPlayer", {
+    extend:{
+        confirmLocation:function(loc){
+            while(Q.stage(1).locate(loc[0]*Q.tileH+Q.tileH/2,loc[1]*Q.tileH+Q.tileH/2,Q.SPRITE_INTERACTABLE)){
+                var newLoc = [loc[0]+Math.floor(Math.random()*3)-1,loc[1]+Math.floor(Math.random()*3)-1];
+                loc=newLoc;
+            }
+            return loc;
+        },
+        faint:function(){
+            this.playFainting();
+            if(this.p.Class==="Enemy"){
+                this.removeFromEnemies();
+            }
+        },
+        fainted:function(){
+            this.stage.remove(this);
+        },
+        removeFromTurnOrder:function(){
+            //Remove from the turn order right away so that it won't be this's turn
+            var turnOrder = Q.state.get("turnOrder");
+            for(i=0;i<turnOrder.length;i++){
+                if(turnOrder[i]===this.p.playerId){
+                    turnOrder.splice(i,1);
+                }
+            }
+        },
+        checkDrop:function(obj){
+            if(this.p.drop){
+                obj.getItem(this.p.drop);
+            }
+        },
+        giveExp:function(){
+            var leveledUp = [];
+            if(this.p.Class==="Enemy"){
+                var exp=Math.round((this.p.expGiven*this.p.level)/Q("Player",1).items.length);
+                Q("Player",1).each(function(){
+                    var up = this.checkExp(exp);
+                    if(up){
+                        leveledUp.push({playSound:"level_up.mp3"},this.p.name+" grew to level "+this.p.level+"!",
+                        {gainExp:[{Class:this.p.Class,id:this.p.playerId},exp]});
+                    } else {
+                        leveledUp.push({gainExp:[{Class:this.p.Class,id:this.p.playerId},exp]});
+                    };
+                });
+            } else if(this.p.Class==="Player"){
+                var exp = Math.round((this.p.expGiven*this.p.level)/Q("Enemy",1).items.length)||50;
+                Q("Enemy",1).each(function(){
+                    var up = this.checkExp(exp);
+                    if(up){
+                        leveledUp.push({playSound:"level_up.mp3"},this.p.name+" grew to level "+this.p.level+"!",
+                        {gainExp:[{Class:this.p.Class,id:this.p.playerId},Math.round(exp)]});
+                    } else {
+                        leveledUp.push({gainExp:[{Class:this.p.Class,id:this.p.playerId},exp]});
+                    };
+                });
+            }
+            return leveledUp;
+        },
+        checkExp:function(exp){
+            var newExp = this.p.exp+exp;
+            //Check for level up
+            //If we leveled up
+            if(this.checkLevelUp(this.p.level,newExp)){
+                return true;
+            };
+        },
+        gainExp:function(exp){
+            this.p.exp+=exp;
+            //Check for level up
+            //If we leveled up
+            if(this.checkLevelUp(this.p.level,this.p.exp)){
+                return true;
+            };
+        },
+        checkLevelUp:function(level,exp){
+            var expNeeded=RP.expNeeded[level];
+            if(exp>=expNeeded){
+                var newLevel = this.levelUp();
+                //Check again (maybe we leveled up twice)
+                this.checkLevelUp(newLevel,exp);
+                return true;
+            }
+        },
+        levelUp:function(){
+            var newLevel = this.p.level+1;
+            this.p.level=newLevel;
+            if(this.p.playerId===Q.state.get("playerConnection").id){
+                //Increase stats here
+                var ofnInc = Math.ceil(Math.random()*3);
+                var dfnInc = Math.ceil(Math.random()*3);
+                var spdInc = Math.ceil(Math.random()*3);
+                this.p.ofn+=ofnInc;
+                this.p.mod_ofn+=ofnInc;
+                this.p.dfn+=dfnInc;
+                this.p.mod_dfn+=dfnInc;
+                this.p.spd+=spdInc;
+                this.p.mod_spd+=spdInc;
+
+                var hpInc = Math.ceil(Math.random()*5);
+                this.p.curHp+=hpInc;
+                this.p.maxHp+=hpInc;
+                var player = this;
+                Q.state.get("playerConnection").socket.emit('updateStats',{
+                    stats:{
+                        level:player.p.level,
+                        ofn:player.p.ofn,
+                        dfn:player.p.dfn,
+                        spd:player.p.spd,
+                        mod_ofn:player.p.mod_ofn,
+                        mod_dfn:player.p.mod_dfn,
+                        mod_spd:player.p.mod_spd,
+                        curHp:player.p.curHp,
+                        maxHp:player.p.maxHp,
+                        exp:player.p.exp
+                    },
+                    playerId:player.p.playerId
+                });
+            }
+            return newLevel;
+        },
+        //Used when this is a possible target for attack
+        flash:function(){
+            this.chain({opacity:0.3},0.5,Q.Easing.Quadratic.Linear)
+                .chain({opacity:0.8},0.5, Q.Easing.Quadratic.Linear,{callback:function(){this.flash();}});
+        },
+        stopFlash:function(){
+            this.stop();
+            this.p.opacity=1;
+        },
+        
+        
+        tempChangeStat:function(props){
+            var player = this;
+            var text =  [player.p.name+" raised "+props.p.stat+" by "+props.p.amount+" temporarily.",{endTurn:[{Class:player.p.Class,id:player.p.playerId}]}];
+            Q.stageScene("bottomhud",3,{text:text,player:player,obj:player});
+            this.p.statsModified[props.p.stat]+=props.p.amount;
+        },
+        lowerHp:function(amount){
+            this.p.curHp-=amount;
+        },
+        changePP:function(props){
+            this.p.pp[props[0]][0]+=props[1];
+        },
+        useItem:function(item){
+            var itm = item;
+            var player = this;
+            //Decrease the inventory (obviously skip this if the item is not consumable)
+            if(itm.p.kind==="Consumable"){
+                for(i=0;i<player.p.items.length;i++){
+                    if(player.p.items[i].p.name===itm.p.name){
+                        player.p.items[i].amount--;
+                        if(player.p.items[i].amount===0){
+                            player.p.items.splice(i,1);
+                        }
+                    }
+                }
+            }
+            var text = RP.itemFuncs[itm.p.effect[0]](itm.p,this);
+            Q.state.get("playerConnection").socket.emit('updateItems',{items:player.p.items,playerId:player.p.playerId,text:text});
+            
+            return text;
+        },
+        //Used when giving an item to an NPC
+        loseItem:function(item,amount){
+            var itm = item;
+            var player = this;
+            for(i=0;i<player.p.items.length;i++){
+                if(player.p.items[i].p.name===itm){
+                    player.p.items[i].amount-=amount;
+                    if(player.p.items[i].amount===0){
+                        player.p.items.splice(i,1);
+                    }
+                }
+            }
+        },
+        
         interact:function(player){
             //Show Player Text
             Q.stageScene("bottomhud",3,{text:[player.p.text[0]+" Id #"+player.p.playerId],player:player,obj:this});
             Q.inputs['interact']=false;
-        },
-        setLocation:function(){
-            return [Math.round((this.p.x-Q.tileH/2)/Q.tileH),Math.round((this.p.y-Q.tileH/2)/Q.tileH)];
         },
         addViewport:function(){
             Q.addViewport(this);
@@ -1574,7 +1595,7 @@ Q.Sprite.extend("Enemy",{
         //Library
         this.add("2d, animation, tween");
         //My components
-        this.add("commonPlayer,animations,attacker");
+        this.add("commonPlayer,animations,attacker,mover");
     },
     initialize:function(){
         //Make sure that there's nothing standing on the spawn point, else move this enemy
@@ -1719,7 +1740,7 @@ Q.Sprite.extend("Player",{
         //Library
         this.add("2d, animation, tween");
         //My components
-        this.add("commonPlayer,animations,attacker");
+        this.add("commonPlayer,animations,attacker,mover");
         this.on("step",this,"checkMenu");
         this.on("atDest",this,"checkTrigger");
         this.p.num=0;
@@ -1861,7 +1882,7 @@ Q.Sprite.extend("Player",{
     getItem:function(item){
         var itm = item;
         var player = this;
-        var text =  [player.p.name+" obtained "+itm.p.amount+" "+RP.items[itm.p.item].name,{endTurn:[{Class:player.p.Class,id:player.p.playerId}]}];
+        
         var found = false;
         for(i=0;i<player.p.items.length;i++){
             if(player.p.items[i].p.id===itm.p.item){
@@ -1876,6 +1897,8 @@ Q.Sprite.extend("Player",{
         //Update the player's items for all players
         Q.state.get("playerConnection").socket.emit('updateItems',{playerId:Q.state.get("playerConnection").id,items:player.p.items});
         
+        Q.stageScene("customAnimate",4,{anim:"getItem",item:item.p});
+        var text =  [player.p.name+" obtained "+itm.p.amount+" "+RP.items[itm.p.item].name,{endTurn:[{Class:player.p.Class,id:player.p.playerId}]}];
         Q.stageScene("bottomhud",3,{text:text,player:player});
         if(itm.p.type===Q.SPRITE_NPC){
             itm.destroy();
@@ -1958,12 +1981,26 @@ Q.Sprite.extend("NPC",{
         this._super(p, {
             sheet:"objects",
             type:Q.SPRITE_NPC|Q.SPRITE_INTERACTABLE,
-            w:Q.tileH,h:Q.tileH
+            w:Q.tileH,h:Q.tileH,
+            myTurnTiles:100000,
+            types:["Grass","Fire"],
+            afterFuncs:[]
         });
-        this.add("2d");
+        this.add("2d,animation,animations");
         this.p.frame = this.getFrame(this.p.npcType);
         this.setXY(this.p.loc);
         this.getText(this.p.text,this.p.textNum);
+        this.p.sheet="Deino";
+        this.p.sprite="player";
+        this.playStand(this.p.dir);
+        this.on("runAfterFuncs");
+    },
+    runAfterFuncs:function(){
+        var funcs = this.p.afterFuncs;
+        while(funcs.length){
+            funcs[0](funcs[1]);
+            funcs.splice(0,2);
+        }
     },
     setXY:function(loc){
         this.p.x=loc[0]*Q.tileH+Q.tileH/2;
@@ -1975,6 +2012,9 @@ Q.Sprite.extend("NPC",{
             case "StickMan":
                 frame = 1;
                 break;
+            case "Professor":
+                this.p.sheet="Deino";
+                frame=1;
         }
         return frame;
     },
@@ -1984,35 +2024,129 @@ Q.Sprite.extend("NPC",{
     changeText:function(num){
         this.p.textNum=num;
         this.getText(this.p.text,this.p.textNum);
+        Q.state.get("playerConnection").socket.emit('setTextNum',{stageName:Q.stage(1).scene.name,npcId:this.p.npcId,textNum:num});
+    },
+    checkItem:function(props){
+        var check = props.item;
+        var amount = props.amount;
+        var trigger = props.trigger;
+        var incomplete = props.incomplete;
+        var items = this.p.player.p.items;
+        var found = false;
+        for(j=0;j<items.length;j++){
+            if(items[j].p.id===check){
+                this.p.player.loseItem(check,amount);
+                var tKeys = Object.keys(trigger);
+                for(k=0;k<tKeys.length;k++){
+                    this[tKeys[k]](trigger[tKeys[k]]);
+                }
+                found = true;
+            } 
+        }
+        if(!found){
+            var iKeys = Object.keys(incomplete);
+            for(k=0;k<iKeys.length;k++){
+                this[iKeys](incomplete[iKeys[k]]);
+            }
+        }
+    },
+    checkLevel:function(props){
+        var check = props.amount;
+        var player = this.p.player;
+        var trigger = props.trigger;
+        var incomplete = props.incomplete;
+        if(check<=player.p.level){
+            var tKeys = Object.keys(trigger);
+            for(k=0;k<tKeys.length;k++){
+                this[tKeys[k]](trigger[tKeys[k]]);
+            }
+        } else {
+           var iKeys = Object.keys(incomplete);
+            for(k=0;k<iKeys.length;k++){
+                this[iKeys](incomplete[iKeys[k]]);
+            } 
+        }
+        
+    },
+    atDest:function(){
+        this.p.dir=this.p.dirOnDest;
+        this.playStand(this.p.dir);
+    },
+    moveNPC:function(props){
+        Q.state.get("playerConnection").socket.emit('moveNPC',{stageName:Q.stage(1).scene.name,npcId:this.p.npcId,moveTo:props,playerId:Q.state.get("playerConnection").id});
+    },
+    moveTo:function(props){
+        var path = [props[0],props[1]];
+        this.p.dirOnDest=props[2];
+        this.add("mover");
+        this.p.calcMenuPath = this.getPath(path,new Graph(this.getWalkMatrix()));
+        this.on("atDest");
+        this.add("autoMove");
+    },
+    getDir:function(pl){
+        switch(pl.p.dir){
+            case "Left":
+                return "Right";
+                break;
+            case "Up":
+                return "Down";
+                break;
+            case "Right":
+                return "Left";
+                break;
+            case "Down":
+                return "Up";
+                break;
+        }
     },
     interact:function(player){
-        this.p.player = player;
+        if(player){
+            this.p.player = player;
+        }
+        this.p.dir = this.getDir(this.p.player);
+        this.playStand(this.p.dir);
         //Get the textnum from the server
         Q.state.get("playerConnection").socket.emit('getTextNum',{stageName:Q.stage(1).scene.name,npcId:this.p.npcId});
     },
     checkedServer:function(textNum){
         this.changeText(textNum);
+        var txt = [];
+        for(i=0;i<this.p.curText.length;i++){
+            txt.push(this.p.curText[i]);
+        }
         var player = this.p.player;
+        var startAt = 0;
         if(this.p.items){
             for(i=0;i<this.p.items.length;i++){
                 if(this.p.items[i][0]===this.p.textNum){
                     this.p.item=this.p.items[i][1];
                     player.getItem({p:{amount:this.p.items[i][1].amount,item:this.p.items[i][1].item}});
+                    this.p.afterFuncs.push(function(item){
+                        Q.stageScene("customAnimate",4,{anim:"getItem",item:item});
+                    },this.p.item);
                 }
             }
         }
-        if(Q._isObject(this.p.curText[this.p.curText.length-1])){
-            var newTextNum = this.p.curText[this.p.curText.length-1].changeText;
-            this.p.curText.splice(this.p.curText.length-1,1);
+        //If the first item in the array is an object, do the function
+        if(Q._isObject(txt[0])){
+            var keys = Object.keys(txt[0]);
+            for(i=0;i<keys.length;i++){
+                this[keys[i]](txt[0][keys[i]]);
+            }
         }
         
-        var txt = this.p.curText;
+        //If the last item in the text array is an object, change the text to that
+        if(Q._isObject(txt[txt.length-1])){
+            var newTextNum = txt[txt.length-1].changeText;
+            txt.splice(txt.length-1,1);
+        }
+        
+        if(txt.length===0){this.interact(this.p.player);return;};
         txt.push({addControls:[{Class:player.p.Class,id:player.p.playerId}]});
         //Show NPC Text
-        Q.stageScene("bottomhud",3,{text:this.p.curText,player:player,obj:player});
+        Q.stageScene("bottomhud",3,{text:txt,startAt:startAt,player:player,obj:player,npc:this});
         if(newTextNum){
             this.changeText(newTextNum);
-            Q.state.get("playerConnection").socket.emit('setTextNum',{stageName:Q.stage(1).scene.name,npcId:this.p.npcId,textNum:newTextNum});
         }
     }
 });

@@ -514,12 +514,14 @@ Quintus.HUD = function(Q){
             for(i=0;i<this.children.length;i++){
                 this.children[i].destroy();
             }
+            if(this.stage.options.npc){this.stage.options.npc.trigger("runAfterFuncs");};
             this.destroy();
         },
         cycleText:function(){
             if(this.p.textNum<this.stage.options.text.length){
                 //Do the function if it is an object
                 function checkObject(object){
+                    //If this text is an object (to run a function)
                     if(Q._isObject(object.stage.options.text[object.p.textNum])){
                         var keys = Object.keys(object.stage.options.text[object.p.textNum]);
                         var p = object.p;
@@ -528,7 +530,6 @@ Quintus.HUD = function(Q){
                             if(Q._isString(stage.options.text[p.textNum][keys[i]])){
                                 Q[keys[i]](stage.options.text[p.textNum][keys[i]]);
                             } else {
-                                
                                 var obj = Q(stage.options.text[p.textNum][keys[i]][0].Class,1).items.filter(function(o){
                                     return o.p.playerId===stage.options.text[p.textNum][keys[i]][0].id;
                                 })[0];
@@ -1423,6 +1424,29 @@ Quintus.HUD = function(Q){
                 }));
                 fader.add("tween");
                 fader.animate({opacity:0},1,Q.Easing.Out,{callback:function(){Q.clearStage(4);}});
+                break;
+            case "getItem":
+                var box = stage.insert(new Q.UI.Container({
+                    x:Q.width/2,y:Q.height/2,
+                    w:200,h:150,
+                    fill:"#234073",
+                    type:Q.SPRITE_NONE,
+                    scale:0.1
+                }));
+                box.insert(new Q.UI.Text({
+                    x:0,
+                    y:0,
+                    type:Q.SPRITE_NONE,
+                    color:"white",
+                    size:30,
+                    outlineWidth:3,
+                    label:stage.options.item.item+" x"+stage.options.item.amount
+                }));
+                box.add('tween');
+                box.fit(10,10);
+                box.animate({scale:1 }, 1, Q.Easing.Quadratic.InOut)
+                    .chain({ angle: 360 },1)
+                    .chain({opacity:0.1}, 0.5, Q.Easing.Quadratic.InOut,{callback:function(){Q.clearStage(4);}});
                 break;
         }
     });

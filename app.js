@@ -158,6 +158,13 @@ io.on('connection', function (socket) {
     socket.on("setTextNum",function(data){
         levelData.setTextNum(data)
     });
+    socket.on("moveNPC",function(data){
+        var player = _players.filter(function(obj){
+            return obj.p.playerId==data['playerId'];
+        })[0];
+        levelData.moveNPC(data);
+        io.sockets.in(player.p.file+player.p.area).emit("movedNPC",{npcId:data['npcId'],moveTo:data['moveTo']});
+    });
     
     socket.on("startTurn",function(data){
         var evs = levelData.updateEvents(data);

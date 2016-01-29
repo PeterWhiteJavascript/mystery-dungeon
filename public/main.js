@@ -91,6 +91,7 @@ Q.scene('tophud',function(stage){
 Q.scene('bottomhud',function(stage){
    // stage.options.player.disableControls();
     var box = stage.insert(new Q.BottomTextBox());
+    box.p.textNum=stage.options.startAt ? stage.options.startAt : 0;
     if(stage.options.player){
         var colors = Q.getGradient(stage.options.player.p.types);
         box.insert(new Q.Gradient({w:box.p.w,h:box.p.h,col0:colors[0],col1:colors[1]}));
@@ -182,6 +183,61 @@ Q.scene('interactingMenu',function(stage){
     var colors = Q.getGradient(stage.options.player.p.types);
     menu.insert(new Q.Gradient({w:menu.p.w,h:menu.p.h,col0:colors[0],col1:colors[1],player:stage.options.player}));
     Q.inputs['interact']=false;
+});
+
+Q.scene('soundControls',function(stage){
+    var soundCont = stage.insert(new Q.UI.Container({x:Q.width-100,y:5}));
+    var pos = Q.state.get("playerMenuPos");
+    //If the menu is on the right, this needs to be on the left
+    if(pos==="right"){soundCont.p.x=100;}
+    //Disable/enable music
+    soundCont.insert(new Q.UI.Button({
+        label:"Music on/off",
+        radius:8,
+        border:0,
+        
+        fill:Q.state.get("musicEnabled") ? "#345894" : "#447ba4",
+        y:20,
+        w:150,
+        h:30
+
+    },function(){
+        var music=Q.state.get("musicEnabled");
+        if(!music){
+            this.p.fill="#345894";
+            Q.state.set("musicEnabled",true);
+            var mus = Q.state.get("currentMusic");
+            Q.state.set("currentMusic",false)
+            Q.playMusic(mus);
+        } else {
+            this.p.fill="#447ba4";
+            Q.state.set("musicEnabled",false);
+            Q.stopMusic(Q.state.get("currentMusic"));
+        }
+    }));
+    
+    //Disable/enable sounds
+    soundCont.insert(new Q.UI.Button({
+        label:"Sound on/off",
+        radius:8,
+        border:0,
+        stroke:"black",
+        fill:Q.state.get("soundEnabled") ? "#345894" : "#447ba4",
+        y:60,
+        w:150,
+        h:30
+
+    },function(){
+        var sound=Q.state.get("soundEnabled");
+        if(!sound){
+            this.p.fill="#345894";
+            Q.state.set("soundEnabled",true);
+        } else {
+            this.p.fill="#447ba4";
+            Q.state.set("soundEnabled",false);
+        }
+        
+    }));
 });
 
 Q.addActor=function(actor){
@@ -432,6 +488,13 @@ require(objectFiles, function () {
                 return obj.p.npcId===data['npcId'];
             })[0];
             npc.checkedServer(data['textNum']);
+        });
+        
+        socket.on('movedNPC',function(data){
+            var npc = Q("NPC",1).items.filter(function(obj){
+                    return obj.p.npcId===data['npcId'];
+            })[0];
+            npc.moveTo(data['moveTo']);
         });
         
         socket.on("leftArea",function(data){
@@ -691,14 +754,15 @@ require(objectFiles, function () {
             currentStage:[],
             currentStageName:"",
             //Scene music
-            musicEnabled:true,
+            musicEnabled:false,//true,
             //sound effects
-            soundEnabled:true,
+            soundEnabled:false,//true,
             //Which tunes have been loaded (so that we don't load music twice)
             loadedMusic:[],
             //The current music
             currentMusic:"",
             //The position of the player menu
+            //Also affects the sound toggle position
             playerMenuPos:"right",
             character:name,
             
@@ -730,6 +794,7 @@ require(objectFiles, function () {
             //30-60-90
             textSpeed:30
         });
+        Q.stageScene('soundControls',2);
         var character = name;
         Q.state.get("playerConnection").socket.emit('startGame', { 
             playerId:Q.state.get("playerConnection").id, 
@@ -751,8 +816,7 @@ require(objectFiles, function () {
         //CODE BELOW WON'T RUN IF THE PLAYER HAS BEEN TO THE STAGE BEFORE (FIRST TIME ONLY)
         //If the level hasn't been gone to yet
         Q.scene(""+whereTo,function(stage){
-        Q.state.set("currentStageName",stage.options.path);
-            Q.getMusic(stage.options.path);
+            Q.state.set("currentStageName",stage.options.path);
             //Q.stageScene("background",0,{path:stage.options.path});
             Q.stageTMX(""+stage.options.path+"/"+whereTo+".tmx",stage);
             Q.TL = stage.lists.TileLayer[stage.lists.TileLayer.length-1];
@@ -804,7 +868,9 @@ require(objectFiles, function () {
            
         });
         Q.loadTMX(currentPath[0]+"/"+whereTo+".tmx",function(){
-            Q.stageScene(whereTo,1,{path:currentPath[0],pathNum:currentPath[1],playerLoc:playerLoc});
+            Q.getMusic(currentPath[0],function(){
+                Q.stageScene(whereTo,1,{path:currentPath[0],pathNum:currentPath[1],playerLoc:playerLoc});
+            });
         });
     };
     

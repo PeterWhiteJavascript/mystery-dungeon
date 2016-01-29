@@ -1,44 +1,51 @@
 Quintus.Music = function(Q){
     
 Q.stopMusic=function(music){
-    Q.audio.stop(music);
+    Q.audio.stop("scenes/"+music);
 };
 
-Q.playMusic=function(music){
+Q.playMusic=function(music,callback){
     if(Q.state.get("musicEnabled")){
         var loadedMusic = Q.state.get("loadedMusic");
         var ld = loadedMusic.filter(function(songName){
             return songName===music;
         })[0];
+        //If the music hasn't been loaded
         if(!ld){
+            Q.stopMusic(Q.state.get("currentMusic"));
+            Q.stopMusic(music);
             Q.load("scenes/"+music,function(){
-                Q.audio.stop("scenes/"+Q.state.get("currentMusic"));
                 Q.audio.play("scenes/"+music,{loop:true});
-                Q.state.set("currentMusic",music);
                 loadedMusic.push(music);
+                if(callback){callback();}
             });
+        //If the music is different than the currentMusic
         } else if(Q.state.get("currentMusic")!==music){
-            Q.audio.stop("scenes/"+Q.state.get("currentMusic"));
+            Q.stopMusic(Q.state.get("currentMusic"));
+            Q.stopMusic(music);
             Q.audio.play("scenes/"+music,{loop:true});
-            Q.state.set("currentMusic",music);
         }
+        if(ld){
+            if(callback){callback();}
+        }
+    } else {
+        if(callback){callback();}
     }
+    Q.state.set("currentMusic",music);
 };
 
 Q.playSound=function(sound,callback){
     if(Q.state.get("soundEnabled")){
         Q.audio.play("sounds/"+sound);
     }
-    if(callback){
-        callback();
-    }
+    if(callback){callback();}
 };
 
 //Gets the music in a stage
-Q.getMusic=function(whereTo){
+Q.getMusic=function(whereTo,callback){
     switch(whereTo){
         case "first_demo":
-            Q.playMusic("adventure1.mp3");
+            Q.playMusic("adventure1.mp3",callback);
             break;
         
     }

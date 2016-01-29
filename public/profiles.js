@@ -502,15 +502,15 @@ RP.items={
         "target":"",
         "kind":"Key"
     }
-}
+};
 RP.classes={
     "Professor":{
         "className":"Professor",
         
         "exp":14,
         "types": [
-            "Dark",
-            "Poison"
+            "Poison",
+            "Water"
         ],
         "baseStats":{
             "hp":5.5,

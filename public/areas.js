@@ -64,11 +64,11 @@ Q.eventCompleted=function(eventId,onComplete){
                 battle = true;
             }
             if(!battle){
-                Q.stopMusic("scenes/"+Q.state.get("currentMusic"));
+                Q.stopMusic(Q.state.get("currentMusic"));
                 Q.playSound("battle_complete.mp3",function(){
                     setTimeout(function(){
                         Q.getMusic(Q.state.get("currentStageName"));
-                    },1300);
+                    },1200);
                 });
                 if(!Q.state.get("soundEnabled")){Q.getMusic(Q.state.get("currentStageName"));};
                 Q.stageScene('customAnimate',4,{anim:onComplete});
@@ -242,7 +242,7 @@ Q.setLevelData=function(stage,levelData){
     for(np=0;np<npcs.length;np++){
         var npc = npcs[np];
         npc.stage = stage.scene.name;
-        stage.insert(new Q.NPC({items:npc.items,npcType:npc.npcType,text:npc.text,textNum:npc.p.textNum,loc:npc.p.loc,npcId:np}));
+        stage.insert(new Q.NPC({items:npc.items,npcType:npc.npcType,text:npc.text,textNum:npc.p.textNum,loc:npc.p.loc,npcId:np,dir:npc.p.dir}));
         
     };
     var pickups = data.pickups;
