@@ -103,6 +103,9 @@ Q.buildCharacter=function(data){
     player.p.types = RP.classes[player.p.className].types;
     //[x,y]
     player.p.loc = data.loc;
+    var pos = Q.setXY(player.p.loc[0],player.p.loc[1]);
+    player.p.x=pos[0];
+    player.p.y=pos[1];
     //var player = Q.setPosition(player,player.p.loc);
     player.p.area = data.area;
     player.p.dir=data.dir;
@@ -193,7 +196,7 @@ Q.component("AI", {
     }
     
 });
-
+/*
 Q.setPhaseOneUpdating=function(){
     Q.updateInterval = setInterval(function(){
         var player = Q.state.get("playerObj");
@@ -217,7 +220,7 @@ Q.setPhaseOneUpdating=function(){
             });
         }
     },25);
-};
+};*/
     
 Q.component("autoMove", {
     added: function() {
@@ -396,259 +399,130 @@ Q.component("autoMove", {
     }
 });
 
-//Used in adventuring phase (1)
-Q.component("stepControls", {
-    added: function() {
-        var p = this.entity.p;
-        if(!p.stepDistance) { p.stepDistance = Q.tileH; }
-        if(!p.stepDelay) { p.stepDelay = 0.3; }
-        p.stepWait = 0;
-        p.diffX = 0;
-        p.diffY = 0;
-        this.entity.on("step",this,"step");
-        this.entity.on("acceptInput",this,"acceptInputted");
-    },
-    //When at the tile that you were moving to
-    atDest:function(){
-        var p = this.entity.p;
-        p.diffX = 0;
-        p.diffY = 0;
-        p.stepped=false;
-        p.stepping=false;
-        p.canInput=true;
-        //Check for triggers
-        this.entity.trigger("atDest");
-        //Run this function to see if we keep moving
-        this.trigger("acceptInput");
-    },
-    
-    goOffscreen:function(x,y){
-        Q.playSound("enter_door.mp3");
-        var level = Q.stage(1).options.path;
-        var pathNum = Q.stage(1).options.pathNum;
-        var newPathNum = [pathNum[0]+x,pathNum[1]+y];
-        var playerLoc=[];
-        var p = this.entity.p;
-        switch(true){
-            //Player is going off the right side of this level
-            case x>0:
-                playerLoc[0]=0;
-                break;
-            //Player is going off from the top or bottom of this level
-            case x===0:
-                playerLoc[0]=(p.x-Q.tileH/2)/Q.tileH;
-                break;
-            case x<0:
-                //This string means that we need to figure out the maxX of the tilelayer on the next stage.
-                playerLoc[0]="x";
-                break;
-        }
-        switch(true){
-            //Player is going off the bottom of this level
-            case y>0:
-                playerLoc[1]=0;
-                break;
-            //Player is going off from the right or left of this level
-            case y===0:
-                playerLoc[1]=(p.y-Q.tileH/2)/Q.tileH;
-                break;
-            case y<0:
-                //This string means that we need to figure out the maxY of the tilelayer on the next stage.
-                playerLoc[1]="y";
-                break;
-        }
-        var newArea = level+newPathNum[0]+"_"+newPathNum[1];
-        var player = this.entity;
-        player.p.loc = playerLoc;
-        clearInterval(Q.updateInterval);
-        //we should do some kind of segue into the next area
-        Q.stageScene("customAnimate",4,{anim:"changeArea"});
-        Q.state.get("playerConnection").socket.emit('changeArea',{
-            playerId:Q.state.get("playerConnection").id,
-            props:{
-                x:player.p.x,
-                y:player.p.y,
-                dir:player.p.dir,
-                loc:player.p.loc,
-                animation:player.p.animation,
-                area:newArea
-            }
-        }); 
-        
-        return true;
-    },
-    
-    checkOffscreen:function(locTo,tiles){
-        switch(true){
-            case locTo[0]<0:
-                return this.goOffscreen(-1,0);
-                break;
-            case locTo[0]>=tiles[0].length:
-                return this.goOffscreen(1,0);
-                break;
-            case locTo[1]<0:
-                return this.goOffscreen(0,-1);
-                break;
-            case locTo[1]>=tiles.length:
-                return this.goOffscreen(0,1);
-                break;
-        }
-    },
-    
-    acceptInputted:function(){
-        var p = this.entity.p;
-        var inputted=p.inputted;
-        if(p.canInput){
-            if(inputted.left) {
-                p.diffX = -p.stepDistance;
-                p.dir='Left';
-                p.canInput=false;
-            } else if(inputted.right) {
-                p.diffX = p.stepDistance;
-                p.dir='Right';
-                p.canInput=false;
-            } else if(inputted.up) {
-                p.diffY = -p.stepDistance;
-                p.dir='Up';
-                p.canInput=false;
-            } else if(inputted.down) {
-                p.diffY = p.stepDistance;
-                p.dir='Down';
-                p.canInput=false;   
-            } else {
-                this.entity.playStand(p.dir);
-            }
-            //If we have pressed an input, this will be false
-            if(!p.canInput){
-                //Set the destination positions
-                p.destX = p.x + p.diffX;
-                p.destY = p.y + p.diffY;
-                //Set the destination location
-                var locTo=Q.getLoc(p.destX,p.destY);
-                //Get the tiles
-                var tiles = Q.TL.p.tiles;
-                //Check to make sure locTo to is on this stage
-                if(this.checkOffscreen(locTo,tiles)){
-                    p.canMove=false;
-                    return;
-                };
-                //Make sure we aren't going to crash into an interactable
-                //Don't collide with players
-                if(Q.getTarget(p.destX,p.destY)||Q.getObjectAt(p.destX,p.destY)){
-                    this.entity.playWalk(p.dir);
-                    this.atDest();
-                    return;
-                }
-                /*
-                var pls = Q("Player",1).items;
-                var invalid = false;
-                for(i=0;i<pls.length;i++){
-                    if(locTo[0]===pls[i].p.loc[0]&&locTo[1]===pls[i].p.loc[1]){
-                        invalid = true;
-                    }
-                }
-                if(invalid){
-                    this.entity.playWalk(p.dir);
-                    this.atDest();
-                    return;
-                }*/
-                //Get the tile type that this player is going to
-                p.tileTo = Q.getTileType(locTo[0],locTo[1]);
-                //Calculate how fast the player moves on this tile
-                p.stepDelay = Q.getMoveSpeed(p.tileTo,this.entity);
-                //Check if we can't go to that tile and make sure we can actually walk
-                //This func is stored in tile_costs.js and just checks the next tile's type to see if the tile is walkable by this type of player
-                
-                if(!Q.processTileTo(p.tileTo,this.entity)){
-                    this.entity.playWalk(p.dir);
-                    this.atDest();
-                    return;
-                }
-                //Now that we're sure that we can go to that tile, actually move there.
-                //Setting these properties enables certain feautres in this step function
-                p.stepping = true;
-                p.origX = p.x;
-                p.origY = p.y;
-                p.stepWait = p.stepDelay;
-                p.stepped=true;
-                p.loc=locTo;
-                //Play the walking animation
-                this.entity.playWalk(p.dir);
-            }
-        }
-    },
-    
-    step: function(dt) {
-        var p = this.entity.p;
-            
-        if(p.canMove){
-            p.stepWait -= dt;
-            if(p.stepping) {
-                p.x += p.diffX * dt / p.stepDelay;
-                p.y += p.diffY * dt / p.stepDelay;
-            }
 
-            if(p.stepWait > 0) {return; }
-            //At destination
-            if(p.stepping) {
-                p.x = p.destX;
-                p.y = p.destY;
-                this.atDest();
-            }
-            p.stepping = false;
-
-            if(Q.inputs['interact']&&!p.stepping){
-                var obj;
-                switch(p.dir){
-                    case "Left":
-                        obj = Q.stage().locate(p.x-p.tileSize,p.y,Q.SPRITE_INTERACTABLE);
-                        break;
-                    case "Up":
-                        obj = Q.stage().locate(p.x,p.y-p.tileSize,Q.SPRITE_INTERACTABLE);
-                        break;
-                    case "Right":
-                        obj = Q.stage().locate(p.x+p.tileSize,p.y,Q.SPRITE_INTERACTABLE);
-                        break;
-                    case "Down":
-                        obj = Q.stage().locate(p.x,p.y+p.tileSize,Q.SPRITE_INTERACTABLE);
-                        break;
-                }
-                //If there's nothing in front, check below
-                if(!obj){
-                    obj = Q.stage().locate(p.x,p.y,Q.SPRITE_NPC);
-                    if(!obj){
-                        return;
-                    }
-                };
-                //Call the interact function on the object
-                if(obj.p.type===Q.SPRITE_INTERACTABLE){
-                    //this.entity.interact(obj);
-                    Q.stageScene("interactingMenu",3,{player:this.entity,target:obj});
-                } else if(obj.p.type===Q.SPRITE_NPC|Q.SPRITE_INTERACTABLE){
-                    obj.interact(this.entity);
-                } 
-                //Play the standing animation
-                this.entity.playStand(p.dir);
-                //Delete the step controls (added after the text is done);
-                this.entity.disableControls();
-                Q.inputs['interact']=false;
-            }
-        }  
-    }
-});
-
-//Added to other player controlled characters
+//Protagonist component is added to the controllable character
+//This component handles inputs that need to be sent to the server
 Q.component('protagonist', {
     added: function (p) {
-        
+        var phase = Q.state.get("phase");
+        //Adventuring
+        if(phase===1){
+            this.entity.add("adventuringControls");
+        } 
+        //Battle
+        else if(phase===2){
+            this.entity.add("battleControls");
+        } 
+        //Story
+        else if(phase===3){
+            this.entity.add("storyControls");
+        }
+    }
+    
+});
+Q.component('adventuringControls',{
+    added: function (p) {
+        this.entity.on("step",this,"step");
+    },
+    step:function(dt){
+        //This function passes all client inputs to the server to make sure that it is a valid input
+        //For the directional buttons, check the client side .tmx tiles before sending the data off to the server.
+        //The server does not know about the .tmx tilelayer and it only checks against game objects such as players, enemies, and NPC's
+        var p = this.entity.p;
+        if(p.canInput){
+            var input;
+            if(Q.inputs['up']){
+                input = 'Up';
+                var loc = [p.loc[0],p.loc[1]-1];
+            } else if(Q.inputs['down']){
+                input = 'Down';
+                var loc = [p.loc[0],p.loc[1]+1];
+            } else if(Q.inputs['right']){
+                input = 'Right';
+                var loc = [p.loc[0]+1,p.loc[1]];
+            } else if(Q.inputs['left']){
+                input = 'Left';
+                var loc = [p.loc[0]-1,p.loc[1]];
+            }
+            if(input){
+                var tileTo = Q.getTileType(loc[0],loc[1]);
+                var noMove = true;
+                //Check if we can go to this square
+                //Needs the entity to check if it can swim/what types it is/other specials
+                if(Q.processTileTo(tileTo,this.entity)){
+                   noMove = false;
+                };
+                p.locTo = loc;
+                Q.state.get("playerConnection").socket.emit('input',{input:input,noMove:noMove,loc:p.loc,playerId:Q.state.get("playerConnection").id,phase:1});
+            };
+
+            //Check if this player is interacting with something
+            //On the server, destroy any items on the ground, or change the NPC text num and direction
+            if(Q.inputs['interact']){
+                //Need to only emit when interacting is true
+                Q.state.get("playerConnection").socket.emit('input',{input:"interact",playerId:Q.state.get("playerConnection").id,phase:1});
+            }
+
+            //Check for non-directional inputs (not sent to the server)
+            if(Q.inputs['menu']&&!this.p.stepping){
+
+            } else if(Q.inputs['back']){
+
+            }
+        }
     }
 });
-
+Q.component('battleControls',{
+    step:function(dt){
+        //This function passes all client inputs to the server to make sure that it is a valid input
+        //For the directional buttons, check the client side .tmx tiles before sending the data off to the server.
+        //The server does not know about the .tmx tilelayer and it only checks against game objects such as players, enemies, and NPC's
+        
+        if(Q.inputs['up']){
+            Q.state.get("playerConnection").socket.emit('input',{dir:"up",playerId:Q.state.get("playerConnection").id});
+        } else if(Q.inputs['down']){
+            Q.state.get("playerConnection").socket.emit('input',{dir:"down",playerId:Q.state.get("playerConnection").id});
+        } else if(Q.inputs['right']){
+            Q.state.get("playerConnection").socket.emit('input',{dir:"right",playerId:Q.state.get("playerConnection").id});
+        } else if(Q.inputs['left']){
+            Q.state.get("playerConnection").socket.emit('input',{dir:"left",playerId:Q.state.get("playerConnection").id});
+        } else if(Q.inputs['menu']&&!this.p.stepping){
+            Q.state.get("playerConnection").socket.emit('input',{dir:"menu",playerId:Q.state.get("playerConnection").id});
+        } else if(Q.inputs['interact']){
+            Q.state.get("playerConnection").socket.emit('input',{dir:"interact",playerId:Q.state.get("playerConnection").id});
+        } else if(Q.inputs['back']){
+            Q.state.get("playerConnection").socket.emit('input',{dir:"back",playerId:Q.state.get("playerConnection").id});
+        }
+    }
+});
+Q.component('storyControls',{
+    step:function(dt){
+        //This function passes all client inputs to the server to make sure that it is a valid input
+        //For the directional buttons, check the client side .tmx tiles before sending the data off to the server.
+        //The server does not know about the .tmx tilelayer and it only checks against game objects such as players, enemies, and NPC's
+        
+        if(Q.inputs['up']){
+            Q.state.get("playerConnection").socket.emit('input',{dir:"up",playerId:Q.state.get("playerConnection").id});
+        } else if(Q.inputs['down']){
+            Q.state.get("playerConnection").socket.emit('input',{dir:"down",playerId:Q.state.get("playerConnection").id});
+        } else if(Q.inputs['right']){
+            Q.state.get("playerConnection").socket.emit('input',{dir:"right",playerId:Q.state.get("playerConnection").id});
+        } else if(Q.inputs['left']){
+            Q.state.get("playerConnection").socket.emit('input',{dir:"left",playerId:Q.state.get("playerConnection").id});
+        } else if(Q.inputs['menu']&&!this.p.stepping){
+            Q.state.get("playerConnection").socket.emit('input',{dir:"menu",playerId:Q.state.get("playerConnection").id});
+        } else if(Q.inputs['interact']){
+            Q.state.get("playerConnection").socket.emit('input',{dir:"interact",playerId:Q.state.get("playerConnection").id});
+        } else if(Q.inputs['back']){
+            Q.state.get("playerConnection").socket.emit('input',{dir:"back",playerId:Q.state.get("playerConnection").id});
+        }
+    }
+});
 //Added to other player controlled characters
 Q.component('actor', {
     added: function (p) {
         this.entity.p.update=true;
-        var temp = this.entity;
+        //var temp = this.entity;
         //Automatically destroys the actor if it has not moved in 10 seconds
         /*setInterval(function () {
             if(Q.state.get("phase")===2){temp.p.update=true;};
@@ -1170,7 +1044,165 @@ Q.component("attacker",{
 });
 
 Q.component("mover",{
-   extend:{
+    added:function(p){
+        this.entity.on("acceptInput",this,"acceptInputted");  
+        var p = this.entity.p;
+        if(!p.stepDistance) { p.stepDistance = Q.tileH; }
+        if(!p.stepDelay) { p.stepDelay = 0.3; }
+        p.stepWait = 0;
+        p.diffX = 0;
+        p.diffY = 0;
+        this.entity.on("step",this,"step");
+    },
+    //When at the tile that you were moving to
+    atDest:function(){
+        var p = this.entity.p;
+        p.diffX = 0;
+        p.diffY = 0;
+        p.stepped=false;
+        p.stepping=false;
+        p.canInput=true;
+        p.loc = Q.getLoc(p.x,p.y);
+        //Check for triggers
+        this.entity.trigger("atDest");
+        //Run this function to see if we keep moving
+        this.trigger("acceptInput");
+        
+    },
+    goOffscreen:function(x,y){
+        Q.playSound("enter_door.mp3");
+        var level = Q.stage(1).options.path;
+        var pathNum = Q.stage(1).options.pathNum;
+        var newPathNum = [pathNum[0]+x,pathNum[1]+y];
+        var playerLoc=[];
+        var p = this.entity.p;
+        switch(true){
+            //Player is going off the right side of this level
+            case x>0:
+                playerLoc[0]=0;
+                break;
+            //Player is going off from the top or bottom of this level
+            case x===0:
+                playerLoc[0]=(p.x-Q.tileH/2)/Q.tileH;
+                break;
+            case x<0:
+                //This string means that we need to figure out the maxX of the tilelayer on the next stage.
+                playerLoc[0]="x";
+                break;
+        }
+        switch(true){
+            //Player is going off the bottom of this level
+            case y>0:
+                playerLoc[1]=0;
+                break;
+            //Player is going off from the right or left of this level
+            case y===0:
+                playerLoc[1]=(p.y-Q.tileH/2)/Q.tileH;
+                break;
+            case y<0:
+                //This string means that we need to figure out the maxY of the tilelayer on the next stage.
+                playerLoc[1]="y";
+                break;
+        }
+        var newArea = level+newPathNum[0]+"_"+newPathNum[1];
+        var player = this.entity;
+        player.p.loc = playerLoc;
+        clearInterval(Q.updateInterval);
+        //we should do some kind of segue into the next area
+        Q.stageScene("customAnimate",4,{anim:"changeArea"});
+        Q.state.get("playerConnection").socket.emit('changeArea',{
+            playerId:Q.state.get("playerConnection").id,
+            props:{
+                x:player.p.x,
+                y:player.p.y,
+                dir:player.p.dir,
+                loc:player.p.loc,
+                animation:player.p.animation,
+                area:newArea
+            }
+        }); 
+        
+        return true;
+    },
+    
+    checkOffscreen:function(locTo,tiles){
+        switch(true){
+            case locTo[0]<0:
+                return this.goOffscreen(-1,0);
+                break;
+            case locTo[0]>=tiles[0].length:
+                return this.goOffscreen(1,0);
+                break;
+            case locTo[1]<0:
+                return this.goOffscreen(0,-1);
+                break;
+            case locTo[1]>=tiles.length:
+                return this.goOffscreen(0,1);
+                break;
+        }
+    },
+    acceptInputted:function(){
+        var p = this.entity.p;
+        var inputted=p.inputted;
+        if(p.canInput){
+            if(inputted==="Left") {
+                p.diffX = -p.stepDistance;
+            } else if(inputted==="Right") {
+                p.diffX = p.stepDistance;
+            } else if(inputted==="Up") {
+                p.diffY = -p.stepDistance;
+            } else if(inputted==="Down") {
+                p.diffY = p.stepDistance;
+            }
+            p.dir=inputted;
+            p.canInput=false;
+            //Set the destination positions
+            p.destX = p.x + p.diffX;
+            p.destY = p.y + p.diffY;
+            //Set the destination location
+            var locTo=p.locTo;
+            //Get the tile type that this player is going to
+            p.tileTo = Q.getTileType(locTo[0],locTo[1]);
+            //Calculate how fast the player moves on this tile
+            p.stepDelay = Q.getMoveSpeed(p.tileTo,this.entity);
+            //Now that we're sure that we can go to that tile, actually move there.
+            //Setting these properties enables certain feautres in this step function
+            p.stepping = true;
+            p.origX = p.x;
+            p.origY = p.y;
+            p.stepWait = p.stepDelay;
+            p.stepped=true;
+            //Play the walking animation
+            this.entity.playWalk(p.dir);
+        }
+    },
+    
+    step:function(dt){
+        var p = this.entity.p;
+        p.stepWait -= dt;
+        if(p.stepping) {
+            p.x += p.diffX * dt / p.stepDelay;
+            p.y += p.diffY * dt / p.stepDelay;
+            //This helps keep the game in sync
+            if(Q.state.get("playerConnection").id===p.playerId){
+                Q.state.get("playerConnection").socket.emit('update',{
+                    x:p.x,
+                    y:p.y,
+                    playerId:Q.state.get("playerConnection").id
+                });
+            }
+        }
+
+        if(p.stepWait > 0) {return; }
+        //At destination
+        if(p.stepping) {
+            p.x = p.destX;
+            p.y = p.destY;
+            this.atDest();
+        }
+        p.stepping = false;
+    },
+    extend:{
        getTileLocation:function(){
             var loc = this.setLocation();
             return Q.getTileType(loc[0],loc[1]);
@@ -1371,6 +1403,7 @@ Q.component("mover",{
 });
 
 Q.component("commonPlayer", {
+    
     extend:{
         confirmLocation:function(loc){
             while(Q.stage(1).locate(loc[0]*Q.tileH+Q.tileH/2,loc[1]*Q.tileH+Q.tileH/2,Q.SPRITE_INTERACTABLE)){
@@ -1778,11 +1811,7 @@ Q.Sprite.extend("Player",{
     },
     addControls:function(){
         var phase = Q.state.get("phase");
-        if(phase===1){
-            if(!this.has("stepControls")){
-                this.add("stepControls");
-            }
-        } else if(phase===2){
+        if(phase===2){
             if(!this.has("directionControls")){
                 this.add("directionControls");
             }
@@ -1796,9 +1825,7 @@ Q.Sprite.extend("Player",{
         this.p.canInput=false;
     },
     changeControls:function(){
-        if(this.has("stepControls")){
-            this.del("stepControls");
-        } else if(this.has("directionControls")){
+        if(this.has("directionControls")){
             this.del("directionControls");
         }
     },
@@ -1860,6 +1887,7 @@ Q.Sprite.extend("Player",{
         this.p.startLocation=this.p.loc;
         this.p.canRedo=true;
         var player=this;
+        /*
         Q.state.get("playerConnection").socket.emit('update',{
             inputs:{
                 left:Q.inputs['left'],
@@ -1876,7 +1904,7 @@ Q.Sprite.extend("Player",{
                 animation:player.p.animation,
                 area:Q.stage(1).scene.name
             }
-        });
+        });*/
         
     },
     getItem:function(item){

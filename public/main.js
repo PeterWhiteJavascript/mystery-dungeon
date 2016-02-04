@@ -376,7 +376,7 @@ Q.getObjectAt=function(x,y){
 
 Q.getTileType=function(x,y){
     var tiles = Q.TL.p.tiles;
-    if(Q.TL.tileCollisionObjects[tiles[y][x]]){
+    if(tiles[y]&&Q.TL.tileCollisionObjects[tiles[y][x]]){
          return Q.TL.tileCollisionObjects[tiles[y][x]].p.type;
     } else {
         return "SPRITE_STANDARD";
@@ -430,14 +430,13 @@ require(objectFiles, function () {
                 console.log(data['players'][i].p.playerId)
             }*/
             
-            
             if(data['player'].p.playerId===selfId){
                 var player = Q.buildCharacter(data['player']['p']);
                 Q.state.set("player",player);
                 Q.goToStage(player.p.area,player.p.loc,data['levelData']);
                 //Join the room
                 socket.emit("joinRoom",{playerId:selfId});
-                Q.setPhaseOneUpdating();
+                //Q.setPhaseOneUpdating();
             } else if(Q.stage(1)&&data['player']['p']['area']===Q.stage(1).scene.name){
                 var player = Q.buildCharacter(data['player']['p']);
                 Q.addActor(player);
@@ -445,34 +444,30 @@ require(objectFiles, function () {
                     var tO = Q.state.get("turnOrder");
                     tO.push(player.p.playerId);
                     Q.state.set("turnOrder",tO);
-            }
-                
+                }
             }
         });
+        socket.on("changeDir",function(data){
+            var player = Q("Player",1).items.filter(function (obj) {
+                return obj.p.playerId === data['playerId'];
+            })[0];
+            player.p.dir=data['inputted'];
+            player.playStand(player.p.dir);
+        });
+        socket.on("inputted",function(data){
+            var player = Q("Player",1).items.filter(function (obj) {
+                return obj.p.playerId === data['playerId'];
+            })[0];
+            player.p.inputted=data['inputted'];
+            player.p.locTo=data['locTo'];
+            player.trigger("acceptInput");
+        });
         socket.on('updated', function (data) {
-            //This is here because when the player is loading in, there is no stage(1) for a few milliseconds
-            if(!Q.stage(1)){return;};
             var actor = Q("Player",1).items.filter(function (obj) {
                 return obj.p.playerId === data['playerId'];
             })[0];
-            if(actor){
-                if(actor.p.playerId===selfId){
-                    actor.p.inputted=data['inputted'];
-                    actor.trigger("acceptInput");
-                } else {
-                    var pl = data['player'];
-                    actor.p.x=pl.p.x;
-                    actor.p.y=pl.p.y;
-                    actor.p.dir=pl.p.dir;
-                    actor.p.loc=pl.p.loc;
-                    actor.p.area = pl.p.area;
-                    actor.p.update=true;
-                    if(actor.p.animation!==pl.p.animation){
-                        actor.play(''+pl.p.animation);
-                        actor.p.animation = pl.p.animation;
-                    }
-                }
-            }
+            actor.p.x=data['x'];
+            actor.p.y=data['y'];
         });
         
         socket.on('pickedUpItem',function(data){
@@ -528,14 +523,14 @@ require(objectFiles, function () {
             var player = Q.buildCharacter(data['player']['p']);
             Q.state.set("player",player);
             if(data['levelData']&&!Q.checkBattleEvents(data['levelData'].events)||!data['levelData']){
-                Q.setPhaseOneUpdating();
+                //Q.setPhaseOneUpdating();
                 Q.goToStage(player.p.area,player.p.loc,data['levelData']);
                 //Join the room
                 socket.emit("joinRoom",{playerId:selfId});
             } else {
                 //show waiting for best time to join (at host's turn)
                 Q.clearStage(1);
-                clearInterval(Q.updateInterval);
+                //clearInterval(Q.updateInterval);
                 Q.showWaiting();
                 socket.emit("joinRoom",{playerId:selfId,battle:true});
             }
@@ -744,12 +739,8 @@ require(objectFiles, function () {
             
         });
     };
-
-    Q.startGame = function(name){
-        //Get rid of the login
-        var div = document.getElementById('login');
-        document.getElementById('main').removeChild(div);
-        
+    
+    Q.setInitialState=function(data){
         Q.state.set({
             //The current stage that the player is on
             currentStage:[],
@@ -795,11 +786,22 @@ require(objectFiles, function () {
             //30-60-90
             textSpeed:30
         });
+    };
+
+    Q.startGame = function(name,file){
+        //Get rid of the login
+        var div = document.getElementById('login');
+        document.getElementById('main').removeChild(div);
+        
+        //At this point, we will have pulled user settings from the database
+        //Set the game state based on these settings
+        Q.setInitialState();
+        
         Q.stageScene('soundControls',2);
-        var character = name;
         Q.state.get("playerConnection").socket.emit('startGame', { 
             playerId:Q.state.get("playerConnection").id, 
-            character:character
+            character:name,
+            file:file
         });
     };
     Q.goToStage = function(whereTo, playerLoc,levelData){

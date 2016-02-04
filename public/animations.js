@@ -28,19 +28,19 @@ Q.setUpAnimations=function(){
     var walkRate = 1/6;
     Q.animations("player", {
         standingDown:{ frames: [0,1], rate:standRate},
-        walkingDown:{ frames: [0,1,2], rate:walkRate},
+        walkingDown:{ frames: [0,1,2], rate:walkRate,loop:false,trigger:"playStand"},
         attackingDown:{ frames: [0,1,2], rate:walkRate,loop:false,trigger:"playStand"},
         
         standingUp:{ frames: [3,4], rate:standRate},
-        walkingUp:{ frames: [3,4,5], rate:walkRate},
+        walkingUp:{ frames: [3,4,5], rate:walkRate,loop:false,trigger:"playStand"},
         attackingUp:{ frames: [3,4,5], rate:walkRate,loop:false,trigger:"playStand"},
         
         standingLeft:{ frames: [6,7], rate:standRate},
-        walkingLeft:{ frames: [6,7,8], rate:walkRate},
+        walkingLeft:{ frames: [6,7,8], rate:walkRate,loop:false,trigger:"playStand"},
         attackingLeft:{ frames: [6,7,8], rate:walkRate,loop:false,trigger:"playStand"},
         
         standingRight:{ frames: [9,10], rate:standRate},
-        walkingRight:{ frames: [9,10,11], rate:walkRate},
+        walkingRight:{ frames: [9,10,11], rate:walkRate,loop:false,trigger:"playStand"},
         attackingRight:{ frames: [9,10,11], rate:walkRate,loop:false,trigger:"playStand"},
         
         fainting:{ frames: [0,3,6,9,12,15,18,21,0], rate:walkRate,loop:false,trigger:"fainted"}

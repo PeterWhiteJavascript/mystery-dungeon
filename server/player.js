@@ -134,16 +134,54 @@ var users = {
     }
 };
 
-
 var Player = function(data){
+    var tileSize = 64;
     var playerId = data['playerId'];
-    var character = data['character'];
-    //Get data from database before this
-    this.p = users[character];
-    this.p.playerId = playerId;
+    var p = users[data['character']];
+    p.playerId = playerId;
+    var getLoc = function(x,y){
+        //Returns [locx,locy]
+        return [x/tileSize+tileSize/2,y/tileSize+tileSize/2];
+    };
+    var getXFromLoc = function(loc){
+        //Returns x
+        return loc[0]*tileSize+tileSize/2;
+    };
+    var getYFromLoc = function(loc){
+        //Returns y
+        return loc[1]*tileSize+tileSize/2;
+    };
+    var getX = function() {
+        return x;
+    };
+
+    var getY = function() {
+        return y;
+    };
+
+    var setX = function(newX) {
+        x = newX;
+    };
+
+    var setY = function(newY) {
+        y = newY;
+    };
+    
+    
+    p.x = getXFromLoc(p.loc);
+    p.y = getYFromLoc(p.loc);
+    p.dir = "Down";
+    
+    return  {
+        getLoc: getLoc,
+        getXFromLoc: getXFromLoc,
+        getYFromLoc: getYFromLoc,
+        getX: getX,
+        getY: getY,
+        setX: setX,
+        setY: setY,
+        p:p
+    };
 };
-
-
-
 
 module.exports = Player;

@@ -1,9 +1,5 @@
  var LevelData=function(){
-    this.getLevelData=function(stageName){
-        if(this.levelData[stageName]){
-            return this.levelData[stageName];
-        }
-    };
+    
     this.updateEvent=function(event){
         var ev = this.levelData[event.stageName].events[event.eventId].p;
         //Need to loop though and update the event
@@ -57,6 +53,7 @@
         this.levelData[data['stageName']].npcs[data['npcId']].p.loc=[data['moveTo'][0],data['moveTo'][1]];
         this.levelData[data['stageName']].npcs[data['npcId']].p.dir=data['moveTo'][2];
     };
+    
      //status
      //0 waiting to be triggered
      //1 in progress
