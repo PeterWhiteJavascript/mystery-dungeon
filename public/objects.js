@@ -1052,6 +1052,7 @@ Q.component("mover",{
         p.stepWait = 0;
         p.diffX = 0;
         p.diffY = 0;
+        p.inputted=[];
         this.entity.on("step",this,"step");
     },
     //When at the tile that you were moving to
@@ -1107,7 +1108,6 @@ Q.component("mover",{
         var newArea = level+newPathNum[0]+"_"+newPathNum[1];
         var player = this.entity;
         player.p.loc = playerLoc;
-        clearInterval(Q.updateInterval);
         //we should do some kind of segue into the next area
         Q.stageScene("customAnimate",4,{anim:"changeArea"});
         Q.state.get("playerConnection").socket.emit('changeArea',{
@@ -1145,16 +1145,16 @@ Q.component("mover",{
         var p = this.entity.p;
         var inputted=p.inputted;
         if(p.canInput){
-            if(inputted==="Left") {
+            if(inputted[0]==="Left") {
                 p.diffX = -p.stepDistance;
-            } else if(inputted==="Right") {
+            } else if(inputted[0]==="Right") {
                 p.diffX = p.stepDistance;
-            } else if(inputted==="Up") {
+            } else if(inputted[0]==="Up") {
                 p.diffY = -p.stepDistance;
-            } else if(inputted==="Down") {
+            } else if(inputted[0]==="Down") {
                 p.diffY = p.stepDistance;
             }
-            p.dir=inputted;
+            p.dir=inputted[0];
             p.canInput=false;
             //Set the destination positions
             p.destX = p.x + p.diffX;
@@ -1174,6 +1174,7 @@ Q.component("mover",{
             p.stepped=true;
             //Play the walking animation
             this.entity.playWalk(p.dir);
+            p.inputted.splice(0,1);
         }
     },
     
@@ -1183,14 +1184,6 @@ Q.component("mover",{
         if(p.stepping) {
             p.x += p.diffX * dt / p.stepDelay;
             p.y += p.diffY * dt / p.stepDelay;
-            //This helps keep the game in sync
-            if(Q.state.get("playerConnection").id===p.playerId){
-                Q.state.get("playerConnection").socket.emit('update',{
-                    x:p.x,
-                    y:p.y,
-                    playerId:Q.state.get("playerConnection").id
-                });
-            }
         }
 
         if(p.stepWait > 0) {return; }

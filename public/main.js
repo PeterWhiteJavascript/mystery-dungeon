@@ -458,17 +458,17 @@ require(objectFiles, function () {
             var player = Q("Player",1).items.filter(function (obj) {
                 return obj.p.playerId === data['playerId'];
             })[0];
-            player.p.inputted=data['inputted'];
+            player.p.inputted.push(data['inputted']);
             player.p.locTo=data['locTo'];
             player.trigger("acceptInput");
         });
-        socket.on('updated', function (data) {
+       /* socket.on('updated', function (data) {
             var actor = Q("Player",1).items.filter(function (obj) {
                 return obj.p.playerId === data['playerId'];
             })[0];
             actor.p.x=data['x'];
             actor.p.y=data['y'];
-        });
+        });*/
         
         socket.on('pickedUpItem',function(data){
             var item = Q("Pickup",1).items.filter(function (obj) {

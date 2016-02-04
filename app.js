@@ -199,14 +199,6 @@ io.on('connection', function (socket) {
             }
         }
     });
-    socket.on("update",function(data){
-        var player = saveData.players.filter(function(obj){
-            return obj.p.playerId===data['playerId'];
-        })[0];
-        player.p.x=data['x'];
-        player.p.y=data['y'];
-        socket.broadcast.to(saveData.file+player.p.area).emit('updated',{playerId:data['playerId'],x:data['x'],y:data['y']});
-    });
     socket.on("changeArea",function(data){
         var player = saveData.players.filter(function(obj){
             return obj.p.playerId===data['playerId'];

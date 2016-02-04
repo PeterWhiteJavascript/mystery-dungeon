@@ -167,7 +167,6 @@ var Player = function(data){
         y = newY;
     };
     
-    
     p.x = getXFromLoc(p.loc);
     p.y = getYFromLoc(p.loc);
     p.dir = "Down";
