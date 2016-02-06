@@ -196,38 +196,12 @@ Q.component("AI", {
     }
     
 });
-/*
-Q.setPhaseOneUpdating=function(){
-    Q.updateInterval = setInterval(function(){
-        var player = Q.state.get("playerObj");
-        if(player){
-            Q.state.get("playerConnection").socket.emit('update',{
-                inputs:{
-                    left:Q.inputs['left'],
-                    right:Q.inputs['right'],
-                    up:Q.inputs['up'],
-                    down:Q.inputs['down']
-                },
-                playerId:Q.state.get("playerConnection").id,
-                props:{
-                    x:player.p.x,
-                    y:player.p.y,
-                    dir:player.p.dir,
-                    loc:player.p.loc,
-                    animation:player.p.animation,
-                    area:player.p.area
-                }
-            });
-        }
-    },25);
-};*/
     
 Q.component("autoMove", {
     added: function() {
         var p = this.entity.p;
         if(!p.stepDistance) { p.stepDistance = Q.tileH; }
-        //if(!p.stepDelay) { p.stepDelay = 0.3; }
-        p.stepDelay = 0.3; 
+        if(!p.stepDelay) { p.stepDelay = 0.3; }
         p.stepWait = 0;
         p.stepping=false;
         
@@ -245,12 +219,12 @@ Q.component("autoMove", {
 
     atDest:function(){
         var p = this.entity.p;
-        
-        p.loc=[(p.x-p.w/2)/p.tileSize,(p.y-p.h/2)/p.tileSize];
-        this.entity.getTileLocation();
-        this.entity.clearGuide();
+        p.loc=[(p.x-p.w/2)/Q.tileH,(p.y-p.h/2)/Q.tileH];
+        //this.entity.getTileLocation();
+        //this.entity.clearGuide();
         p.stepped=false;
         p.stepping=false;
+        /*
         if(!this.entity.has("AI")){
             this.entity.playStand(p.dir);
             //this.entity.createFreePointer();
@@ -264,14 +238,13 @@ Q.component("autoMove", {
             //if(Q.state.get("playerConnection").id===p.playerId){
                 this.entity[p.AIAtDest]();
             //}
-        }
+        }*/
         this.entity.del("autoMove");
-        
+        this.entity.trigger("doneAutoMove");
         this.entity.trigger("atDest");
     },
     moveAlong:function(to){
         var p = this.entity.p;
-        var phase = Q.state.get("phase");
         var walkPath=[];
         p.costPath=[];
         var curLoc = {x:p.loc[0],y:p.loc[1]};
@@ -279,7 +252,6 @@ Q.component("autoMove", {
         if(going>p.myTurnTiles){ 
             going=p.myTurnTiles;
         }
-        if(phase===1){going=to.length;};
         var going = to.length;
         var cost = 0;
         for(i=0;i<going;i++){
@@ -373,27 +345,26 @@ Q.component("autoMove", {
                 p.dir="";
                 switch(p.walkPath[0][1]){
                     case "up":
-                        p.dir="Up";
+                        p.dir="up";
                         break;
                     case "down":
-                        p.dir="Down";
+                        p.dir="down";
                         break;
                 }
                 if(p.dir.length===0){
                     switch(p.walkPath[0][0]){
                         case "right":
-                            p.dir+="Right";
+                            p.dir+="right";
                             break;
                         case "left":
-                            p.dir+="Left";
+                            p.dir+="left";
                             break;
                     }
                 }
                 //Play the correct direction walking animation
                 this.entity.playWalk(p.dir);
-                if(Q.state.get("phase")===2){
-                    p.myTurnTiles-=p.costPath[0];
-                }
+                p.myTurnTiles-=p.costPath[0];
+                
             };
         }
     }
@@ -404,73 +375,9 @@ Q.component("autoMove", {
 //This component handles inputs that need to be sent to the server
 Q.component('protagonist', {
     added: function (p) {
-        var phase = Q.state.get("phase");
-        //Adventuring
-        if(phase===1){
-            this.entity.add("adventuringControls");
-        } 
-        //Battle
-        else if(phase===2){
-            this.entity.add("battleControls");
-        } 
-        //Story
-        else if(phase===3){
-            this.entity.add("storyControls");
-        }
+        this.entity.add("battleControls");
     }
     
-});
-Q.component('adventuringControls',{
-    added: function (p) {
-        this.entity.on("step",this,"step");
-    },
-    step:function(dt){
-        //This function passes all client inputs to the server to make sure that it is a valid input
-        //For the directional buttons, check the client side .tmx tiles before sending the data off to the server.
-        //The server does not know about the .tmx tilelayer and it only checks against game objects such as players, enemies, and NPC's
-        var p = this.entity.p;
-        if(p.canInput){
-            var input;
-            if(Q.inputs['up']){
-                input = 'Up';
-                var loc = [p.loc[0],p.loc[1]-1];
-            } else if(Q.inputs['down']){
-                input = 'Down';
-                var loc = [p.loc[0],p.loc[1]+1];
-            } else if(Q.inputs['right']){
-                input = 'Right';
-                var loc = [p.loc[0]+1,p.loc[1]];
-            } else if(Q.inputs['left']){
-                input = 'Left';
-                var loc = [p.loc[0]-1,p.loc[1]];
-            }
-            if(input){
-                var tileTo = Q.getTileType(loc[0],loc[1]);
-                var noMove = true;
-                //Check if we can go to this square
-                //Needs the entity to check if it can swim/what types it is/other specials
-                if(Q.processTileTo(tileTo,this.entity)){
-                   noMove = false;
-                };
-                p.locTo = loc;
-                Q.state.get("playerConnection").socket.emit('input',{input:input,noMove:noMove,loc:p.loc,playerId:Q.state.get("playerConnection").id,phase:1});
-            };
-
-            //Check if this player is interacting with something
-            //On the server, destroy any items on the ground, or change the NPC text num and direction
-            if(Q.inputs['interact']){
-                //Need to only emit when interacting is true
-                Q.state.get("playerConnection").socket.emit('input',{input:"interact",playerId:Q.state.get("playerConnection").id,phase:1});
-            }
-
-            //Check for non-directional inputs (not sent to the server)
-            if(Q.inputs['menu']&&!this.p.stepping){
-
-            } else if(Q.inputs['back']){
-
-            }
-        }
-    }
 });
 Q.component('battleControls',{
     step:function(dt){
@@ -522,15 +429,6 @@ Q.component('storyControls',{
 Q.component('actor', {
     added: function (p) {
         this.entity.p.update=true;
-        //var temp = this.entity;
-        //Automatically destroys the actor if it has not moved in 10 seconds
-        /*setInterval(function () {
-            if(Q.state.get("phase")===2){temp.p.update=true;};
-            if (!temp.p.update) {
-              temp.destroy();
-            }
-            temp.p.update = false;
-        }, 3000);*/
     } 
 });
 
@@ -549,22 +447,22 @@ Q.Sprite.extend("dirTri",{
     },
     changePos:function(dir,char){
         switch(dir){
-            case "Left":
+            case "left":
                 this.p.x=char.p.x-char.p.w/2-this.p.w/2;
                 this.p.y=char.p.y;
                 this.p.angle=270;
                 break;
-            case "Up":
+            case "up":
                 this.p.x=char.p.x;
                 this.p.y=char.p.y-char.p.h/2-this.p.h/2;
                 this.p.angle=0;
                 break;
-            case "Right":
+            case "right":
                 this.p.x=char.p.x+char.p.w/2+this.p.w/2;
                 this.p.y=char.p.y;
                 this.p.angle=90;
                 break;
-            case "Down":
+            case "down":
                 this.p.x=char.p.x;
                 this.p.y=char.p.y+char.p.w/2+this.p.w/2;
                 this.p.angle=180;
@@ -600,13 +498,13 @@ Q.component("directionControls", {
         var p = this.entity.p;
         if(p.canMove){
             if(Q.inputs['left']) {
-                p.dir='Left';
+                p.dir='left';
             } else if(Q.inputs['right']) {;
-                p.dir='Right';
+                p.dir='right';
             } else if(Q.inputs['up']) {
-                p.dir='Up';
+                p.dir='up';
             } else if(Q.inputs['down']) {
-                p.dir='Down';
+                p.dir='down';
             }
             this.entity.playStand(p.dir);
             if(p.dirTri&&p.lastDir!==p.dir){
@@ -649,16 +547,23 @@ Q.component("animations", {
     },
     extend:{
         checkPlayDir:function(dir){
-            if(!dir){return this.p.dir;}else{return dir||"Down";}
+            if(!dir){return this.p.dir;}else{return dir||"down";}
         },
         playStand:function(dir){
             this.play("standing"+this.checkPlayDir(dir));
+            this.p.dir = dir;
         },
         playWalk:function(dir){
             this.play("walking"+this.checkPlayDir(dir));
+            this.p.dir = dir;
         },
         playAttack:function(dir){
             this.play("attacking"+this.checkPlayDir(dir));
+            this.p.dir = dir;
+        },
+        playBreatheFire:function(dir){
+            this.play("breathefire"+this.checkPlayDir(dir));
+            this.p.dir = dir;
         },
         playFainting:function(){
             this.play("fainting");
@@ -853,19 +758,19 @@ Q.component("attacker",{
             var newDir = "";
             switch(true){
                 case yDif<0:
-                    newDir+="Up";
+                    newDir+="up";
                     break
                 case yDif>0:
-                    newDir+="Down";
+                    newDir+="down";
                     break;
             }
             if(newDir.length===0){
                 switch(true){
                     case xDif<0:
-                        newDir+="Left";
+                        newDir+="left";
                         break
                     case xDif>0:
-                        newDir+="Right";
+                        newDir+="right";
                         break;
                 }
             }
@@ -897,7 +802,7 @@ Q.component("attacker",{
             var front = 1.5;
             
             //Array of possible directions clockwise from 12 o'clock
-            var dirs = ["Up", "Right", "Down", "Left"];
+            var dirs = ["up", "right", "down", "left"];
             //Get the number for the user dir
             var userDir = getDirection(user.p.dir,dirs);
             //Get the number for the target dir
@@ -1052,7 +957,12 @@ Q.component("mover",{
         p.stepWait = 0;
         p.diffX = 0;
         p.diffY = 0;
-        p.inputted=[];
+        p.inputted={
+            up:false,
+            right:false,
+            down:false,
+            left:false
+        };
         this.entity.on("step",this,"step");
     },
     //When at the tile that you were moving to
@@ -1145,16 +1055,19 @@ Q.component("mover",{
         var p = this.entity.p;
         var inputted=p.inputted;
         if(p.canInput){
-            if(inputted[0]==="Left") {
+            if(inputted.left) {
                 p.diffX = -p.stepDistance;
-            } else if(inputted[0]==="Right") {
+                p.dir="left";
+            } else if(inputted.right) {
                 p.diffX = p.stepDistance;
-            } else if(inputted[0]==="Up") {
+                p.dir="right";
+            } else if(inputted.up) {
                 p.diffY = -p.stepDistance;
-            } else if(inputted[0]==="Down") {
+                p.dir="up";
+            } else if(inputted.down) {
                 p.diffY = p.stepDistance;
+                p.dir="down";
             }
-            p.dir=inputted[0];
             p.canInput=false;
             //Set the destination positions
             p.destX = p.x + p.diffX;
@@ -1174,7 +1087,6 @@ Q.component("mover",{
             p.stepped=true;
             //Play the walking animation
             this.entity.playWalk(p.dir);
-            p.inputted.splice(0,1);
         }
     },
     
@@ -1396,7 +1308,6 @@ Q.component("mover",{
 });
 
 Q.component("commonPlayer", {
-    
     extend:{
         confirmLocation:function(loc){
             while(Q.stage(1).locate(loc[0]*Q.tileH+Q.tileH/2,loc[1]*Q.tileH+Q.tileH/2,Q.SPRITE_INTERACTABLE)){
@@ -1597,7 +1508,7 @@ Q.Sprite.extend("Enemy",{
             sprite:"player",
             Class:"Enemy",
             
-            dir:"Down",
+            dir:"down",
             
             objInFront:false,
             initialize:true,
@@ -1694,6 +1605,7 @@ Q.Sprite.extend("Enemy",{
     },
     
     //This function will remove this enemy from the enmeis array and check if the array is empty so we can go back to phase 1
+    
     removeFromEnemies:function(){
         var enm = Q.state.get("enemies");
         for(i=0;i<enm[this.p.eventId].length;i++){
@@ -1742,7 +1654,7 @@ Q.Sprite.extend("Player",{
             frame:0,
             sprite:"player",
             
-            dir:"Down",
+            dir:"down",
             
             objInFront:false,
             initialize:true,
@@ -1777,15 +1689,15 @@ Q.Sprite.extend("Player",{
     getDir:function(loc){
         var dir;
         if(loc[0]>0&&loc[1]===0){
-            dir='Down';
+            dir='down';
         } else if(loc[0]===Q.TL.p.tiles[0].length-1&&loc[1]>0){
-            dir='Left';
+            dir='left';
         } else if(loc[1]>0&&loc[0]===0){
-            dir='Right';
+            dir='right';
         } else if(loc[1]===Q.TL.p.tiles.length-1&&loc[0]>0){
-            dir='Up';
+            dir='up';
         } else {
-            dir='Down';
+            dir='down';
         }
         return dir;
     },
@@ -1803,12 +1715,6 @@ Q.Sprite.extend("Player",{
         this.p.initialize = false;
     },
     addControls:function(){
-        var phase = Q.state.get("phase");
-        if(phase===2){
-            if(!this.has("directionControls")){
-                this.add("directionControls");
-            }
-        }
         this.p.canMove=true;
         this.p.canInput=true;
         
@@ -1823,12 +1729,7 @@ Q.Sprite.extend("Player",{
         }
     },
     createFreePointer:function(){
-        var phase = Q.state.get("phase");
-        if(phase===1){
-            this.addControls();
-        } else if(phase===2){
-            this.stage.insert(new Q.Pointer({player:this,freeSelecting:true}));      
-        }
+        this.stage.insert(new Q.Pointer({player:this,freeSelecting:true}));      
     },
     turnStart:function(){
         Q.addViewport(this);
@@ -1851,13 +1752,8 @@ Q.Sprite.extend("Player",{
         this.askDirection();
     },
     endTurn:function(){
-        if(Q.state.get("phase")===1){
-            Q.clearStage(3);
-            this.addControls();
-        } else if(Q.state.get("phase")===2){
-            this.turnOver();
-            Q.clearStage(3);
-        }
+        this.turnOver();
+        Q.clearStage(3);
     },
     resetMovement:function(){
         //Only reset if the this can redo (he hasn't done anything that cannot be reversed just by moving back)
@@ -1869,10 +1765,6 @@ Q.Sprite.extend("Player",{
         } else {
             //Play can't do that sound
         }
-    },
-    //Used to allow movement in adventuring phase
-    setMyTurn:function(){
-        this.p.myTurn=true;  
     },
     resetMove:function(){
         this.setMyTurn();
@@ -1966,7 +1858,7 @@ Q.Sprite.extend("Player",{
             props=false;
         }
         //If there's no item that you can see, find a random item if we're in the battle phase
-        if(func==="foundNothing"&&Q.state.get("phase")===2){
+        if(func==="foundNothing"){
             var g = Q.checkGroundPos[player.getTileLocation()];
             var rand = Math.floor(Math.random()*1000)+1;
             switch(true){
@@ -2106,17 +1998,17 @@ Q.Sprite.extend("NPC",{
     },
     getDir:function(pl){
         switch(pl.p.dir){
-            case "Left":
-                return "Right";
+            case "left":
+                return "right";
                 break;
-            case "Up":
-                return "Down";
+            case "up":
+                return "down";
                 break;
-            case "Right":
-                return "Left";
+            case "right":
+                return "left";
                 break;
-            case "Down":
-                return "Up";
+            case "down":
+                return "up";
                 break;
         }
     },

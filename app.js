@@ -6,19 +6,24 @@ var io = require('socket.io')(server);
 //My modules
 var Player = require("./server/player.js");
 var SaveData = require("./server/save_file.js");
-var levelData = require("./server/level_data.js");
+//var levelData = require("./server/level_data.js");
+//var UpdateLoop = require("./server/game_loop.js");
 
 app.use(express.static(__dirname + '/public'));
 
 app.get('/', function(req, res){
   res.render('/index.html');
 });
+
+
+
 //Stores a list of all user id's that are connected
 var _users = [];
 //Stores a list of all active leveldata
 var _activeFiles = [];
 //The variable that gives a unique id to a player when the join
 var id = 0;
+
 io.on('connection', function (socket) {
     id++;
     //The current user's id
@@ -27,7 +32,7 @@ io.on('connection', function (socket) {
     saveData;
     
     setTimeout(function () {
-        socket.join('lobby');
+        socket.join('login');
         userId = id;
         //Make sure to give a unique id
         if(_users.length>0&&_users[_users.length-1].playerId===id){id++;userId++;};
@@ -50,7 +55,7 @@ io.on('connection', function (socket) {
     });
     
     //User logged in, now get the data from the database if they are the first ones here, else get the data from the server
-    socket.on('startGame', function (data) {
+    socket.on('toLobby', function (data) {
         function setPlayer(id,pl){
             //Check if the player is already in the array
             for(j=0;j<saveData.players.length;j++){
@@ -84,16 +89,24 @@ io.on('connection', function (socket) {
         var player = new Player(data);
         //Set the socket id
         player.p.socketId=socket.id;
+        
         //Add the player to the saveData
         setPlayer(data['playerId'],player);
         //Leave the lobby as we are going to the main game now
-        socket.leave('lobby');
+        socket.leave('login');
         //Join the file
         socket.join(saveData.file);
+        //Join the lobby
+        socket.join('lobby');
         //Join the file area
-        socket.join(saveData.file+player.p.area);
+        //socket.join(saveData.file+player.p.area);
         //Tell all connected clients in this file that I have connected
-        io.sockets.in(saveData.file).emit('startedGame',{player:player,players:saveData.players,levelData:saveData.getLevelData(player.p.area)});
+        io.sockets.in(saveData.file).emit('goToLobby',{player:player,players:saveData.players,levelData:saveData.getLevelData(saveData.scene)});
+    });
+    
+    
+    socket.on("startGame",function(){
+        io.sockets.in(saveData.file).emit('startedGame',{players:saveData.players,levelData:saveData.getLevelData(saveData.scene)});
     });
     
     socket.on('updateItems',function(data){
@@ -103,7 +116,7 @@ io.on('connection', function (socket) {
         if(player){
             player.p.items=data['items'];
         }
-        socket.broadcast.to(saveData.file+player.p.area).emit('updatePlayerItems',{items:player.p.items,playerId:data['playerId'],text:data['text']});
+        socket.broadcast.to(saveData.file+saveData.scene).emit('updatePlayerItems',{items:player.p.items,playerId:data['playerId'],text:data['text']});
     });
     
     socket.on('updateStats',function(data){
@@ -121,84 +134,9 @@ io.on('connection', function (socket) {
                 player.p[stats[i]]=data['stats'][stats[i]];
             }
         }
-        io.sockets.in(saveData.file+player.p.area).emit('updatedStats',{playerId:data['playerId'],player:player});
+        io.sockets.in(saveData.file+saveData.scene).emit('updatedStats',{playerId:data['playerId'],player:player});
     });
     
-    //When a client pressed a key, decide what to do.
-    socket.on("input",function(data){
-        var player = saveData.players.filter(function(obj){
-            return obj.p.playerId===data['playerId'];
-        })[0];
-        
-        //Adventuring phase
-        if(data['phase']===1){
-            
-            if(data['input']==="interact"){
-                //do interact code
-                
-                return;
-            }
-            //If there was a wall, no need to check if there's an interactable
-            if(data['noMove']){
-                io.sockets.in(saveData.file+player.p.area).emit('changeDir',{inputted:data['input'],playerId:data['playerId']});
-                return;
-            }
-            var locTo;
-            var loc = data['loc'];
-            switch(data['input']){
-                case "Up":
-                    locTo = [loc[0],loc[1]-1];
-                    break;
-                case "Right":
-                    locTo = [loc[0]+1,loc[1]];
-                    break;
-                case "Down":
-                    locTo = [loc[0],loc[1]+1];
-                    break;
-                case "Left":
-                    locTo = [loc[0]-1,loc[1]];
-                    break;
-            }
-            //Returns the object if there's an object in the way
-            if(!saveData.checkObjInWay(locTo,player.p.area)){
-                //If there's no object in the way, respond broadcast that this player is moving to locTo
-                //Set the server player's to the locTo
-                player.p.loc=locTo;
-                //play the walking animation and move the player to the correct square on the clients
-                io.sockets.in(saveData.file+player.p.area).emit('inputted',{inputted:data['input'],playerId:data['playerId'],locTo:locTo});
-            } 
-            //If there is an object in the way, change direction only
-            else {
-                io.sockets.in(saveData.file+player.p.area).emit('changeDir',{inputted:data['input'],playerId:data['playerId']});
-            }
-            
-        //Battle phase
-        } else if(data['phase']===2){
-            switch(data['input']){
-                case "up":
-
-                    break;
-                case "right":
-
-                    break;
-                case "down":
-
-                    break;
-                case "left":
-
-                    break;
-                case "menu":
-
-                    break;
-                case "interact":
-
-                    break;
-                case "back":
-
-                    break;
-            }
-        }
-    });
     socket.on("changeArea",function(data){
         var player = saveData.players.filter(function(obj){
             return obj.p.playerId===data['playerId'];
@@ -209,8 +147,8 @@ io.on('connection', function (socket) {
         player.p.loc=data['props']['loc'];
         player.p.animation = data['props']['animation'];
         
-        socket.leave(saveData.file+player.p.area);
-        socket.broadcast.to(saveData.file+player.p.area).emit('leftArea',{playerId:player.p.playerId,player:player});
+        socket.leave(saveData.file+saveData.scene);
+        socket.broadcast.to(saveData.file+saveData.scene).emit('leftArea',{playerId:player.p.playerId,player:player});
         player.p.area=data['props']['area'];
         socket.emit('recievedLevelData',{levelData:levelData.getLevelData(player.p.area),player:player});
         socket.broadcast.to(saveData.file).emit('changedArea',{player:player});
@@ -221,15 +159,15 @@ io.on('connection', function (socket) {
             return obj.p.playerId===data['playerId'];
         })[0];
         //If there's no one here yet, make the array and push the NPC's into it
-        if(!saveData.levelData[player.p.area].activeObjects){
+        /*if(!saveData.levelData[player.p.area].activeObjects){
             saveData.levelData[player.p.area].activeObjects=[];
             for(i=0;i<saveData.levelData[player.p.area].npcs.length;i++){
                 saveData.levelData[player.p.area].activeObjects.push(saveData.levelData[player.p.area].npcs[i]);
             }
         };
         //Push the player into the activeObjects
-        saveData.levelData[player.p.area].activeObjects.push(player);
-        socket.join(saveData.file+player.p.area);
+        saveData.levelData[player.p.area].activeObjects.push(player);*/
+        socket.join(player.p.file+saveData.scene);
         
     });
     
@@ -237,8 +175,8 @@ io.on('connection', function (socket) {
         var player = saveData.players.filter(function(obj){
             return obj.p.playerId===data['playerId'];
         })[0];
-        levelData.pickUpItem(player.p.area,data['pickupId']);
-        io.sockets.in(saveData.file+player.p.area).emit('pickedUpItem',{pickupId:data['pickupId']});
+        levelData.pickUpItem(saveData.scene,data['pickupId']);
+        io.sockets.in(saveData.file+saveData.scene).emit('pickedUpItem',{pickupId:data['pickupId']});
     });
     
     socket.on("getTextNum",function(data){
@@ -252,7 +190,7 @@ io.on('connection', function (socket) {
             return obj.p.playerId===data['playerId'];
         })[0];
         levelData.moveNPC(data);
-        io.sockets.in(saveData.file+player.p.area).emit("movedNPC",{npcId:data['npcId'],moveTo:data['moveTo']});
+        io.sockets.in(saveData.file+saveData.scene).emit("movedNPC",{npcId:data['npcId'],moveTo:data['moveTo']});
     });
     
     socket.on("startTurn",function(data){
@@ -261,12 +199,12 @@ io.on('connection', function (socket) {
             var player = saveData.players.filter(function(obj){
                  return obj.p.playerId==data['host'];
              })[0];
-            io.sockets.in(saveData.file+player.p.area).emit('startTurn',{turnOrder:data['turnOrder'],events:evs,host:data['host'],stageName:data['stageName']});
+            io.sockets.in(saveData.file+saveData.scene).emit('startTurn',{turnOrder:data['turnOrder'],events:evs,host:data['host'],stageName:data['stageName']});
         } else {
             var player = saveData.players.filter(function(obj){
                  return obj.p.playerId==data['turnOrder'][0];
             })[0];
-            io.sockets.in(saveData.file+player.p.area).emit('startTurn',{turnOrder:data['turnOrder'],events:evs,stageName:data['stageName']});
+            io.sockets.in(saveData.file+saveData.scene).emit('startTurn',{turnOrder:data['turnOrder'],events:evs,stageName:data['stageName']});
         }
     });
     //Gets the event data immediately after steeping on the event
@@ -284,14 +222,14 @@ io.on('connection', function (socket) {
         var player = saveData.players.filter(function(obj){
             return obj.p.playerId==data['host'];
         })[0];
-        socket.broadcast.to(saveData.file+player.p.area).emit('triggeredEvent', {stageName:data['stageName'],event:event,host:data['host']});
+        socket.broadcast.to(saveData.file+saveData.scene).emit('triggeredEvent', {stageName:data['stageName'],event:event,host:data['host']});
     });
     socket.on("updateEvent",function(data){
         levelData.updateEvent(data);
         var player = saveData.players.filter(function(obj){
             return obj.p.playerId==data['host'];
         })[0];
-        io.sockets.in(saveData.file+player.p.area).emit('updatedEvent', {stageName:data['stageName'],eventId:data['eventId']});
+        io.sockets.in(saveData.file+saveData.scene).emit('updatedEvent', {stageName:data['stageName'],eventId:data['eventId']});
     });
     
     socket.on("partOfBattle",function(data){
@@ -302,7 +240,7 @@ io.on('connection', function (socket) {
         var player = saveData.players.filter(function(obj){
             return obj.p.playerId==data['host'];
         })[0];
-        io.sockets.in(saveData.file+player.p.area).emit("playersInBattle",{stageName:data['stageName'],turnOrder:event.p.turnOrder,host:host});
+        io.sockets.in(saveData.file+saveData.scene).emit("playersInBattle",{stageName:data['stageName'],turnOrder:event.p.turnOrder,host:host});
     });
     
     //For when a player comes into the battle after it has started
@@ -312,8 +250,8 @@ io.on('connection', function (socket) {
             var player = saveData.players.filter(function(obj){
                 return obj.p.playerId==pl.p.playerId;
             })[0];
-            io.sockets.in(saveData.file+player.p.area+"battleWait").emit("joinedBattle",{host:data['battleHost'],player:player,stageName:data['stageName'],levelData:levelData.getLevelData(player.p.area),playerId:player.p.playerId});
-            io.sockets.in(saveData.file+player.p.area).emit("joinedBattle",{host:data['battleHost'],player:player,stageName:data['stageName'],playerId:player.p.playerId});
+            io.sockets.in(saveData.file+saveData.scene+"battleWait").emit("joinedBattle",{host:data['battleHost'],player:player,stageName:data['stageName'],levelData:levelData.getLevelData(player.p.area),playerId:player.p.playerId});
+            io.sockets.in(saveData.file+saveData.scene).emit("joinedBattle",{host:data['battleHost'],player:player,stageName:data['stageName'],playerId:player.p.playerId});
         }
     });
     
@@ -321,19 +259,19 @@ io.on('connection', function (socket) {
         var player = saveData.players.filter(function(obj){
             return obj.p.playerId==data['host'];
         })[0];
-        io.sockets.in(saveData.file+player.p.area).emit('battleMoved',data);
+        io.sockets.in(saveData.file+saveData.scene).emit('battleMoved',data);
     });
     socket.on('attack',function(data){
         var player = saveData.players.filter(function(obj){
             return obj.p.playerId==data['host'];
         })[0];
-        socket.broadcast.to(saveData.file+player.p.area).emit('attacked',data);
+        socket.broadcast.to(saveData.file+saveData.scene).emit('attacked',data);
     });
     socket.on('eventComplete',function(data){
         var player = saveData.players.filter(function(obj){
             return obj.p.playerId==data['playerId'];
         })[0];
-        io.sockets.in(saveData.file+player.p.area).emit('completedEvent',{event:levelData.completeEvent(data['eventId'],data['stageName'])});
+        io.sockets.in(saveData.file+saveData.scene).emit('completedEvent',{event:levelData.completeEvent(data['eventId'],data['stageName'])});
     });
 });
 

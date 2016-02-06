@@ -73,28 +73,14 @@ Q.eventCompleted=function(eventId,onComplete){
                 if(!Q.state.get("soundEnabled")){Q.getMusic(Q.state.get("currentStageName"));};
                 Q.stageScene('customAnimate',4,{anim:onComplete});
                 Q.state.set("battle",false);
-                Q.toAdventuringPhase();
             }
             break;
     }
 };
-Q.toAdventuringPhase=function(){
-    Q.state.set("phase",1);
-    var player = Q.state.get("playerObj");
-    Q.addViewport(player);
-    player.setMyTurn();
-    player.changeControls();
-    player.addControls();
-    Q.setPhaseOneUpdating();
-};
 Q.eventFuncs= {
     spawnEnemies:function(event,hostId){
-        if(Q.state.get("phase")!==2){
-            var phaseChange = true;
-        }
         Q.state.set("battle",true);
         clearInterval(Q.updateInterval);
-        Q.setPhase(2);
         if(event.music){
             Q.playMusic(event.music);
         } else {
@@ -127,11 +113,8 @@ Q.eventFuncs= {
                 enm[event.eventId].push(enemy);
             }
             //console.log("I'm the host of "+event.eventId)
-            if(phaseChange){
-                Q.getPlayers(event.eventId);
-            } else {
-                Q.state.set("turnOrder",Q.generateTurnOrder(Q.state.get("turnOrder"),enm[event.eventId]));
-            }
+            Q.state.set("turnOrder",Q.generateTurnOrder(Q.state.get("turnOrder"),enm[event.eventId]));
+            
             var enems = [];
             var e = enm[event.eventId];
             for(i=0;i<e.length;i++){
@@ -255,14 +238,6 @@ Q.setLevelData=function(stage,levelData){
         }
     };
 };
-Q.setPhase=function(phase){
-    Q.state.set("phase",phase);
-    Q("Player",1).invoke("changeControls");
-    Q.inputs['left']=false;
-    Q.inputs['right']=false;
-    Q.inputs['up']=false;
-    Q.inputs['down']=false;
-};
 Q.endTurn=function(){
     Q.inputs['interact']=false;
     var cCT = Q.state.get("currentCharacterTurn");
@@ -285,12 +260,8 @@ Q.afterDir=function(newHost){
     if(!Q.state.get("battle")){
         //There is on battle, give all players control now
         //This will be done through socket
-        Q.state.set("phase",1);
         var player = Q.state.get("playerObj");
-        player.setMyTurn();
-        player.changeControls();
-        player.addControls();
-        //Q.updateInterval = Q.setPhaseOneUpdating();
+        console.log("done battle")
         return;
     }
     //var cCT = Q.state.get("currentCharacterTurn");
@@ -411,22 +382,6 @@ Q.getPlayers=function(eventId){
 Q.scene("fog",function(stage){
     stage.insert(new Q.Sprite({x:0,y:0,cx:0,cy:0,asset:"fog.png"}));
 });
-Q.addViewport=function(obj){
-    if(obj){
-        if(Q.stage(1).viewport.following&&Q.stage(1).viewport.following.p.x===obj.p.x&&Q.stage(1).viewport.following.p.y===obj.p.y){
-            return;
-        } else {
-            obj.p.stageMaxX=Q.TL.p.w;
-            var minX=0;
-            var maxX=Q.TL.p.w;
-            var minY=0;
-            var maxY=Q.TL.p.h;
-            if(Q.TL.p.w<Q.width){minX=-(Q.width-Q.TL.p.w),maxX=Q.width;};
-            if(Q.TL.p.h<Q.height){minY=-Q.height;maxY=Q.TL.p.h;};
-            Q.stage(1).follow(obj,{x:true,y:true},{minX: minX, maxX: maxX, minY: minY,maxY:maxY});
-        }
-    }
-};
 Q.getPath = function(to){
     var path = "";
     var pathNumX="";

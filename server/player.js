@@ -39,8 +39,6 @@ var users = {
         "text": [
             "Hello, I'm Saito!"
         ],
-        "loc":[9,7],
-        "area":"first_demo1_2",
         "file":"BigGame"
     },
     "Estevan": {
@@ -84,8 +82,6 @@ var users = {
         "text": [
             "Hello, I'm Estevan!"
         ],
-        "loc":[9,10],
-        "area":"first_demo1_2",
         "file":"BigGame"
     },
     "Lan": {
@@ -128,8 +124,6 @@ var users = {
         "text": [
             "Hello, I'm Lan!"
         ],
-        "loc":[8,10],
-        "area":"first_demo1_2",
         "file":"BigGame"
     }
 };
@@ -167,9 +161,6 @@ var Player = function(data){
         y = newY;
     };
     
-    p.x = getXFromLoc(p.loc);
-    p.y = getYFromLoc(p.loc);
-    p.dir = "Down";
     
     return  {
         getLoc: getLoc,

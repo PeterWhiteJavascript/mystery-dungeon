@@ -1,5 +1,4 @@
  var LevelData=function(){
-    
     this.updateEvent=function(event){
         var ev = this.levelData[event.stageName].events[event.eventId].p;
         //Need to loop though and update the event

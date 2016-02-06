@@ -328,6 +328,7 @@ Q.getMoveSpeed=function(tile,obj){
     return stepDelay;
 };
 //Used only in adventuring phase (1)
+/*
 Q.processTileTo=function(tile,obj){
     var canStep = false;
     var type1 = obj.p.types[0];
@@ -406,6 +407,6 @@ Q.processTileTo=function(tile,obj){
 
     }
     return canStep;
-};
+};*/
 
 };

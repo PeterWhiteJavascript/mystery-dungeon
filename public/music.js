@@ -41,15 +41,6 @@ Q.playSound=function(sound,callback){
     if(callback){callback();}
 };
 
-//Gets the music in a stage
-Q.getMusic=function(whereTo,callback){
-    switch(whereTo){
-        case "first_demo":
-            Q.playMusic("adventure1.mp3",callback);
-            break;
-        
-    }
-};
     
     
 };

@@ -11,7 +11,9 @@ Q.setUpAnimations=function(){
         ['Deino','Deino60x60.png',60,60],
         ['Dratini','Dratini.png',70,70],
         ['Spinarak','Aipom60x60.png',60,60],
-        ['Grimer','Aipom60x60.png',60,60]
+        ['Grimer','Aipom60x60.png',60,60],
+        
+        ["fireball","bullets.png",32,32]
     ];
     for(j=0;j<toSheet.length;j++){
         Q.sheet(toSheet[j][0],
@@ -27,23 +29,29 @@ Q.setUpAnimations=function(){
     var standRate = 1/3;
     var walkRate = 1/6;
     Q.animations("player", {
-        standingDown:{ frames: [0,1], rate:standRate},
-        walkingDown:{ frames: [0,1,2], rate:walkRate,loop:false,trigger:"playStand"},
-        attackingDown:{ frames: [0,1,2], rate:walkRate,loop:false,trigger:"playStand"},
+        standingdown:{ frames: [0,1], rate:standRate},
+        walkingdown:{ frames: [0,1,2], rate:walkRate,loop:false,trigger:"playStand"},
+        attackingdown:{ frames: [0,1,2], rate:walkRate,loop:false,trigger:"playStand"},
         
-        standingUp:{ frames: [3,4], rate:standRate},
-        walkingUp:{ frames: [3,4,5], rate:walkRate,loop:false,trigger:"playStand"},
-        attackingUp:{ frames: [3,4,5], rate:walkRate,loop:false,trigger:"playStand"},
+        standingup:{ frames: [3,4], rate:standRate},
+        walkingup:{ frames: [3,4,5], rate:walkRate,loop:false,trigger:"playStand"},
+        attackingup:{ frames: [3,4,5], rate:walkRate,loop:false,trigger:"playStand"},
         
-        standingLeft:{ frames: [6,7], rate:standRate},
-        walkingLeft:{ frames: [6,7,8], rate:walkRate,loop:false,trigger:"playStand"},
-        attackingLeft:{ frames: [6,7,8], rate:walkRate,loop:false,trigger:"playStand"},
+        standingleft:{ frames: [6,7], rate:standRate},
+        walkingleft:{ frames: [6,7,8], rate:walkRate,loop:false,trigger:"playStand"},
+        attackingleft:{ frames: [6,7,8], rate:walkRate,loop:false,trigger:"playStand"},
+        breathefireleft:{ frames: [6,7,8],rate:walkRate,loop:false,trigger:"launchFireball"},
         
-        standingRight:{ frames: [9,10], rate:standRate},
-        walkingRight:{ frames: [9,10,11], rate:walkRate,loop:false,trigger:"playStand"},
-        attackingRight:{ frames: [9,10,11], rate:walkRate,loop:false,trigger:"playStand"},
+        standingright:{ frames: [9,10], rate:standRate},
+        walkingright:{ frames: [9,10,11], rate:walkRate,loop:false,trigger:"playStand"},
+        attackingright:{ frames: [9,10,11], rate:walkRate,loop:false,trigger:"playStand"},
+        breathefireright:{ frames: [11,11,10],rate:walkRate,loop:false,trigger:"launchFireball"},
         
         fainting:{ frames: [0,3,6,9,12,15,18,21,0], rate:walkRate,loop:false,trigger:"fainted"}
+    });
+    Q.animations("fireball",{
+        burning:{frames:[0],rate:standRate},
+        engulf:{frames:[1,2,1,2],rate:walkRate,loop:false,trigger:"burned"}
     });
 };
 };

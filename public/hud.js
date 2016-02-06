@@ -329,17 +329,10 @@ Quintus.HUD = function(Q){
                         }
                     }
                     return;
-                } else if(Q.state.get("phase")===2){
+                } else {
                     this.p.player.menuMoveTo(this.p.loc);
                     this.destroy();
-                //If we are in adventure phase
-                } else {
-                    this.p.player.clearGuide();
-                    Q.addViewport(this.p.player);
-                    this.p.player.addControls();
-                    this.destroy();
                 }
-                
                 return;
             }
         }
@@ -497,7 +490,7 @@ Quintus.HUD = function(Q){
                 textNum:0,
                 type:Q.SPRITE_NONE,
                 canInteract:true,
-                fill:'white'
+                fill:'#9999ff'
             });
             this.p.y=Q.height-this.p.h;
             this.p.startTime = Q.state.get("textSpeed");
@@ -558,11 +551,21 @@ Quintus.HUD = function(Q){
             Q.inputs['interact']=false;
         },
         step:function(dt){
-            this.p.time--;
-            if(this.p.time<=0){
-                this.destroyText();
-                this.cycleText();
-                this.p.time=this.p.startTime;
+            if(this.p.autoScroll){
+                this.p.time--;
+                if(this.p.time<=0){
+                    this.destroyText();
+                    this.cycleText();
+                    this.p.time=this.p.startTime;
+                }
+            } else {
+                if(Q.inputs['interact']){
+                    //Need to check if the text is done displaying
+                    //If the text is not done, insta-finish it
+                    //If the text is done, cycle it.
+                    this.destroyText();
+                    this.cycleText();
+                }
             }
         }
     });
@@ -602,14 +605,13 @@ Quintus.HUD = function(Q){
             },
             //When 'Move' is selected
             showPointer:function(player,attack){
-                if(Q.state.get("phase")===2){
-                    Q.clearStage(3);
-                    if(player&&attack){
-                        Q.stage(1).insert(new Q.Pointer({player:player,attack:attack}));
-                    } else {
-                        Q.stage(1).insert(new Q.Pointer());
-                    }
+                Q.clearStage(3);
+                if(player&&attack){
+                    Q.stage(1).insert(new Q.Pointer({player:player,attack:attack}));
+                } else {
+                    Q.stage(1).insert(new Q.Pointer());
                 }
+                
             },
 
             useItem:function(props){
@@ -687,8 +689,7 @@ Quintus.HUD = function(Q){
             },
             resetMovement:function(p){
                 //Only reset if the player can redo (he hasn't done anything that cannot be reversed just by moving back)
-                //Also, can only do this in the battle phase
-                if(p.player.p.canRedo&&Q.state.get("phase")===2){
+                if(p.player.p.canRedo){
                     p.player.p.x=p.player.p.w/2+p.player.p.startLocation[0]*Q.tileH;
                     p.player.p.y=p.player.p.h/2+p.player.p.startLocation[1]*Q.tileH;
                     p.player.p.loc = [(p.player.p.x-p.player.p.w/2)/Q.tileH,(p.player.p.y-p.player.p.h/2)/Q.tileH];
@@ -700,11 +701,7 @@ Quintus.HUD = function(Q){
             },
 
             endTurn:function(p){
-                if(Q.state.get("phase")===2){
-                    p.player.endTurn();
-                } else {
-                    //Play can't do that sound
-                }
+                p.player.endTurn();
             }
         } 
     });
@@ -775,13 +772,8 @@ Quintus.HUD = function(Q){
             var textH = this.p.textH;
             //size the menu to look nice
             this.p.h=keys.length*textH+this.p.spacing;
-            //Grey out some text if it's not the battle phase
             for(i=0;i<keys.length;i++){
                 var textColor = 'white';
-                for(j=0;j<this.p.greyed.length;j++){
-                    if(i===this.p.greyed[j]){textColor='#CCC';};
-                }
-                
                 //Create a text UI for each option and push it to the texts array.
                 this.p.texts.push(this.stage.insert(new Q.MenuText({x:this.p.x,y:this.p.y-this.p.h/2+this.p.spacing+(textH*i),label:playerMenu[keys[i]].text,func:playerMenu[keys[i]].func,params:playerMenu[keys[i]].params,color:textColor})));
             }
@@ -1379,76 +1371,177 @@ Quintus.HUD = function(Q){
         }
         return text;
     };
-    Q.scene('customAnimate',function(stage){
-        switch(stage.options.anim){
-            case "doneBattle":
-                var box = stage.insert(new Q.Sprite({
-                    x:200,y:200,
-                    w:200,h:150,
-                    asset:"/images/battle_complete.png",
-                    type:Q.SPRITE_NONE,
-                    scale:0.1
-                }));
-                box.add('tween');
-                box.animate({ x: 500, y:  400, scale:1 }, 1, Q.Easing.Quadratic.InOut)
+    Q.sceneAnimations = {
+        doneBattle:function(stage){
+            var box = stage.insert(new Q.Sprite({
+                x:200,y:200,
+                w:200,h:150,
+                asset:"/images/battle_complete.png",
+                type:Q.SPRITE_NONE,
+                scale:0.1
+            }));
+            box.add('tween');
+            box.animate({ x: 500, y:  400, scale:1 }, 1, Q.Easing.Quadratic.InOut)
+                .chain({ angle: 360 },0.25)
+                .chain({ angle: 720 },0.25) 
+                .chain({ angle: 0 },0.25) 
+                .chain({  x: 800, y:  200, scale:0.1  }, 1, Q.Easing.Quadratic.InOut,{callback:function(){Q.clearStage(4);}});
+        },
+        waitingBattle:function(stage){
+            var box = stage.insert(new Q.Sprite({
+                x:200,y:200,
+                w:200,h:150,
+                asset:"/images/battle_waiting.png",
+                type:Q.SPRITE_NONE,
+                scale:0.1
+            }));
+            box.add('tween');
+            function animateBox(b){
+                b.animate({ x: 500, y:  400, scale:1 }, 1, Q.Easing.Quadratic.InOut)
                     .chain({ angle: 360 },0.25)
                     .chain({ angle: 720 },0.25) 
                     .chain({ angle: 0 },0.25) 
-                    .chain({  x: 800, y:  200, scale:0.1  }, 1, Q.Easing.Quadratic.InOut,{callback:function(){Q.clearStage(4);}});
+                    .chain({  x: 800, y:  200, scale:0.1  }, 1, Q.Easing.Quadratic.InOut,{callback:function(){animateBox(b);}});
+            }
+            animateBox(box);
+        },
+        fadeIn:function(stage){
+            var fader = stage.insert(new Q.UI.Container({
+                x:0,y:0,
+                cx:0,cy:0,
+                w:Q.width,h:Q.height,
+                fill:"black",
+                type:Q.SPRITE_NONE
+            }));
+            fader.add("tween");
+            //speed is a number in seconds for how long the fade in lasts
+            fader.animate({opacity:0},stage.options.speed||1,Q.Easing.Out,{callback:function(){Q.clearStage(4);}});
+        },
+        dimToNight:function(stage){
+            var fader = stage.insert(new Q.UI.Container({
+                x:0,y:0,
+                cx:0,cy:0,
+                w:Q.width,h:Q.height,
+                fill:"black",
+                type:Q.SPRITE_NONE,
+                opacity:0
+            }));
+            fader.add("tween");
+            //speed is a number in seconds for how long the fade in lasts
+            fader.animate({opacity:0.3},stage.options.speed||1,Q.Easing.Out);
+        },
+        getItem:function(stage){
+            var box = stage.insert(new Q.UI.Container({
+                x:Q.width/2,y:Q.height/2,
+                w:200,h:150,
+                fill:"#234073",
+                type:Q.SPRITE_NONE,
+                scale:0.1
+            }));
+            box.insert(new Q.UI.Text({
+                x:0,
+                y:0,
+                type:Q.SPRITE_NONE,
+                color:"white",
+                size:30,
+                outlineWidth:3,
+                label:stage.options.item.item+" x"+stage.options.item.amount
+            }));
+            box.add('tween');
+            box.fit(10,10);
+            box.animate({scale:1 }, 1, Q.Easing.Quadratic.InOut)
+                .chain({ angle: 360 },1)
+                .chain({opacity:0.1}, 0.5, Q.Easing.Quadratic.InOut,{callback:function(){Q.clearStage(4);}});
+        },
+    };
+    Q.scene('customAnimate',function(stage){
+        var anims = Q.sceneAnimations;
+        switch(stage.options.anim){
+            case "doneBattle":
+                anims.doneBattle(stage);
                 break;
             case "waitingBattle":
-                var box = stage.insert(new Q.Sprite({
-                    x:200,y:200,
-                    w:200,h:150,
-                    asset:"/images/battle_waiting.png",
-                    type:Q.SPRITE_NONE,
-                    scale:0.1
-                }));
-                box.add('tween');
-                function animateBox(b){
-                    b.animate({ x: 500, y:  400, scale:1 }, 1, Q.Easing.Quadratic.InOut)
-                        .chain({ angle: 360 },0.25)
-                        .chain({ angle: 720 },0.25) 
-                        .chain({ angle: 0 },0.25) 
-                        .chain({  x: 800, y:  200, scale:0.1  }, 1, Q.Easing.Quadratic.InOut,{callback:function(){animateBox(b);}});
-                }
-                animateBox(box);
-                break;
-            case "changeArea":
-                var fader = stage.insert(new Q.UI.Container({
-                    x:0,y:0,
-                    cx:0,cy:0,
-                    w:Q.width,h:Q.height,
-                    fill:"black",
-                    type:Q.SPRITE_NONE
-                }));
-                fader.add("tween");
-                fader.animate({opacity:0},1,Q.Easing.Out,{callback:function(){Q.clearStage(4);}});
+                anims.waitingBattle(stage);
                 break;
             case "getItem":
-                var box = stage.insert(new Q.UI.Container({
-                    x:Q.width/2,y:Q.height/2,
-                    w:200,h:150,
-                    fill:"#234073",
-                    type:Q.SPRITE_NONE,
-                    scale:0.1
-                }));
-                box.insert(new Q.UI.Text({
-                    x:0,
-                    y:0,
-                    type:Q.SPRITE_NONE,
-                    color:"white",
-                    size:30,
-                    outlineWidth:3,
-                    label:stage.options.item.item+" x"+stage.options.item.amount
-                }));
-                box.add('tween');
-                box.fit(10,10);
-                box.animate({scale:1 }, 1, Q.Easing.Quadratic.InOut)
-                    .chain({ angle: 360 },1)
-                    .chain({opacity:0.1}, 0.5, Q.Easing.Quadratic.InOut,{callback:function(){Q.clearStage(4);}});
+                anims.getItem(stage);
                 break;
+            case "fadeIn":
+                anims.fadeIn(stage);
+                break;
+            case "dimToNight":
+                anims.dimToNight(stage);
         }
     });
-    
+    Q.scene("lobby",function(stage){
+        var box = stage.insert(new Q.UI.Container({
+            x:Q.width/2,y:Q.height/4,
+            w:200,h:0,
+            fill:"#234073",
+            type:Q.SPRITE_NONE
+        }));
+        box.insertPlayerText = function(name){
+            box.insert(new Q.UI.Text({
+                x:0,
+                y:30+(box.children.length*28),
+                cy:0,
+                type:Q.SPRITE_NONE,
+                color:"white",
+                size:22,
+                outlineWidth:3,
+                label:name
+            }));
+            box.p.h=50+(box.children.length*28);
+        };
+        box.insert(new Q.UI.Text({
+            x:0,
+            y:box.p.h/2+10,
+            type:Q.SPRITE_NONE,
+            color:"white",
+            size:30,
+            outlineWidth:3,
+            label:"Player List"
+        }));
+        var players = Q.state.get("players");
+        for(i=0;i<players.length;i++){
+            box.insertPlayerText(players[i].p.name,i);
+        }
+        if(stage.options.host){
+            var startButton = stage.insert(new Q.UI.Button({
+                x:Q.width/2,y:Q.height/4-60,
+                w:120,h:50,
+                fill:"#234073"
+            },function(){
+                Q.state.get("playerConnection").socket.emit("startGame");
+            }));
+            startButton.insert(new Q.UI.Text({
+                x:0,
+                y:-startButton.p.h/2+11,
+                type:Q.SPRITE_NONE,
+                color:"white",
+                size:22,
+                outlineWidth:3,
+                label:"Start!"
+            }));
+        } else {
+            var waitingCont = stage.insert(new Q.UI.Container({
+                x:Q.width/2,y:Q.height/4-60,
+                w:120,h:50,
+                fill:"#234073",
+                type:Q.SPRITE_NONE
+            }));
+            waitingCont.insert(new Q.UI.Text({
+                x:0,
+                y:-waitingCont.p.h/2+11,
+                type:Q.SPRITE_NONE,
+                color:"white",
+                size:22,
+                outlineWidth:3,
+                label:"Waiting"
+            }));
+        }
+        Q.state.on("change.players",function(){
+            box.insertPlayerText(Q.state.get("players")[Q.state.get("players").length-1].p.name);
+        });
+    })
 };
