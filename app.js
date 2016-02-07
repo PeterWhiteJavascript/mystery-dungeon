@@ -29,17 +29,23 @@ io.on('connection', function (socket) {
     //The current user's id
     var userId,
     //Holds all of the levelData, players, and filename
-    saveData;
-    
+    saveData,
+    //Checks every second to make sure the user gets connected properly
+    loginInterval;
     setTimeout(function () {
         socket.join('login');
         userId = id;
         //Make sure to give a unique id
         if(_users.length>0&&_users[_users.length-1].playerId===id){id++;userId++;};
         _users.push({playerId:userId});
-        socket.emit('connected', { playerId: userId});
+        loginInterval = setInterval(function(){
+            socket.emit('connected', { playerId: userId});
+        },1000);
         io.emit('count', { playerCount: io.engine.clientsCount});
-    }, 3000);
+    }, 1500);
+    socket.on('confirmConnect',function(){
+        clearInterval(loginInterval);
+    });
 
     socket.on('disconnect', function () {
         

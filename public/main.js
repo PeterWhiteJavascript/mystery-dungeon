@@ -401,6 +401,7 @@ require(objectFiles, function () {
                 document.getElementById('login').style.display='block';
                 console.log("I am "+data['playerId']);
             });
+            socket.emit('confirmConnect');
         });
         
         //When the user disconnects from the game
