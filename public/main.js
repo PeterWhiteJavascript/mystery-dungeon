@@ -738,7 +738,7 @@ require(objectFiles, function () {
             currentStage:[],
             currentStageName:"",
             //Scene music
-            musicEnabled:false,//true,
+            musicEnabled:true,//true,
             //sound effects
             soundEnabled:true,
             //Which tunes have been loaded (so that we don't load music twice)
@@ -778,19 +778,48 @@ require(objectFiles, function () {
         //Get rid of the login
         var div = document.getElementById('login');
         document.getElementById('main').removeChild(div);
-        
-        //At this point, we will have pulled user settings from the database
-        //We will probably want to update something in the Q.state here
-        Q.playMusic("adventure1.mp3",function(){
-            Q.state.get("playerConnection").socket.emit('toLobby', { 
-                playerId:Q.state.get("playerConnection").id, 
-                character:name,
-                file:file
+        //Show the "loading" animation
+        var loading = Q.stage(2).insert(new Q.Sprite({
+            x:0,y:0,
+            cx:0,cy:0,
+            w:200,h:100,
+            asset:"/images/battle_waiting.png"
+        }));
+        loading.add("tween");
+        loading.doAnim=function(x,y){
+            loading.animate({x:x,y:y},2,Q.Easing.Quadratic.InOut,{callback:function(){loading.doAnim(Math.random()*Q.width,Math.random()*Q.height);}});
+        };
+        loading.doAnim(Math.random()*Q.width,Math.random()*Q.height);
+        var musicToLoad =[
+            "adventure1.mp3",
+            "battle1.mp3",
+            "talking1.mp3"
+        ];
+        var ld =Q.state.get("loadedMusic");
+        for(i=0;i<musicToLoad.length;i++){
+            musicToLoad[i]="scenes/"+musicToLoad[i];
+        }
+        //Start loading the music
+        Q.load(musicToLoad.join(','),function(){
+            for(i=0;i<musicToLoad.length;i++){
+                ld.push(musicToLoad[i]);
+            }
+            //At this point, we will have pulled user settings from the database
+            //We will probably want to update something in the Q.state here
+            Q.playMusic("adventure2.mp3",function(){
+                loading.destroy();
+                Q.state.get("playerConnection").socket.emit('toLobby', { 
+                    playerId:Q.state.get("playerConnection").id, 
+                    character:name,
+                    file:file
+                });
             });
+            
         });
+        
     };
     
-    Q.startScene = function(data){console.log(data)
+    Q.startScene = function(data){
         //Get the path if we're staging a .tmx
         var currentPath = Q.getPath(data.levelMap.name);
         //Load the .tmx
@@ -808,6 +837,42 @@ require(objectFiles, function () {
                         //Stage the TMX tilemap
                         Q.stageScene(data.onStart.name,1,{path:currentPath[0],pathNum:currentPath[1]});
                         var stage = Q.stage(1);
+                        //The locations for all barrels to be placed
+                        var barrels = [
+                            [6,19],
+                            [7,19],
+                            [8,19],
+                            
+                            [20,16],
+                            [21,16],
+                            [22,16],
+                            [20,17],
+                            [21,17],
+                            [22,17],
+                            [20,18],
+                            [21,18],
+                            [22,18],
+                            [23,18],
+                            [24,18],
+                            [20,19],
+                            [21,19],
+                            [22,19],
+                            [23,19],
+                            [24,19],
+                            [20,20],
+                            [21,20],
+                            [22,20],
+                            [23,20],
+                            
+                            [19,21],
+                            
+                            [13,22],
+                            [14,22]
+                        ];
+                        for(i=0;i<barrels.length;i++){
+                            stage.insert(new Q.Barrel({loc:barrels[i]}));
+                        }
+                        
                         //Create the "viewMover" which moves the camera
                         var viewMover = stage.insert(new Q.Sprite({
                             x:14*Q.tileH,y:5*Q.tileH
@@ -818,68 +883,79 @@ require(objectFiles, function () {
                         Q.viewFollow(viewMover,stage);
                         stage.viewport.scale=1.2;
                         
-                        var prof = stage.insert(new Q.StorySprite({loc:[14,13],moveTo:[14,20],onArrival:[{func:"playStand",props:["down"]}],dir:"left",anim:"Walk",sheet:"Professor"}));
+                        var prof = stage.insert(new Q.StorySprite({loc:[14,13],moveTo:[14,19],onArrival:[{func:"playStand",props:["down"]}],dir:"left",anim:"Walk",sheet:"Professor"}));
                         prof.launchFireball=function(){
-                            Q.playSound("attack.mp3");
-                            stage.insert(new Q.Fireball({loc:[prof.p.loc[0],prof.p.loc[1]-1],dir:prof.p.dir}));
-                            setTimeout(function(){
-                                Q.playSound("attack.mp3");
-                                stage.insert(new Q.Fireball({loc:[prof.p.loc[0]+1,prof.p.loc[1]],dir:prof.p.dir}));
-                            },300);
-                            setTimeout(function(){
-                                Q.playSound("attack.mp3");
-                                stage.insert(new Q.Fireball({loc:[prof.p.loc[0],prof.p.loc[1]+1],dir:prof.p.dir}));
-                            },600);
                             
+                            var fireballs = 9;
+                            for(i=0;i<fireballs;i++){
+                                setTimeout(function(){
+                                    Q.playSound("attack.mp3");
+                                    stage.insert(new Q.Fireball({loc:[prof.p.loc[0],prof.p.loc[1]],dir:prof.p.dir}));
+                                    stage.insert(new Q.Fireball({loc:[prof.p.loc[0],prof.p.loc[1]-1],dir:prof.p.dir}));
+                                },i*150);
+                            }
+                            setTimeout(function(){
+                                viewMover.animate({x:14*Q.tileH,y:19*Q.tileH}, 2, Q.Easing.Linear,{callback:function(){
+                                    var interaction = [
+                                        {asset:"Professor_Story_Idle.png",pos:"right",text:[{obj:prof,func:"changeDir",props:"left"},"Would you like to try?","There is a barrel behind you that you can destroy!"]},
+                                        {asset:"Dratini_Story_Idle.png",pos:"left",text:["I guess I'll have to now!",{obj:drat,func:"changeDir",props:"left"},"Here it goes!",{obj:viewMover,func:"animater",props:[9*Q.tileH,19*Q.tileH,2,drat,"playBreatheFire","left"]}]}
+                                    ];
+                                    Q.stageScene("interaction",10,{interaction:interaction});
+                                }});
+                            },fireballs*150+700);
                             prof.playStand(prof.p.dir);
                         };
                         prof.on("launchFireball");
-                        var drat = stage.insert(new Q.StorySprite({loc:[13,13],moveTo:[13,20],onArrival:[{func:"playStand",props:["right"]}],dir:"right",anim:"Walk",sheet:"Dratini"}));
+                        var drat = stage.insert(new Q.StorySprite({loc:[13,13],moveTo:[13,19],onArrival:[{func:"playStand",props:["down"]}],dir:"right",anim:"Walk",sheet:"Dratini"}));
                         drat.launchFireball=function(){
                             Q.playSound("attack.mp3");
-                            stage.insert(new Q.Fireball({loc:[drat.p.loc[0]-1,drat.p.loc[1]],dir:drat.p.dir}));
+                            //Launch the fireball
+                            stage.insert(new Q.Fireball({loc:[drat.p.loc[0]-1,drat.p.loc[1]],dir:drat.p.dir,scale:0.5}));
+                            setTimeout(function(){
+                                //Move the viewMover back to the center
+                                viewMover.animate({x:14*Q.tileH,y:19*Q.tileH}, 2, Q.Easing.Linear,{callback:function(){
+                                    Q.stageScene("customAnimate",9,{anim:"dimToNight",speed:10});
+                                    Q.clearStage(10);
+                                    //Prof move to above drat
+                                    prof.startAutoMove([13,18]);
+                                    prof.p.onArrival=[{
+                                        func:function(dir){
+                                            prof.playWalk(dir);
+                                            //Set what happens when you see the enemies
+                                            viewMover.seeEnemies=function(){
+                                                Q.playMusic("battle1.mp3");
+                                                var interaction = [
+                                                    {asset:"Professor_Story_Idle.png",pos:"right",text:["Looks like they found us.","If they think they can stop me, then they are wrong.","Come, let us fight!"]},
+                                                    {asset:"Dratini_Story_Idle.png",pos:"left",text:["Yeah!"]}
+                                                ];
+                                                Q.stageScene("interaction",10,{interaction:interaction});
+                                            };
+
+                                            //Spawn several enemies up top here
+                                            var enemy1 = stage.insert(new Q.StorySprite({loc:[12,9],dir:"down",anim:"Walk",sheet:"Professor"}));
+                                            var enemy2 = stage.insert(new Q.StorySprite({loc:[14,9],dir:"down",anim:"Walk",sheet:"Professor"}));
+                                            var enemy3 = stage.insert(new Q.StorySprite({loc:[9,10],dir:"right",anim:"Walk",sheet:"Professor"}));
+                                            var enemy4 = stage.insert(new Q.StorySprite({loc:[16,10],dir:"left",anim:"Walk",sheet:"Professor"}));
+                                            var enemy5 = stage.insert(new Q.StorySprite({loc:[9,9],dir:"right",anim:"Walk",sheet:"Professor"}));
+                                            
+                                            var interaction = [
+                                                {asset:"Professor_Story_Idle.png",pos:"right",text:["You have done well enough to be called my aprentice!","It is getting dark, let us depart for home.",
+                                                        {obj:prof,func:"setProp",props:["onArrival",{func:"playStand",props:"up"}]},
+                                                        {obj:prof,func:"startAutoMove",props:[13,13]},
+                                                        {obj:drat,func:"setProp",props:["onArrival",{func:"playStand",props:"up"}]},
+                                                        {obj:drat,func:"startAutoMove",props:[13,14]},
+                                                        {obj:viewMover,func:"animater",props:[14*Q.tileH,11*Q.tileH,5,viewMover,"seeEnemies"]}
+                                                    ]}
+                                            ];
+                                            Q.stageScene("interaction",10,{interaction:interaction});
+                                        },
+                                        props:"down"
+                                    }];
+                                }});
+                            },1200);
                             drat.playStand(drat.p.dir);
                         };
                         drat.on("launchFireball");
-                        //Prof destroys these 3 barrels
-                        stage.insert(new Q.Barrel({loc:[18,19]}));
-                        stage.insert(new Q.Barrel({loc:[19,20]}));
-                        var lastBarrel = stage.insert(new Q.Barrel({loc:[19,21]}));
-                        lastBarrel.on("destroyed",function(){
-                            Q.clearStage(10);
-                            var interaction = [
-                                {asset:"Professor_Story_Idle.png",pos:"right",text:[{obj:prof,func:"changeDir",props:"left"},"Would you like to try?","There is a barrel behind you that you can destroy!"]},
-                                {asset:"Dratini_Story_Idle.png",pos:"left",text:["I guess I'll have to now!",{obj:drat,func:"changeDir",props:"left"},"Here it goes!",{obj:drat,func:"playBreatheFire",props:"left"}]}
-                            ];
-                            Q.stageScene("interaction",10,{interaction:interaction});
-                        });
-                        //Drat destroys this one barrel
-                        var barrel = stage.insert(new Q.Barrel({loc:[9,20]}));
-                        barrel.on("destroyed",function(){
-                            Q.stageScene("customAnimate",9,{anim:"dimToNight",speed:10});
-                            Q.clearStage(10);
-                            //Set what happens when you see the enemies
-                            viewMover.seeEnemies=function(){
-                                
-                            };
-                            
-                            //Spawn Several "Enemies" Up top here
-                            var enemy1 = stage.insert(new Q.StorySprite({loc:[12,9],dir:"down",anim:"Walk",sheet:"Professor"}));
-                            var enemy2 = stage.insert(new Q.StorySprite({loc:[14,9],dir:"down",anim:"Walk",sheet:"Professor"}));
-                            var enemy3 = stage.insert(new Q.StorySprite({loc:[10,11],dir:"right",anim:"Walk",sheet:"Professor"}));
-                            var enemy4 = stage.insert(new Q.StorySprite({loc:[15,11],dir:"left",anim:"Walk",sheet:"Professor"}));
-                            
-                            var interaction = [
-                                {asset:"Professor_Story_Idle.png",pos:"right",text:["You have done well enough to be called my aprentice!","It is getting dark, let us depart for home.",
-                                        {obj:prof,func:"setProp",props:["onArrival",{func:"playStand",props:"up"}]},
-                                        {obj:prof,func:"startAutoMove",props:[14,13]},
-                                        {obj:drat,func:"setProp",props:["onArrival",{func:"playStand",props:"up"}]},
-                                        {obj:drat,func:"startAutoMove",props:[13,13]},
-                                        {obj:viewMover,func:"animater",props:[14*Q.tileH,11*Q.tileH,5,viewMover.seeEnemies]}
-                                    ]}
-                            ];
-                            Q.stageScene("interaction",10,{interaction:interaction});
-                        });
                         
                         viewMover.moveChars = function(){
                             if(viewMover.p.y>15*Q.tileH){
@@ -888,9 +964,9 @@ require(objectFiles, function () {
                                 //After drat has reached the target (he reaches it second) play this interaction
                                 drat.on("doneAutoMove",function(){
                                     var interaction = [
-                                        {asset:"Professor_Story_Idle.png",pos:"right",text:["We have arrived!","This is where you will practice launching fireballs.",{obj:prof,func:"changeDir",props:"left"},"One day you'll be able to do it too!",{obj:prof,func:"changeDir",props:"down"}]},
+                                        {asset:"Professor_Story_Idle.png",pos:"right",text:["We have arrived!","This is where you will practice launching fireballs.",{obj:prof,func:"changeDir",props:"left"},"One day you'll be able to protect the village!",{obj:prof,func:"changeDir",props:"down"}]},
                                         {asset:"Dratini_Story_Idle.png",pos:"left",text:[{obj:drat,func:"changeDir",props:"right"},"I'll surpass you in no time!"]},
-                                        {asset:"Professor_Story_Idle.png",pos:"right",text:[{obj:drat,func:"changeDir",props:"right"},{obj:prof,func:"playBreatheFire",props:"right"},"Hah, save your dreams for when you're sleeping!"]}
+                                        {asset:"Professor_Story_Idle.png",pos:"right",text:[{obj:drat,func:"changeDir",props:"right"},"Hah, save your dreams for when you're sleeping!",{obj:viewMover,func:"animater",props:[20*Q.tileH,19*Q.tileH,2,prof,"playBreatheFire","right"]}]}
                                     ];
                                     Q.stageScene("interaction",10,{interaction:interaction});
                                     drat.off("doneAutoMove");
@@ -900,10 +976,13 @@ require(objectFiles, function () {
                         };
                         viewMover.on("step",viewMover,"moveChars");
                         viewMover.animater=function(props){
-                            viewMover.animate({x:props[0],y:props[1]},props[2],Q.Easing.Linear,{callback:props[3]()});
+                            viewMover.animate({x:props[0],y:props[1]},props[2],Q.Easing.Linear,
+                            {callback:function(){
+                                    props[3][props[4]](props[5]);
+                            }});
                         };
                         //Start moving the camera
-                        viewMover.animate({x:14*Q.tileH,y:23*Q.tileH}, 7, Q.Easing.Linear);
+                        viewMover.animate({x:14*Q.tileH,y:19*Q.tileH}, 7, Q.Easing.Linear);
                         break;
                 };
                 
@@ -955,7 +1034,7 @@ require(objectFiles, function () {
             Q.playSound("explosion_2.mp3");
         },
         sensor:function(col){
-           if(col.isA("Barrel")&&!this.p.col){
+           if(col.isA("Barrel")&&!this.p.col&&this.p.animation==="burning"){
                this.burn();
                this.p.col = col;
                this.p.x=col.p.x;
@@ -1003,7 +1082,8 @@ require(objectFiles, function () {
                 w:64,h:64,
                 types:["Normal"],
                 myTurnTiles:1000000,
-                stepDelay:0.4
+                stepDelay:0.4,
+                type:Q.SPRITE_NONE
             });
             this.p.dir ? this.p.dir : "down";
             var pos = Q.setXY(this.p.loc[0],this.p.loc[1]);
@@ -1017,14 +1097,19 @@ require(objectFiles, function () {
             this.p.dir=dir;
             this.playStand(dir);
         },
-        startAutoMove:function(moveTo){console.log(moveTo)
+        startAutoMove:function(moveTo){
             if(moveTo){this.p.moveTo = moveTo;};
             var graph = new Graph(this.getWalkMatrix());
             this.moveAlong(this.getPath(this.p.moveTo,graph));
         },
         doneAutoMove:function(){
             for(i=0;i<this.p.onArrival.length;i++){
-                this[this.p.onArrival[i].func](this.p.onArrival[i].props);
+                if(Q._isFunction(this.p.onArrival[i].func)){
+                    this.p.onArrival[i].func(this.p.onArrival[i].props);
+                //Else if it's a string
+                } else {
+                    this[this.p.onArrival[i].func](this.p.onArrival[i].props);
+                }
             }
         },
         setProp:function(props){
@@ -1121,6 +1206,16 @@ require(objectFiles, function () {
                 this.p.label+=this.p.text[this.p.charNum];
                 Q.playSound("text_stream.mp3");
             }
+        },
+        interact:function(){
+            var done = false;
+            if(this.p.label.length>=this.p.text.length){
+                done=true;
+            } else {
+                this.p.label=this.p.text;
+                this.off("step",this,"streamCharacters");
+            }
+            return done;
         }
     });
     Q.UI.Container.extend("InteractionBox",{
@@ -1133,7 +1228,8 @@ require(objectFiles, function () {
                 interactionNum:0,
                 //This is the number for the array of text in the interaction
                 textNum:0,
-                fill:'#AAFF33'
+                fill:'#AAFF33',
+                canInteract:true
             });
             this.p.y=Q.height-this.p.h;
         },
@@ -1192,10 +1288,17 @@ require(objectFiles, function () {
             }
         },
         step:function(){
-            if(Q.inputs['interact']){
-                this.destroyText();
-                this.cycleText();
+            if(this.p.canInteract&&Q.inputs['interact']){
+                if(this.p.textDisplay.interact()){
+                    this.destroyText();
+                    this.cycleText();
+                }
                 Q.inputs['interact']=false;
+                this.p.canInteract=false;
+                var t = this;
+                setTimeout(function(){
+                    t.p.canInteract=true;
+                },200);
             }
         }
     });
@@ -1283,6 +1386,7 @@ require(objectFiles, function () {
         
         "battle_complete.png",
         "battle_waiting.png"
+       
     ];
     for(i=0;i<imageFiles.length;i++){
         imageFiles[i]="/images/"+imageFiles[i];

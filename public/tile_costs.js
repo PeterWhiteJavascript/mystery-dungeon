@@ -62,7 +62,7 @@ Q.getTileCost = function(tile,p){
             break;
         case "SPRITE_WATER":
             cost=200000;
-            if(p.special.canSwim){
+            if(p.special&&p.special.canSwim){
                 cost=5;
             }
             if(type1==="Ghost"||type2==="Ghost"){
@@ -229,7 +229,7 @@ Q.getMoveSpeed=function(tile,obj){
             }
             break;
         case "SPRITE_WATER":
-            if(obj.p.special.canSwim){
+            if(obj.p.special&&obj.p.special.canSwim){
                 stepDelay=0.6;
             }
             if(type1==="Ghost"||type2==="Ghost"){

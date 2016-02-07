@@ -32,10 +32,12 @@ Q.setUpAnimations=function(){
         standingdown:{ frames: [0,1], rate:standRate},
         walkingdown:{ frames: [0,1,2], rate:walkRate,loop:false,trigger:"playStand"},
         attackingdown:{ frames: [0,1,2], rate:walkRate,loop:false,trigger:"playStand"},
+        breathefiredown:{ frames: [0,1,2],rate:walkRate,loop:false,trigger:"launchFireball"},
         
         standingup:{ frames: [3,4], rate:standRate},
         walkingup:{ frames: [3,4,5], rate:walkRate,loop:false,trigger:"playStand"},
         attackingup:{ frames: [3,4,5], rate:walkRate,loop:false,trigger:"playStand"},
+        breathefireup:{ frames: [3,4,5],rate:walkRate,loop:false,trigger:"launchFireball"},
         
         standingleft:{ frames: [6,7], rate:standRate},
         walkingleft:{ frames: [6,7,8], rate:walkRate,loop:false,trigger:"playStand"},
@@ -51,7 +53,7 @@ Q.setUpAnimations=function(){
     });
     Q.animations("fireball",{
         burning:{frames:[0],rate:standRate},
-        engulf:{frames:[1,2,1,2],rate:walkRate,loop:false,trigger:"burned"}
+        engulf:{frames:[1,2,1,2],rate:walkRate/2,loop:false,trigger:"burned"}
     });
 };
 };
