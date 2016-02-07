@@ -39,7 +39,7 @@ io.on('connection', function (socket) {
         _users.push({playerId:userId});
         socket.emit('connected', { playerId: userId});
         io.emit('count', { playerCount: io.engine.clientsCount});
-    }, 1500);
+    }, 3000);
 
     socket.on('disconnect', function () {
         

@@ -391,7 +391,7 @@ var objectFiles = [
 require(objectFiles, function () {
     function setUp() {
         //When the user connects to the game
-        socket.on('connected', function (data) {
+        socket.on('connected', function (data) {console.log(data)
             selfId = data['playerId'];
             Q.state.set("playerConnection",{id:data['playerId'],socket:socket});
             Q.setInitialState();
