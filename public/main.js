@@ -703,7 +703,7 @@ require(objectFiles, function () {
             currentStage:[],
             currentStageName:"",
             //Scene music
-            musicEnabled:false,//true,
+            musicEnabled:true,//true,
             //sound effects
             soundEnabled:true,
             //Which tunes have been loaded (so that we don't load music twice)
