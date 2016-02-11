@@ -504,49 +504,7 @@ RP.items={
     }
 };
 RP.classes={
-    "Professor":{
-        "className":"Professor",
-        
-        "exp":14,
-        "types": [
-            "Poison",
-            "Water"
-        ],
-        "baseStats":{
-            "hp":5.5,
-            "atk":7,
-            "def":5.5,
-            "spatk":4,
-            "spdef":5.5,
-            "spd":8.5
-        },
-        "otherSeed": {
-            "mind": [2,3],
-            "dexterity": [3,6],
-            "strength": [2,6],
-            "stamina": [6,3]
-        },
-        "abilities": [
-            "RunAway",
-            "Pickup"
-        ],
-        "attacks": [
-            ["Scratch",0],
-            ["TailWhip",0]/*,
-            ["SandAttack",4],
-            ["Astonish",8],
-            ["BatonPass",11],
-            ["Tickle",15],
-            ["FurySwipes",18],
-            ["Swift",22],
-            ["Screech",25],
-            ["Agility",29],
-            ["DoubleHit",32],
-            ["Fling",36],
-            ["NastyPlot",39],
-            ["LastResort",43]*/
-        ]
-    }
+    
 };
 
 /*

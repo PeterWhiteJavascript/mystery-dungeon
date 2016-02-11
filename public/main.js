@@ -1,7 +1,7 @@
 window.addEventListener("load", function() {
 
 var Q = window.Q = Quintus({audioSupported: ['mp3','ogg','wav']}) 
-        .include("Sprites, Scenes, Input, 2D, Anim, Touch, UI, TMX, Audio, Gradient, Objects, Areas, Animations, HUD, TileCosts, AttackFuncs, ItemFuncs, Music")
+        .include("Sprites, Scenes, Input, 2D, Anim, Touch, UI, TMX, Audio, Objects, Areas, Animations, HUD, TileCosts, AttackFuncs, ItemFuncs, Music, AI")
         .setup({ development: true})
         .touch().controls(true)
         .enableSound();
@@ -34,8 +34,6 @@ var colors = {
 var makeMainMenu=function(cont){
     var buttons = Q.menuButtons.Main;
     var menu = cont.insert(new Q.MainMenu({x:0,y:200,w:cont.p.w/2,h:80+buttons.length*80,fill:'red',cx:cont.p.w/4,cy:0}));
-    var colors = Q.getGradient(["Rock","Electric"]);
-    menu.insert(new Q.Gradient({w:menu.p.w,h:menu.p.h,col0:colors[0],col1:colors[1]}));
     for(i=0;i<buttons.length;i++){
         menu.insert(new Q.UI.Button({
             x:0,y:80+80*i,
@@ -70,9 +68,6 @@ Q.menuButtons = {
 Q.scene('title',function(stage){
     //The main container that holds the title menu. The gradient is attached to it
     var mainCont = stage.insert(new Q.UI.Container({x:Q.width/2,y:0,w:Q.width/2,h:Q.height,fill:true,cy:0}));
-    //Gets the colors for the types (in colors.js)
-    var colors = Q.getGradient(["Water","Fire"]);
-    mainCont.insert(new Q.Gradient({w:mainCont.p.w,h:mainCont.p.h,col0:colors[0],col1:colors[1]}));
     var headerImage = stage.insert(new Q.Sprite({asset:"Pokemon_Mystery_Dungeon_Logo.png",x:Q.width/2,y:20,cy:0}));
     var menu = makeMainMenu(mainCont);
 });
@@ -145,8 +140,6 @@ Q.scene('playerMenu',function(stage){
     };
     menu.add("playerMenu");
     menu.setUpMenu();
-    var colors = Q.getGradient(stage.options.player.p.types);
-    menu.insert(new Q.Gradient({w:menu.p.w,h:menu.p.h,col0:colors[0],col1:colors[1],player:stage.options.player}));
     Q.inputs['interact']=false;
 });
 
@@ -174,8 +167,6 @@ Q.scene('interactingMenu',function(stage){
     };
     menu.add("interactingMenu");
     menu.setUpMenu();
-    var colors = Q.getGradient(stage.options.player.p.types);
-    menu.insert(new Q.Gradient({w:menu.p.w,h:menu.p.h,col0:colors[0],col1:colors[1],player:stage.options.player}));
     Q.inputs['interact']=false;
 });
 
@@ -234,53 +225,16 @@ Q.scene('soundControls',function(stage){
     }));
 });
 
-Q.addActor=function(actor){
-    if(actor.p.playerId!==Q.state.get("playerConnection").id){
-        var obj = Q.stage(1).insert(new Q.Player({className:actor.p.className}));
-        var ps = Object.keys(actor.p);
-        for(i=0;i<ps.length;i++){
-            obj.p[ps[i]]=actor['p'][ps[i]];
-        }
-        //CHangwe
-        obj.p.sheet=actor.p.sheet;
-        obj.p.playerId=actor.p.playerId;
-        obj.p.area=actor.p.area;
-        obj.p.loc = actor.p.loc;
-        obj.p.dir = actor.p.dir;
-        //var obj = Q.setPosition(obj,obj.p.loc);
-        console.log("Placed "+obj.p.name+" at "+obj.p.loc[0]+","+obj.p.loc[1]);
-        obj.playWalk(obj.p.dir);
-        obj.add("actor");
-        return obj;
+Q.addActor=function(actor,loc,dir){
+    var obj = Q.stage(1).insert(new Q.Player({className:actor.className,loc:loc,dir:dir||"down"}));
+    var ps = Object.keys(actor);
+    for(i=0;i<ps.length;i++){
+        obj.p[ps[i]]=actor[ps[i]];
     }
+    console.log("Placed "+obj.p.name+" at "+obj.p.loc[0]+","+obj.p.loc[1]);
+    obj.add("actor");
+    return obj;
 };
-
-Q.updatePlayers=function(pl){
-    for(i=0;i<Q.players.length;i++){
-        if(Q.players[i].p.playerId===pl.p.playerId){
-            Q.players[i]=pl;
-        }
-    }
-};
-
-Q.updateEnemies=function(events){
-    if(!Q.stage(1)){return;};
-    for(i=0;i<events.length;i++){
-        if(events[i].status===1&&events[i].enemies){
-            for(j=0;j<events[i].enemies.length;j++){
-                var enemy = events[i].enemies[j];
-                var enm = Q("Enemy",1).items.filter(function(obj){
-                    return obj.p.playerId===enemy.playerId;
-                })[0];
-                var keys = Object.keys(enemy.p);
-                for(k=0;k<keys.length;k++){
-                    enm.p[keys[k]]=enemy.p[keys[k]];
-                }
-            }
-        }
-    }
-};
-
 
 Q.addTurnOrderView=function(){
     var tO = Q.state.get("turnOrder");
@@ -297,26 +251,6 @@ Q.addTurnOrderView=function(){
         })[0];
         Q.addViewport(enemyTurn);
     }
-};
-
-Q.setTurnOrder=function(){
-    var events = Q.state.get("events");
-    var keys = Object.keys(events);
-    for(i=0;i<keys.length;i++){
-        var event = events[keys[i]];
-        if(event.p.turnOrder.length>0){Q.state.set("turnOrder",event.p.turnOrder);return;}
-    }
-};
-
-Q.checkBattleEvents=function(events){
-    if(events.length){
-        for(i=0;i<events.length;i++){
-            if(events[i].p.enemies&&events[i].p.status===1){
-                return true;
-            }
-        }
-    }
-    return false;
 };
 
 Q.showWaiting=function(){
@@ -391,7 +325,7 @@ var objectFiles = [
 require(objectFiles, function () {
     function setUp() {
         //When the user connects to the game
-        socket.on('connected', function (data) {console.log(data)
+        socket.on('connected', function (data) {
             selfId = data['playerId'];
             Q.state.set("playerConnection",{id:data['playerId'],socket:socket});
             Q.setInitialState();
@@ -401,6 +335,7 @@ require(objectFiles, function () {
                 document.getElementById('login').style.display='block';
                 console.log("I am "+data['playerId']);
             });
+            //Tell the server that this client has connected properly
             socket.emit('confirmConnect');
         });
         
@@ -425,38 +360,227 @@ require(objectFiles, function () {
         //This sends the user to the lobby
         socket.on('goToLobby', function (data) {
             Q.state.set("players",data['players']);
-            /*UiPlayers.innerHTML = 'Players: ' + Q.players.length;
-            for(i=0;i<data['players'].length;i++){
-                console.log(data['players'][i].p.playerId)
-            }*/
-            if(data['player'].p.playerId===selfId){
+            if(data['player'].playerId===selfId){
                 var host = false;
                 //This is the first one here
                 if(Q.state.get("players").length===1){
                     host = true;
+                } 
                 //Waiting on "host" to start the game
-                } else {
+                else {
                     
                 }
                 Q.stageScene("lobby",1,{host:host});
             }
         });
-        
-        socket.on("startedGame",function(data){
-            //Clear the lobby
+        //At the start of the scene
+        socket.on("startedScene",function(data){
+            //Clear the first scene
             Q.clearStage(1);
             //Start the scene
             Q.startScene(data.levelData);
         });
-        
-        
-        socket.on("changeDir",function(data){
-            var player = Q("Player",1).items.filter(function (obj) {
-                return obj.p.playerId === data['playerId'];
-            })[0];
-            player.p.dir=data['inputted'];
-            player.playStand(player.p.dir);
+        //Called when all players must now place their units
+        socket.on("startedBattle",function(data){
+            Q.stage(1).viewport.scale=1;
+            Q.state.set("turnOrder",data['turnOrder']);
+            Q.state.set("battle",true);
+            Q.afterDir();
+            Q.stageScene("customAnimate",4,{anim:"battleStart"});
+            
+            //TEMP
+            return;
+            var placed = data['placed'];
+            if(placed){
+                for(i=0;i<placed.length;i++){
+                    var player = Q.state.get("players").filter(function(obj){
+                        return obj.playerId===placed[i][2];
+                    })[0];
+                    var pl = Q.addActor(player,[placed[i][0],placed[i][1]],placed[i][3]);
+                    var objs = Q.state.get("playerObjs");
+                    objs.push(pl);
+                };
+            }
+            var stage = Q.stage(1);
+            var ld = Q.state.get("levelData");
+            //All of this user's players (for now, just the main one)
+            var myPlayers = Q.state.get("players").filter(function(obj){
+                return obj.playerId === Q.state.get("playerConnection").id;
+            });
+            //Place the playerLocs guide
+            var playerLocs = ld.battle.playerLocs;
+            var guide = [];
+            for(i=0;i<playerLocs.length;i++){
+                guide.push(stage.insert(new Q.PathBox({loc:playerLocs[i]}),false,true));
+            }
+            //Create a pointer so the user can select a guide spot (and hover enemies to check their stats before the battle)
+            var pointer = stage.insert(new Q.Pointer({loc:playerLocs[0]}));
+            pointer.p.z=100;
+            pointer.p.sort=true;
+            Q.pointer = pointer;
+            pointer.p.playerLocs = guide;
+            pointer.initial = function(){  
+                //If there's a card up top, get rid of it.
+                Q.clearStage(3);
+                //Set the pointer's defaults
+                pointer.p.sheet = "objects";
+                pointer.p.frame = 4;
+                pointer.p.player = null;
+                pointer.del("animation,animations,dirControls");
+                pointer.add("pointerControls");
+            };
+            pointer.attachPlayer = function(){
+                Q.playSound("text_stream.mp3");
+                //Make sure the pointer is at the correct position
+                pointer.p.loc = [pointer.p.placedLoc[0],pointer.p.placedLoc[1]];
+                //Default to the first player
+                var player = myPlayers[0];
+                //Set up the player's card
+                Q.stageScene("tophud",3,{target:player});
+                //Insert the player onto the pointer
+                pointer.p.sheet = player.sheet;
+                pointer.p.sprite = "player";
+                pointer.p.frame = 3;
+                pointer.p.playerId = player.playerId;
+                pointer.del("pointerControls");
+                pointer.add("animation,animations,dirControls");
+                //Make the pointer animate
+                pointer.playStand(pointer.p.dir||"down");
+            };
+            //Happens if two players try to place on the same square at the same time
+            pointer.invalidPos=function(){
+                pointer.p.placedLoc = null;
+                pointer.p.player = null;
+            };
+            //Checks if there is a player on the spot we want to place
+            pointer.checkPlayers=function(loc){
+                var players = Q.state.get("playerObjs");
+                for(i=0;i<players.length;i++){
+                    if(players[i].p.loc[0]===loc[0]&&players[i].p.loc[1]===loc[1]){
+                        pointer.invalidPos();
+                        return true;
+                    }
+                }
+                return false;
+            };
+            pointer.on("interact",function(){
+                if(pointer.p.placedPlayer){return;};
+                //Confirm placement if we're placing a player
+                if(pointer.has("dirControls")){
+                    Q.playSound("text_stream.mp3");
+                    Q.state.get("playerConnection").socket.emit("confirmPlayerPlacement",{playerId:pointer.p.playerId,dir:pointer.p.dir,loc:pointer.p.loc});
+                    pointer.p.placedPlayer = true;
+                    pointer.initial();
+                    return;
+                }
+                //Load the 'select character to put' scene if we've selected in the guide
+                //Can't do it while moving
+                if(!pointer.p.stepping&&pointer.p.diffX===0&&pointer.p.diffY===0){
+                    var obj = Q.getObjectAt(pointer.p.x,pointer.p.y);
+                    if(obj&&obj.isA("PathBox")&&!pointer.checkPlayers(pointer.p.loc)){
+                        pointer.p.placedLoc = [pointer.p.loc[0],pointer.p.loc[1]];
+                        pointer.p.player = true;
+                        Q.state.get("playerConnection").socket.emit("checkPlayerPlacement",{playerId:Q.state.get("playerConnection").id,dir:pointer.p.dir,loc:pointer.p.loc});
+                        return;
+                    }
+                }
+                
+            });
+            pointer.on("menu",function(){
+                console.log("menu")
+                //Show turn order
+                console.log(Q.state.get("turnOrder"))
+            });
+            pointer.on("back",function(){
+                if(pointer.p.placedPlayer){
+                    Q.playSound("text_stream.mp3");
+                    pointer.p.placedPlayer = false;
+                    pointer.p.player.destroy();
+                    pointer.p.loc=[pointer.p.placedLoc[0],pointer.p.placedLoc[1]];
+                    var pos = Q.setXY(pointer.p.loc[0],pointer.p.loc[1]);
+                    pointer.p.x = pos[0];
+                    pointer.p.y = pos[1];
+                    pointer.initial();
+                    Q.state.get("playerConnection").socket.emit("removePlayerPlacement",{playerId:Q.state.get("playerConnection").id,loc:pointer.p.loc});
+                } else if(pointer.p.player){
+                    Q.playSound("text_stream.mp3");
+                    pointer.p.player = null;
+                    pointer.initial();
+                    Q.state.get("playerConnection").socket.emit("removePlayerPlacement",{playerId:Q.state.get("playerConnection").id,loc:pointer.p.loc});
+                }
+            });
         });
+        socket.on("checkedPlayerPlacement",function(data){
+            //Don't do it if this client isn't at the battle placement area yet
+            if(!Q.state.get("battle")){return;};
+            //Can't do it if there was already a player placed
+            if(data['found']){
+                Q.pointer.invalidPos();
+                return;
+            }
+            if(data['playerId']===Q.state.get("playerConnection").id){
+                Q.pointer.attachPlayer();
+            } else {
+                var player = Q.state.get("players").filter(function(obj){
+                    return obj.playerId===data['playerId'];
+                })[0];
+                var pl = Q.addActor(player,data['loc'],data['dir']);
+                var objs = Q.state.get("playerObjs");
+                objs.push(pl);
+            }
+        });
+        socket.on("removedPlayerPlacement",function(data){
+            var objs = Q.state.get("playerObjs");
+            for(i=0;i<objs.length;i++){
+                if(objs[i].p.playerId===data['playerId']){
+                    objs[i].destroyReady();
+                    objs[i].destroy();
+                    objs.splice(i,1);
+                }
+            }
+        });
+        socket.on("confirmedPlayerPlacement",function(data){
+            //Can't do this if we're not at the battle placement area yet
+            if(!Q.state.get("battle")){return;};
+            var pl = Q.state.get("players").filter(function(obj){
+                return obj.playerId===data['playerId'];
+            })[0];
+            var player;
+            if(data['playerId']===selfId){
+                player = Q.givePlayerProperties(Q.stage(1),pl,data['loc'],data['dir']);
+                var objs = Q.state.get("playerObjs");
+                objs.push(player);
+                Q.pointer.p.player = player;
+            } else {
+                player = Q.state.get("playerObjs").filter(function(obj){
+                    return obj.p.playerId===data['playerId'];
+                })[0];
+                player.playStand(data['dir']);
+            }
+            //If this was the last player to 'lock in', start the battle
+            if(data['startBattle']){
+                var plObjs = Q.state.get("playerObjs");
+                for(i=0;i<plObjs.length;i++){
+                    plObjs[i].destroyReady();
+                }
+                //Destroy the pointer
+                Q.pointer.destroy();
+                //Animate the 'start battle'
+                //Q.stageScene("customAnimate",4,{anim:"battleStart"});
+                //Start the battle music
+                var ld = Q.state.get("levelData");
+                Q.playMusic(ld.battle.music+".mp3");
+                
+            } 
+            //If there are still people who haven't selected a location
+            else {
+                player.showReady();
+            }
+        });
+        socket.on("getFastestClient",function(){
+            socket.emit("reciveFastestClients",{playerId:selfId});
+        });
+        
         socket.on("inputted",function(data){
             var player = Q("Player",1).items.filter(function (obj) {
                 return obj.p.playerId === data['playerId'];
@@ -475,151 +599,31 @@ require(objectFiles, function () {
             }
         });
         
-        socket.on('gotTextNum',function(data){
-            var npc = Q("NPC",1).items.filter(function(obj){
-                return obj.p.npcId===data['npcId'];
-            })[0];
-            npc.checkedServer(data['textNum']);
-        });
         
-        socket.on('movedNPC',function(data){
-            var npc = Q("NPC",1).items.filter(function(obj){
-                    return obj.p.npcId===data['npcId'];
-            })[0];
-            npc.moveTo(data['moveTo']);
-        });
-        
-        socket.on("leftArea",function(data){
-            Q.updatePlayers(data['player']);
-            var actor = Q("Player",1).items.filter(function (obj) {
-                return obj.p.playerId === data['playerId'];
-            })[0];
-            if(actor){
-                actor.destroy();
-            }
-        });
-        socket.on("changedArea",function(data){
-            //Update the Q.players
-            Q.updatePlayers(data['player']);
-            if(Q.stage(1)&&Q.stage(1).scene.name===data['player'].p.area){
-                if(!Q.state.get("battle")){
-                    var pl = Q.buildCharacter(data['player'].p);
-                    Q.addActor(pl);
-                } else {
-                    var pl = Q.buildCharacter(data['player'].p);
-                    var wP = Q.state.get("waitingPlayers");
-                    wP.push(pl);
-                }
-            }
-            
-        });
-        socket.on("recievedLevelData",function(data){
-            Q.state.set("currentBattles",[]);
-            Q.updatePlayers(data['player']);
-            var player = Q.buildCharacter(data['player']['p']);
-            Q.state.set("player",player);
-            if(data['levelData']&&!Q.checkBattleEvents(data['levelData'].events)||!data['levelData']){
-                Q.goToStage(player.p.area,player.p.loc,data['levelData']);
-                //Join the room
-                socket.emit("joinRoom",{playerId:selfId});
-            } else {
-                //show waiting for best time to join (at host's turn)
-                Q.clearStage(1);
-                //clearInterval(Q.updateInterval);
-                Q.showWaiting();
-                socket.emit("joinRoom",{playerId:selfId,battle:true});
-            }
-        });
-        socket.on('joinedBattle',function(data){
-            var player = Q.buildCharacter(data['player']['p']);
-            if(data['playerId']===selfId){
-                socket.emit("joinRoom",{playerId:selfId});
-                Q.state.set("battleHost",data['host']);
-                Q.state.set("battle",true);
-                Q.state.set("player",player);
-                Q.clearStage(4);
-                Q.state.set("events",data['levelData'].events);
-                Q.goToStage(player.p.area,player.p.loc,data['levelData']);
-            } else {
-                //If this actor is being added to someone that is already in the stage
-                if(Q.stage(1)){
-                    var obj = Q.addActor(player);
-                    obj = Q.setPosition(obj,obj.p.loc);
-                    console.log(obj.p.loc)
-                } else {
-                    var toAdd = Q.state.get("actorsToAdd");
-                    toAdd.push(player);
-                }
-            }
-            Q.state.set("waitingPlayers",[]);
-        });
-        socket.on("setEvent",function(data){
-            Q.eventFuncs[data['event'].eventType](data['event'],Q.state.get("playerConnection").id);
-        });
-        socket.on("triggeredEvent",function(data){
-            Q.state.get("events")[data['event']['p']['eventId']]=data['event'];
-            var trigger = Q("Trigger",1).items.filter(function(obj){
-                return obj.p.eventId===data['event']['p']['eventId'];
-            })[0];
-            if(trigger.p.status===0){
-                trigger.p.status = data['event']['p']['status'];
-                var event = Q.state.get("events")[data['event']['p']['eventId']];
-                event.eventId=event.p.eventId;
-                if(event.eventType==="spawnEnemies"){
-                    var curBattles = Q.state.get("currentBattles");
-                    curBattles.push(event.p.eventId);
-                }
-                Q.eventFuncs[event.eventType](event,data['host']);
-            }
-            
-        });
-        socket.on("playersInBattle",function(data){
-            if(selfId!==data['host']){
-                var player = Q.state.get("playerObj");
-                player.p.x=player.p.loc[0]*Q.tileH+Q.tileH/2;
-                player.p.y=player.p.loc[1]*Q.tileH+Q.tileH/2;
-                Q.state.get("playerConnection").socket.emit('update',{
-                    inputs:{
-                        left:Q.inputs['left'],
-                        right:Q.inputs['right'],
-                        up:Q.inputs['up'],
-                        down:Q.inputs['down']
-                    },
-                    playerId:Q.state.get("playerConnection").id,
-                    props:{
-                        x:player.p.x,
-                        y:player.p.y,
-                        dir:player.p.dir,
-                        loc:player.p.loc,
-                        animation:player.p.animation,
-                        area:Q.stage(1).scene.name
-                    }
-                });
-            }
-            //clearInterval(Q.updateInterval);
-            Q.state.set("battleHost",data['host']);
-            var tO = data['turnOrder'];
-            Q.state.set("turnOrder",tO);
-            Q.state.set("battle",true);
-            if(tO[0]===selfId){
-                Q.state.get("playerObj").turnStart();
-            } else {
-                Q.state.get("playerObj").p.myTurn=false;
-                Q.state.get("playerObj").disableControls();
-                Q.addTurnOrderView();
-            }
-        });
         socket.on("battleMoved",function(data){
             var whatMoved = data['playerId'];
             //Is enemy
             if(Q._isString(whatMoved)){
-                var enemy = Q("Enemy",1).items.filter(function(obj){
-                    return obj.p.playerId===whatMoved;
-                })[0];
-                enemy.p.calcMenuPath=data['walkPath'];
-                enemy.p.myTurnTiles=data['myTurnTiles'];
-                Q.addViewport(enemy);
-                enemy.add("autoMove");
+                var AITurn;
+                //Ally
+                if(whatMoved[0]==="a"){
+                    AITurn = Q("Ally",1).items.filter(function(obj){
+                        return obj.p.playerId===whatMoved;
+                    })[0];
+                } 
+                //Enemy
+                else if(whatMoved[0]==="e"){
+                    AITurn = Q("Enemy",1).items.filter(function(obj){
+                        return obj.p.playerId===whatMoved;
+                    })[0];
+                }
+                AITurn.p.calcMenuPath=data['walkPath'];
+                AITurn.p.myTurnTiles = AITurn.p.stats.sp.stamina;
+                Q.addViewport(AITurn);
+                AITurn.add("autoMove");
+                AITurn.on("doneAutoMove",function(){
+                   console.log("Waiting for AI"); 
+                });
             }
             //Is player
             else {
@@ -633,34 +637,21 @@ require(objectFiles, function () {
             }
         });
         socket.on("attacked",function(data){
-            var player;
-            if(Q._isNumber(data['playerId'])){
-                player = Q("Player",1).items.filter(function(obj){
-                    return obj.p.playerId===data['playerId'];
-                })[0];
-            } else if(Q._isString(data['playerId'])){
-                player = Q("Enemy",1).items.filter(function(obj){
-                    return obj.p.playerId===data['playerId'];
-                })[0];
-            }
-            Q.stageScene("bottomhud",3,{text:data['text'],player:player});
-            
+           var interaction = data['text'];
+           Q.stageScene("interaction",10,{interaction:interaction});
         });
-        socket.on("startTurn",function(data){
+        socket.on("startedTurn",function(data){
             var tO = data['turnOrder'];
             Q.state.set("turnOrder",tO);
-            Q.updateEnemies(data['events']);
             //If it's the current player turn
             if(tO[0]===selfId){
-                var wP = Q.state.get("waitingPlayers");
-                if(wP.length){
-                    socket.emit('joinBattle',{playerId:selfId,players:wP,battleHost:Q.state.get("battleHost")});
-                    Q.state.set("waitingPlayers",[]);
-                }
+                var playerTurn = Q("Player",1).items.filter(function(obj){
+                    return obj.p.playerId===tO[0];
+                })[0];
                 //Clear the menu if there is one
                 Q.clearStage(3);
                 //Start the player's turn
-                Q.state.get("playerObj").turnStart();
+                playerTurn.turnStart();
             }
             //If the current player is a user
             else if(Q._isNumber(tO[0])){
@@ -669,67 +660,40 @@ require(objectFiles, function () {
                 })[0];
                 Q.addViewport(playerTurn);
             } 
-            //If the current player is an enemy
+            //If the current player is an AI
             else if(Q._isString(tO[0])){
-                var enemyTurn = Q("Enemy",1).items.filter(function(obj){
-                    return obj.p.playerId===tO[0];
-                })[0];
-                if(enemyTurn){
-                    if(data['events'][0].host===selfId){
-                        enemyTurn.turnStart();
-                    } else {
-                        Q.addViewport(enemyTurn);
+                var AITurn;
+                //Ally
+                if(tO[0][0]==="a"){
+                    AITurn = Q("Ally",1).items.filter(function(obj){
+                        return obj.p.playerId===tO[0];
+                    })[0];
+                } 
+                //Enemy
+                else if(tO[0][0]==="e"){
+                    AITurn = Q("Enemy",1).items.filter(function(obj){
+                        return obj.p.playerId===tO[0];
+                    })[0];
+                }
+                //If this is the host, calculate the AI here
+                if(data['host']===selfId){
+                    if(!AITurn){
+                        console.log(AITurn,tO[0])
                     }
-                } else {
-                    Q.afterDir();
+                    Q.addViewport(AITurn);
+                    AITurn.turnStart();
+                } 
+                //If this is not the host, center on the enemy and wait for the AI to be passed in
+                else {
+                    Q.addViewport(AITurn);
                 }
             }
+        });
+        socket.on("endedBattle",function(){
+            //Play any win animations
             
-        });
-        socket.on('completedEvent',function(data){
-            var event = data['event'];
-            Q.eventCompleted(event['p']['eventId'],event['onCompleted']);
-            //Clear the menu if there is one
-            Q.clearStage(3);
-        });
-        socket.on("updatePlayerItems",function(data){
-            var player = Q.players.filter(function(obj){
-                return obj.p.playerId===data['playerId'];
-            })[0];
-            player.p.items=data['items'];
-            Q.stageScene("bottomhud",3,{text:[data['text']],player:player});
-        });
-        socket.on("updatedStats",function(data){
-            if(data['playerId']!==selfId){
-                var player = Q("Player",1).items.filter(function(obj){
-                    return obj.p.playerId===data['playerId'];
-                })[0];
-
-                var keys = Object.keys(data['player']['p']);
-                for(i=0;i<keys.length;i++){
-                    if(keys[i]==="attacks"){
-                        var attacks=[];
-                        for(j=0;j<data['player']['p'][keys[i]].length;j++){
-                            attacks.push(RP.moves[data['player']['p'][keys[i]][j]]);
-                        }
-                        data['player']['p'][keys[i]]=attacks;
-                    }
-                    else if(keys[i]==="ability"){data['player']['p'][keys[i]]=RP.abilities[data['player']['p'][keys[i]]];}
-                    else if(keys[i]==="items"){
-                        var itms = [];
-                        for(j=0;j<data['player']['p'][keys[i]].length;j++){
-                            if(Q._isArray(data['player']['p'][keys[i]][j])){
-                                itms.push({p:RP.items[data['player']['p'][keys[i]][j][0]],amount:data['player']['p'][keys[i]][j][1]});
-                            } else if(Q._isObject(data['player']['p'][keys[i]][j])){
-                                itms.push(data['player']['p'][keys[i]][j]);
-                            }
-                        }
-                        data['player']['p'][keys[i]]=itms;
-                    }
-                    player.p[keys[i]]=data['player']['p'][keys[i]];
-                }
-            }
-            
+            //Stage the win battle scene
+            Q.endScene(Q.state.get("levelData").onCompleted);
         });
     };
     
@@ -739,7 +703,7 @@ require(objectFiles, function () {
             currentStage:[],
             currentStageName:"",
             //Scene music
-            musicEnabled:true,//true,
+            musicEnabled:false,//true,
             //sound effects
             soundEnabled:true,
             //Which tunes have been loaded (so that we don't load music twice)
@@ -749,12 +713,14 @@ require(objectFiles, function () {
             //The position of the player menu
             //Also affects the sound toggle position
             playerMenuPos:"right",
-            
+            //All the player objects (actors and players)
+            playerObjs:[],
+            //The turn order for the battle
             turnOrder:[],
             currentCharacter:{},
             currentCharacterTurn:0,//The current turn (position in turnOrder array
             turnNumber:1,//The total number of rounds
-
+            
             enemies:{},
             //All battles eventId's that are going on in this stage right now
             currentBattles:[],
@@ -791,6 +757,7 @@ require(objectFiles, function () {
             loading.animate({x:x,y:y},2,Q.Easing.Quadratic.InOut,{callback:function(){loading.doAnim(Math.random()*Q.width,Math.random()*Q.height);}});
         };
         loading.doAnim(Math.random()*Q.width,Math.random()*Q.height);
+        
         var musicToLoad =[
             "adventure1.mp3",
             "battle1.mp3",
@@ -817,27 +784,105 @@ require(objectFiles, function () {
             });
             
         });
+    };
+    //createEnemies accepts an array of enemies taken from the server
+    Q.createEnemies = function(enemies,stage){
+        var ens = [];
+        for(i=0;i<enemies.length;i++){
+            var en = enemies[i];
+            var keys = Object.keys(en);
+            var enemy = stage.insert(new Q.Enemy());
+            for(j=0;j<keys.length;j++){
+                enemy.p[keys[j]]= en[keys[j]];
+            };
+            ens.push(enemy);
+        }
+        return ens;
+    };
+    Q.createAllies=function(allies,stage){
+        var als = [];
+        for(i=0;i<allies.length;i++){
+            var al = allies[i];
+            var keys = Object.keys(al);
+            var ally = stage.insert(new Q.Ally());
+            for(j=0;j<keys.length;j++){
+                ally.p[keys[j]]= al[keys[j]];
+            };
+            als.push(ally);
+        }
+        return als;
         
     };
-    
+    Q.readyForBattle=function(){
+        var socket = Q.state.get("playerConnection").socket;
+        socket.emit("readyForBattle",{playerId:Q.state.get("playerConnection").id});
+    };
+    Q.goToNextScene = function(){
+        var nextScene = Q.state.get("levelData").onCompleted.nextScene;
+        var socket = Q.state.get("playerConnection").socket;
+        socket.emit('readyForNextScene',{playerId:Q.state.get("playerConnection").id,nextScene:nextScene});
+    };
+    Q.endScene = function(data){
+        Q.playMusic(data.music+".mp3",function(){ 
+            switch(data.scene){
+                case "Prologue_00_end":
+                    var stage = Q.stage(1);
+                    var objs = Q(".commonPlayer",1).items;
+                    var prof = objs.filter(function(obj){
+                        return obj.p.playerId === "a0";
+                    })[0];
+                    var drat = objs.filter(function(obj){
+                        return obj.p.playerId === "a1";
+                    })[0];
+                    prof.del("storySprite,AI");
+                    drat.del("storySprite,AI");
+                    prof.off("doneAutoMove");
+                    drat.off("doneAutoMove");
+                    prof.add("storySprite");
+                    drat.add("storySprite");
+                    prof.p.onArrival = [{func:"disappear"}];
+                    drat.p.onArrival = [{func:"disappear"}];
+                    var interaction = [
+                        {asset:"Professor_Story_Idle.png",pos:"right",text:["Hah, they thought they could take me out!","They should save their dreams for when they are sleeping!"]},
+                        {asset:"Dratini_Story_Idle.png",pos:"left",text:["Hmm..."]},
+                        {asset:"Professor_Story_Idle.png",pos:"right",text:["Let's get back to the village now!",
+                            {obj:prof,func:"startAutoMove",props:[14,0]},
+                            {obj:drat,func:"startAutoMove",props:[14,0]},
+                            {obj:window,func:"setTimeout",props:function(){
+                                Q.stageScene("customAnimate",4,{anim:"fadeOut",speed:10});
+                                setTimeout(function(){Q.goToNextScene();},6000);
+                            }}
+                        ]}
+                    ];
+                    Q.stageScene("interaction",10,{interaction:interaction});
+                    break;
+                case "Prologue_01_end":
+                    console.log("emonpsa")
+                    break;
+            }
+        });
+    };
     Q.startScene = function(data){
+        Q.state.set("levelData",data);
         //Get the path if we're staging a .tmx
         var currentPath = Q.getPath(data.levelMap.name);
         //Load the .tmx
         Q.loadTMX(currentPath[0]+"/"+data.levelMap.name+".tmx",function(){
             //Load the music
             Q.playMusic(data.onStart.music+".mp3",function(){ 
+                //Create the scene
+                Q.makeScene(data.onStart.name,currentPath[0],data.levelMap.name);
+                //Stage the TMX tilemap
+                Q.stageScene(data.onStart.name,1,{path:currentPath[0],pathNum:currentPath[1],sort:true});
+                var stage = Q.stage(1);
+                Q.TL = stage.lists.TileLayer[stage.lists.TileLayer.length-1];
                 //Play the correct scene
                 switch(data.onStart.name){
                     //This is the first scene.
                     case "Prologue_00":
                         //Fade in
                         Q.stageScene("customAnimate",4,{anim:"fadeIn",speed:5});
-                        //Create the scene
-                        Q.makeScene(data.onStart.name,currentPath[0],data.levelMap.name);
-                        //Stage the TMX tilemap
-                        Q.stageScene(data.onStart.name,1,{path:currentPath[0],pathNum:currentPath[1]});
-                        var stage = Q.stage(1);
+                       
                         //The locations for all barrels to be placed
                         var barrels = [
                             [6,19],
@@ -883,10 +928,12 @@ require(objectFiles, function () {
                         //Follow the viewMover
                         Q.viewFollow(viewMover,stage);
                         stage.viewport.scale=1.2;
-                        
-                        var prof = stage.insert(new Q.StorySprite({loc:[14,13],moveTo:[14,19],onArrival:[{func:"playStand",props:["down"]}],dir:"left",anim:"Walk",sheet:"Professor"}));
+                        var allies = Q.createAllies(data.curAllies[0],stage);
+                        var prof = allies[0]; 
+                        prof.p.moveTo = [14,19];
+                        prof.p.onArrival = [{func:"playStand",props:["down"]}];
+                        prof.add("storySprite");
                         prof.launchFireball=function(){
-                            
                             var fireballs = 9;
                             for(i=0;i<fireballs;i++){
                                 setTimeout(function(){
@@ -899,7 +946,7 @@ require(objectFiles, function () {
                                 viewMover.animate({x:14*Q.tileH,y:19*Q.tileH}, 2, Q.Easing.Linear,{callback:function(){
                                     var interaction = [
                                         {asset:"Professor_Story_Idle.png",pos:"right",text:[{obj:prof,func:"changeDir",props:"left"},"Would you like to try?","There is a barrel behind you that you can destroy!"]},
-                                        {asset:"Dratini_Story_Idle.png",pos:"left",text:["I guess I'll have to now!",{obj:drat,func:"changeDir",props:"left"},"Here it goes!",{obj:viewMover,func:"animater",props:[9*Q.tileH,19*Q.tileH,2,drat,"playBreatheFire","left"]}]}
+                                        {asset:"Dratini_Story_Idle.png",pos:"left",text:["I guess I'll have to now!",{obj:drat,func:"changeDir",props:"left"},"Here it goes!",{obj:viewMover,func:"animater",props:[11*Q.tileH,19*Q.tileH,2,drat,"playBreatheFire","left"]}]}
                                     ];
                                     Q.stageScene("interaction",10,{interaction:interaction});
                                 }});
@@ -907,7 +954,11 @@ require(objectFiles, function () {
                             prof.playStand(prof.p.dir);
                         };
                         prof.on("launchFireball");
-                        var drat = stage.insert(new Q.StorySprite({loc:[13,13],moveTo:[13,19],onArrival:[{func:"playStand",props:["down"]}],dir:"right",anim:"Walk",sheet:"Dratini"}));
+                        var drat = allies[1];
+                        drat.p.moveTo = [13,19];
+                        drat.p.onArrival = [{func:"playStand",props:["down"]}];
+                        
+                        drat.add("storySprite");
                         drat.launchFireball=function(){
                             Q.playSound("attack.mp3");
                             //Launch the fireball
@@ -921,31 +972,26 @@ require(objectFiles, function () {
                                     prof.startAutoMove([13,18]);
                                     prof.p.onArrival=[{
                                         func:function(dir){
-                                            prof.playWalk(dir);
+                                            prof.playStand(dir);
                                             //Set what happens when you see the enemies
                                             viewMover.seeEnemies=function(){
                                                 Q.playMusic("battle1.mp3");
                                                 var interaction = [
                                                     {asset:"Professor_Story_Idle.png",pos:"right",text:["Looks like they found us.","If they think they can stop me, then they are wrong.","Come, let us fight!"]},
-                                                    {asset:"Dratini_Story_Idle.png",pos:"left",text:["Yeah!"]}
+                                                    {asset:"Dratini_Story_Idle.png",pos:"left",text:["Let's fight then!",{obj:Q,func:"readyForBattle"}]}
                                                 ];
                                                 Q.stageScene("interaction",10,{interaction:interaction});
                                             };
-
-                                            //Spawn several enemies up top here
-                                            var enemy1 = stage.insert(new Q.StorySprite({loc:[12,9],dir:"down",anim:"Walk",sheet:"Professor"}));
-                                            var enemy2 = stage.insert(new Q.StorySprite({loc:[14,9],dir:"down",anim:"Walk",sheet:"Professor"}));
-                                            var enemy3 = stage.insert(new Q.StorySprite({loc:[9,10],dir:"right",anim:"Walk",sheet:"Professor"}));
-                                            var enemy4 = stage.insert(new Q.StorySprite({loc:[16,10],dir:"left",anim:"Walk",sheet:"Professor"}));
-                                            var enemy5 = stage.insert(new Q.StorySprite({loc:[9,9],dir:"right",anim:"Walk",sheet:"Professor"}));
                                             
+                                            //Spawn the enemies
+                                            Q.createEnemies(data.curEnemies[0],stage);
                                             var interaction = [
                                                 {asset:"Professor_Story_Idle.png",pos:"right",text:["You have done well enough to be called my aprentice!","It is getting dark, let us depart for home.",
-                                                        {obj:prof,func:"setProp",props:["onArrival",{func:"playStand",props:"up"}]},
+                                                        {obj:prof,func:"setProp",props:["onArrival",[{func:"playStand",props:"up"}]]},
                                                         {obj:prof,func:"startAutoMove",props:[13,13]},
-                                                        {obj:drat,func:"setProp",props:["onArrival",{func:"playStand",props:"up"}]},
+                                                        {obj:drat,func:"setProp",props:["onArrival",[{func:"playStand",props:"up"}]]},
                                                         {obj:drat,func:"startAutoMove",props:[13,14]},
-                                                        {obj:viewMover,func:"animater",props:[14*Q.tileH,11*Q.tileH,5,viewMover,"seeEnemies"]}
+                                                        {obj:viewMover,func:"animater",props:[14*Q.tileH,12*Q.tileH,4,viewMover,"seeEnemies"]}
                                                     ]}
                                             ];
                                             Q.stageScene("interaction",10,{interaction:interaction});
@@ -960,8 +1006,8 @@ require(objectFiles, function () {
                         
                         viewMover.moveChars = function(){
                             if(viewMover.p.y>15*Q.tileH){
-                                prof.startAutoMove();
-                                drat.startAutoMove();
+                                prof.startAutoMove(prof.p.moveTo);
+                                drat.startAutoMove(drat.p.moveTo);
                                 //After drat has reached the target (he reaches it second) play this interaction
                                 drat.on("doneAutoMove",function(){
                                     var interaction = [
@@ -984,6 +1030,110 @@ require(objectFiles, function () {
                         };
                         //Start moving the camera
                         viewMover.animate({x:14*Q.tileH,y:19*Q.tileH}, 7, Q.Easing.Linear);
+                        break;
+                    case "Prologue_01":
+                        Q.stageScene("customAnimate",4,{anim:"fadeIn",speed:5});
+                        Q.stageScene("customAnimate",5,{anim:"dimToNight",speed:1});
+                        stage.viewport.scale=1.2;
+                        var allies = Q.createAllies(data.curAllies[0],stage);
+                        var prof = allies[0];
+                        prof.add("storySprite");
+                        var drat = allies[1];
+                        drat.add("storySprite");
+                        var chief = Q.createEnemies(data.curEnemies[1],stage)[0];
+                        chief.add("storySprite");
+                        setTimeout(function(){
+                            Q.viewFollow(allies[0],stage);
+                            var path = [16,6];
+                            prof.p.onArrival = [{
+                                func:function(){
+                                    prof.playStand("left");
+                                    var interaction = [
+                                        {asset:"Professor_Story_Idle.png",pos:"right",text:["Chief!","We encountered some bandits on the way here.","Have they made it to the village yet?"]},
+                                        {asset:"Dratini_Story_Idle.png",pos:"left",text:["...","I can't say I've seen any bandits today."]},
+                                        {asset:"Professor_Story_Idle.png",pos:"right",text:["Where are the townspeople?","The town square is usually filled at this time of day."]},
+                                        {asset:"Dratini_Story_Idle.png",pos:"left",text:["Tonight, we are having a banquet to discuss and celebrate this town's new industry!","Everyone is already at the town hall."]},
+                                        {asset:"Professor_Story_Idle.png",pos:"left",text:["A new source of income?","That's just what we needed after last year's of famine!"]},
+                                        {asset:"Dratini_Story_Idle.png",pos:"left",text:[{obj:Q,func:"playMusic",props:"gambling1.mp3"},"Yes, yes.","You two had better get going before the food is all eaten!","My back is aching with old age so I'll be right behind you!"]},
+                                        {asset:"Professor_Story_Idle.png",pos:"right",text:["Hmm...","Alright, let's go!",
+                                            {obj:prof,func:"setProp",props:["onArrival",[{func:"playStand",props:"left"},{func:function(){funnelEnemies();}}]]},
+                                            {obj:prof,func:"setProp",props:["stepDelay",0.7]},
+                                            {obj:prof,func:"startAutoMove",props:[16,15]},
+                                            {obj:drat,func:"setProp",props:["onArrival",[{func:"playStand",props:"left"}]]},
+                                            {obj:drat,func:"setProp",props:["stepDelay",0.7]},
+                                            {obj:drat,func:"startAutoMove",props:[16,16]},
+                                            {obj:chief,func:"setProp",props:["onArrival",[{func:"playStand",props:"left"}]]},
+                                            {obj:chief,func:"setProp",props:["stepDelay",0.7]},
+                                            {obj:chief,func:"startPresetAutoMove",props:[[16,6],[16,15]]}
+                                        ]},
+                                            
+                                        
+                                    ];
+                                    Q.stageScene("interaction",10,{interaction:interaction});
+                                }
+                            }];
+                            prof.startAutoMove(path);
+                            var path = [16,7];
+                            drat.p.onArrival = [{func:"playStand",props:["left"]}];
+                            
+                            drat.startAutoMove(path);
+                            
+                        },4);
+                        chief.moveForward = function(){
+                            var en = Q("Enemy",1).items.filter(function(obj){
+                                return obj.p.moveForward;
+                            });
+                            for(iii=0;iii<en.length;iii++){
+                                en[iii].startAutoMove(en[iii].p.moveForward);
+                            }
+                        };
+                        //Make the enemies come out of all 3 houses
+                        var funnelEnemies = function(){
+                            prof.p.onArrival = [{
+                                func:function(){
+                                    Q.playMusic("battle1.mp3",function(){
+                                        var interaction = [
+                                            {asset:"Dratini_Story_Idle.png",pos:"left",text:["Hah!","You've walked right into our trap.","We'll be taking your valuable stone now."]},
+                                            {asset:"Professor_Story_Idle.png",pos:"left",text:["Chief!","What is the meaning of this?"]},
+                                            {asset:"Dratini_Story_Idle.png",pos:"right",text:["I suppose it's time to reveal my true identity!","I am the notorious villain!","If you hand over that stone, I will give you a painless death!",{obj:chief,func:"moveForward"}]},
+                                            {asset:"Professor_Story_Idle.png",pos:"left",text:["I will never give it up!","Come on, I'll take you all on!",{obj:Q,func:"readyForBattle"}]},
+                                        ];
+                                        Q.stageScene("interaction",10,{interaction:interaction});
+                                    });
+                                }
+                            }];
+                            drat.p.onArrival = [{func:"playStand",props:"left"}];
+                            setTimeout(function(){
+                                prof.startAutoMove([13,15]);
+                                drat.startAutoMove([13,16]);
+                            },4);
+                            setTimeout(function(){
+                                var wave = 0;
+                                var enemies = Q.createEnemies(data.curEnemies[0],stage);
+                                var inter = setInterval(function(){
+                                    var en = enemies.filter(function(obj){
+                                        return parseInt(obj.p.playerId[1])%3===wave;
+                                    });
+                                    for(ii=0;ii<en.length;ii++){
+                                        en[ii].add("storySprite");
+                                        en[ii].show();
+                                        en[ii].startAutoMove();
+                                    }
+                                    wave++;
+                                    if(wave>=3){
+                                        clearInterval(inter);
+
+                                    }
+                                },500);
+                            },500);
+                        };
+                        
+                        break;
+                    case "Prologue_02":
+                        Q.stageScene("customAnimate",4,{anim:"fadeIn",speed:5});
+                        Q.createAllies(data.curAllies[0],stage);
+                        Q.createEnemies(data.curEnemies[0],stage);
+                        Q.readyForBattle();
                         break;
                 };
                 
@@ -1045,6 +1195,7 @@ require(objectFiles, function () {
            }
         }
     });
+    //Used for fireball
     Q.component("basicMover",{
         added:function(){
             var p = this.entity.p;
@@ -1074,78 +1225,71 @@ require(objectFiles, function () {
             p.stepWait -= dt;
             p.x += p.diffX * dt / p.stepDelay;
             p.y += p.diffY * dt / p.stepDelay;
+            //If it goes offscreen, destroy it
+            if(p.x<0||p.y<0||p.x>Q.TL.p.w||p.y>Q.TL.p.h){
+                this.entity.destroy();
+            }
         }
     });
-    Q.Sprite.extend("StorySprite",{
-        init:function(p){
-            this._super(p,{
-                sprite:"player",
-                w:64,h:64,
-                types:["Normal"],
-                myTurnTiles:1000000,
-                stepDelay:0.4,
-                type:Q.SPRITE_NONE
-            });
-            this.p.dir ? this.p.dir : "down";
-            var pos = Q.setXY(this.p.loc[0],this.p.loc[1]);
-            this.p.x = pos[0];
-            this.p.y = pos[1];
-            this.add("2d,tween,animation,animations");
-            this["play"+this.p.anim](this.p.dir);
-            this.on("doneAutoMove");
+    Q.component("storySprite",{
+        added:function(){
+            this.entity.on("doneAutoMove");
+            var p = this.entity.p;
+            p.myTurnTiles=100000;
+            p.stepDelay=0.4;
+            p.stepDistance=64;
+            p.type=Q.SPRITE_NONE;
         },
-        changeDir:function(dir){
-            this.p.dir=dir;
-            this.playStand(dir);
-        },
-        startAutoMove:function(moveTo){
-            if(moveTo){this.p.moveTo = moveTo;};
-            var graph = new Graph(this.getWalkMatrix());
-            this.moveAlong(this.getPath(this.p.moveTo,graph));
-        },
-        doneAutoMove:function(){
-            for(i=0;i<this.p.onArrival.length;i++){
-                if(Q._isFunction(this.p.onArrival[i].func)){
-                    this.p.onArrival[i].func(this.p.onArrival[i].props);
-                //Else if it's a string
-                } else {
-                    this[this.p.onArrival[i].func](this.p.onArrival[i].props);
-                }
-            }
-        },
-        setProp:function(props){
-            this.p[props[0]]=props[1];
-        },
-        getWalkMatrix:function(){
-            function getWalkable(obj){
-                return Q.getTileCost(Q.getTileType(i,j),obj.p);
-            }
-            var tiles=Q.stage(1).lists.TileLayer[Q.stage(1).lists.TileLayer.length-1].p.tiles;
-            var cM=[];
-            if(tiles){
-                for(i=0;i<tiles[0].length;i++){
-                    var costRow = [];
-                    for(j=0;j<tiles.length;j++){
-                        var cost = getWalkable(this);
-                        costRow.push(cost);
+        extend:{
+            disappear:function(){
+                this.add("tween");
+                this.animate({opacity:0.01},1,Q.Easing.Linear,{callback:function(){this.destroy();}});
+            },
+            changeDir:function(dir){
+                this.p.dir=dir;
+                this.playStand(dir);
+            },
+            //If we have a path that we want to follow
+            //This path is a series of moveTo's
+            startPresetAutoMove:function(paths){
+                var t = this;
+                setTimeout(function(){
+                    var path = [];
+                    var graph = new Graph(t.getWalkMatrix());
+                    for(i=0;i<paths.length;i++){
+                        var loc;
+                        if(i>0){loc=paths[i-1];}
+                        var pa = t.getPath(paths[i],graph,false,false,loc);
+                        for(j=0;j<pa.length;j++){
+                            path.push(pa[j]);
+                        }
                     }
-                    cM.push(costRow);
+                    t.p.calcMenuPath = path;
+                    t.add("autoMove");
+                },4);
+            },
+            //follow the fastest path to a location
+            startAutoMove:function(moveTo){
+                if(moveTo){this.p.moveTo = moveTo;};
+                var graph = new Graph(this.getWalkMatrix());
+                this.p.calcMenuPath = this.getPath(this.p.moveTo,graph);
+                this.add("autoMove");
+            },
+            doneAutoMove:function(){
+                for(i=0;i<this.p.onArrival.length;i++){
+                    if(Q._isFunction(this.p.onArrival[i].func)){
+                        this.p.onArrival[i].func(this.p.onArrival[i].props);
+                    //Else if it's a string
+                    } else {
+                        this[this.p.onArrival[i].func](this.p.onArrival[i].props);
+                    }
                 }
-            }
-            return cM;
-        },
-        getPath:function(toLoc,graph){
-            var loc = this.p.loc;
-            var start = graph.grid[loc[0]][loc[1]];
-            var end = graph.grid[toLoc[0]][toLoc[1]];
-            var result = astar.search(graph, start, end);
-            return result;
-        },
-        moveAlong:function(path){
-            this.p.calcMenuPath = path;
-            this.add("autoMove");
+            },
+            setProp:function(props){
+                this.p[props[0]]=props[1];
+            },
         }
-    });
+    })
     Q.viewFollow=function(obj,stage){
         var tl = stage.lists.TileLayer[0];
         obj.p.stageMaxX=tl.p.w;
@@ -1233,18 +1377,24 @@ require(objectFiles, function () {
                 canInteract:true
             });
             this.p.y=Q.height-this.p.h;
+            this.p.interval = setInterval(function(){
+                Q.inputs['interact']=true;
+            },200);
         },
         destroyText:function(){
             this.p.textDisplay.destroy();
         },
         destroyImage:function(){
-            this.p.image.destroy();
+            if(this.p.image){
+                this.p.image.destroy();
+            }
         },
         done:function(){
             for(i=0;i<this.children.length;i++){
                 this.children[i].destroy();
             }
             this.destroy();
+            clearInterval(this.p.interval);
         },
         cycleInteraction:function(){
             if(this.p.interactionNum>=this.p.interaction.length){
@@ -1254,7 +1404,9 @@ require(objectFiles, function () {
             var inter = this.p.interaction;
             var interNum = this.p.interactionNum;
             this.p.text = inter[interNum].text;
-            this.p.image = this.insert(new Q.InteractionImage({asset:inter[interNum].asset,pos:inter[interNum].pos,y:this.p.h}));
+            if(inter[interNum].asset){
+                this.p.image = this.insert(new Q.InteractionImage({asset:inter[interNum].asset,pos:inter[interNum].pos,y:this.p.h}));
+            }
             this.cycleText();
         },
         cycleText:function(){
@@ -1262,6 +1414,24 @@ require(objectFiles, function () {
                 function checkObject(text){
                     if(Q._isObject(text)){
                         var obj = text.obj;
+                        if(Q._isString(obj)){
+                            if(obj[0]==="Q"){
+                                obj = Q;
+                            } else if(obj[0]==="e"){
+                                obj = Q("Enemy",1).items.filter(function(o){
+                                    return o.p.playerId===obj;
+                                })[0];
+                            } else if(obj[0]==="a"){
+                                obj = Q("Ally",1).items.filter(function(o){
+                                    return o.p.playerId===obj;
+                                })[0];
+                            } 
+                        }
+                        if(Q._isNumber(obj)){
+                            obj = Q("Player",1).items.filter(function(o){
+                                return o.p.playerId===obj;
+                            })[0];
+                        }
                         var func = text.func;
                         obj[func](text.props);
                         return true;
@@ -1276,7 +1446,7 @@ require(objectFiles, function () {
                 if(Q._isString(this.p.text[this.p.textNum])){
                     var inter = this.p.interaction;
                     var interNum = this.p.interactionNum;
-                    this.p.textDisplay = this.insert(new Q.InteractionText({text:this.p.text[this.p.textNum],y:this.p.h/2,pos:inter[interNum].pos}));
+                    this.p.textDisplay = this.insert(new Q.InteractionText({text:this.p.text[this.p.textNum],y:this.p.h/2/*,pos:inter[interNum].pos*/}));
                     this.p.textNum++;
                 }
             } 
@@ -1289,6 +1459,7 @@ require(objectFiles, function () {
             }
         },
         step:function(){
+            
             if(this.p.canInteract&&Q.inputs['interact']){
                 if(this.p.textDisplay.interact()){
                     this.destroyText();
@@ -1309,64 +1480,6 @@ require(objectFiles, function () {
         Q.inputs['interact']=false;
     });
     
-    Q.goToStage = function(whereTo, playerLoc,levelData){
-        var currentPath = Q.getPath(whereTo);
-        Q.state.set("levelData",levelData);
-        //Check if the player has been to a level before
-        /*if(levels.length){
-            for(i=0;i<levels.length;i++){
-                if(levels[i].id===whereTo){
-                    Q.stageScene(whereTo,1,{path:currentPath[0],pathNum:currentPath[1],playerLoc:playerLoc});
-                    return;
-                }
-            }
-        }*/
-        //CODE BELOW WON'T RUN IF THE PLAYER HAS BEEN TO THE STAGE BEFORE (FIRST TIME ONLY)
-        //If the level hasn't been gone to yet
-        Q.scene(""+whereTo,function(stage){
-            Q.state.set("currentStageName",stage.options.path);
-            //Q.stageScene("background",0,{path:stage.options.path});
-            Q.stageTMX(""+stage.options.path+"/"+whereTo+".tmx",stage);
-            Q.TL = stage.lists.TileLayer[stage.lists.TileLayer.length-1];
-            Q.stage(1).add("viewport");
-            if(Q.state.get("levelData")){
-                Q.setLevelData(stage,Q.state.get("levelData"));
-            }
-            //Q.getMusic(stage.options.path);
-            //Here, get all players that are in this area and insert them.
-            var players = Q.players;
-            for(ii=0;ii<players.length;ii++){
-                if(players[ii].p.playerId!==selfId&&players[ii].p.area===Q.stage(1).scene.name){
-                    var pl = Q.buildCharacter(players[ii].p);
-                    Q.addActor(pl);
-                }
-            }
-            //Insert the protagonist
-            var player = Q.givePlayerProperties(stage,stage.options.playerLoc);
-            player.p.area=whereTo;
-            Q.state.set("playerObj",player);
-            
-            Q.setTurnOrder();
-            Q.addTurnOrderView();
-            if(Q.state.get("turnOrder")[0]!==selfId){
-                Q.state.get("playerObj").disableControls();
-            }
-            
-            
-
-            /*if(THIS STAGE IS A CAVE LEVEL)
-            Q.stageScene("fog",2);
-            */
-           
-           
-        });
-        Q.loadTMX(currentPath[0]+"/"+whereTo+".tmx",function(){
-            Q.getMusic(currentPath[0],function(){
-                Q.stageScene(whereTo,1,{path:currentPath[0],pathNum:currentPath[1],playerLoc:playerLoc});
-            });
-        });
-    };
-    
     //Define the image files to be loaded
     var imageFiles = [
         //Images
@@ -1385,6 +1498,7 @@ require(objectFiles, function () {
         "objects.png",
         "fog.png",
         
+        "battle_start.png",
         "battle_complete.png",
         "battle_waiting.png"
        

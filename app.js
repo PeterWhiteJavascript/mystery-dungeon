@@ -42,17 +42,17 @@ io.on('connection', function (socket) {
             socket.emit('connected', { playerId: userId});
         },1000);
         io.emit('count', { playerCount: io.engine.clientsCount});
-    }, 1500);
+    }, 1000);
+    //This is recieved when the client confirms that it has connected
     socket.on('confirmConnect',function(){
         clearInterval(loginInterval);
     });
 
     socket.on('disconnect', function () {
-        
-            io.emit('count', { playerCount: io.engine.clientsCount});
+        io.emit('count', { playerCount: io.engine.clientsCount});
         if(saveData){
             for(i=0;i<saveData.players.length;i++){
-                if(saveData.players[i].p.playerId===userId){
+                if(saveData.players[i].playerId===userId){
                     saveData.players.splice(i,1);
                 }
             }
@@ -65,7 +65,7 @@ io.on('connection', function (socket) {
         function setPlayer(id,pl){
             //Check if the player is already in the array
             for(j=0;j<saveData.players.length;j++){
-                if(saveData.players[j].p.playerId===id){
+                if(saveData.players[j].playerId===id){
                     return;
                 }
             }
@@ -94,7 +94,10 @@ io.on('connection', function (socket) {
         //That data will fill the 'p' property in player
         var player = new Player(data);
         //Set the socket id
-        player.p.socketId=socket.id;
+        player.socketId=socket.id;
+        
+        //TEPMPEMTP
+        saveData.fastestClients=[data['playerId']];
         
         //Add the player to the saveData
         setPlayer(data['playerId'],player);
@@ -110,174 +113,113 @@ io.on('connection', function (socket) {
         io.sockets.in(saveData.file).emit('goToLobby',{player:player,players:saveData.players,levelData:saveData.getLevelData(saveData.scene)});
     });
     
-    
     socket.on("startGame",function(){
-        io.sockets.in(saveData.file).emit('startedGame',{players:saveData.players,levelData:saveData.getLevelData(saveData.scene)});
+        io.sockets.in(saveData.file).emit('startedScene',{players:saveData.players,levelData:saveData.getLevelData(saveData.scene)});
     });
-    
-    socket.on('updateItems',function(data){
-        var player = saveData.players.filter(function(obj){
-            return obj.p.playerId==data['playerId'];
-        })[0];
-        if(player){
-            player.p.items=data['items'];
-        }
-        socket.broadcast.to(saveData.file+saveData.scene).emit('updatePlayerItems',{items:player.p.items,playerId:data['playerId'],text:data['text']});
-    });
-    
-    socket.on('updateStats',function(data){
-        var player = saveData.players.filter(function(obj){
-            return obj.p.playerId==data['playerId'];
-        })[0];
-        if(player){
-            //Takes an object in the form of:
-            // stats:{
-            //    curHp:40,
-            //    ofn:12
-            // }
-            var stats = Object.keys(data['stats']);
-            for(i=0;i<stats.length;i++){
-                player.p[stats[i]]=data['stats'][stats[i]];
+    socket.on("checkPlayerPlacement",function(data){
+        var playersPlacedAt = saveData.levelData[saveData.scene].battle.playersStartAt ? saveData.levelData[saveData.scene].battle.playersStartAt : [];
+        if(!playersPlacedAt.length){saveData.levelData[saveData.scene].battle.playersStartAt=playersPlacedAt;};
+        var found = false;
+        for(i=0;i<playersPlacedAt.length;i++){
+            //Can't
+            if(data['loc'][0]===playersPlacedAt[i][0]&&data['loc'][1]===playersPlacedAt[i][1]){
+                found = true;
             }
         }
-        io.sockets.in(saveData.file+saveData.scene).emit('updatedStats',{playerId:data['playerId'],player:player});
-    });
-    
-    socket.on("changeArea",function(data){
-        var player = saveData.players.filter(function(obj){
-            return obj.p.playerId===data['playerId'];
-        })[0];
-        player.p.x=data['props']['x'];
-        player.p.y=data['props']['y'];
-        player.p.dir=data['props']['dir'];
-        player.p.loc=data['props']['loc'];
-        player.p.animation = data['props']['animation'];
         
-        socket.leave(saveData.file+saveData.scene);
-        socket.broadcast.to(saveData.file+saveData.scene).emit('leftArea',{playerId:player.p.playerId,player:player});
-        player.p.area=data['props']['area'];
-        socket.emit('recievedLevelData',{levelData:levelData.getLevelData(player.p.area),player:player});
-        socket.broadcast.to(saveData.file).emit('changedArea',{player:player});
-    });
-    
-    socket.on('joinRoom',function(data){
-        var player = saveData.players.filter(function(obj){
-            return obj.p.playerId===data['playerId'];
-        })[0];
-        //If there's no one here yet, make the array and push the NPC's into it
-        /*if(!saveData.levelData[player.p.area].activeObjects){
-            saveData.levelData[player.p.area].activeObjects=[];
-            for(i=0;i<saveData.levelData[player.p.area].npcs.length;i++){
-                saveData.levelData[player.p.area].activeObjects.push(saveData.levelData[player.p.area].npcs[i]);
-            }
-        };
-        //Push the player into the activeObjects
-        saveData.levelData[player.p.area].activeObjects.push(player);*/
-        socket.join(player.p.file+saveData.scene);
-        
-    });
-    
-    socket.on("pickUpItem",function(data){
-        var player = saveData.players.filter(function(obj){
-            return obj.p.playerId===data['playerId'];
-        })[0];
-        levelData.pickUpItem(saveData.scene,data['pickupId']);
-        io.sockets.in(saveData.file+saveData.scene).emit('pickedUpItem',{pickupId:data['pickupId']});
-    });
-    
-    socket.on("getTextNum",function(data){
-        socket.emit("gotTextNum",{textNum:levelData.getTextNum(data),npcId:data['npcId']});
-    });
-    socket.on("setTextNum",function(data){
-        levelData.setTextNum(data);
-    });
-    socket.on("moveNPC",function(data){
-        var player = saveData.players.filter(function(obj){
-            return obj.p.playerId===data['playerId'];
-        })[0];
-        levelData.moveNPC(data);
-        io.sockets.in(saveData.file+saveData.scene).emit("movedNPC",{npcId:data['npcId'],moveTo:data['moveTo']});
-    });
-    
-    socket.on("startTurn",function(data){
-        var evs = levelData.updateEvents(data);
-        if(data['host']||typeof data['turnOrder'][0] === "string"){
-            var player = saveData.players.filter(function(obj){
-                 return obj.p.playerId==data['host'];
-             })[0];
-            io.sockets.in(saveData.file+saveData.scene).emit('startTurn',{turnOrder:data['turnOrder'],events:evs,host:data['host'],stageName:data['stageName']});
+        if(!found){
+            var info = [data['loc'][0],data['loc'][1],data['playerId'],data['dir']];
+            playersPlacedAt.push(info);
+            io.sockets.in(saveData.file).emit("checkedPlayerPlacement",{found:found,loc:data['loc'],dir:data['dir'],playerId:data['playerId']});
         } else {
-            var player = saveData.players.filter(function(obj){
-                 return obj.p.playerId==data['turnOrder'][0];
-            })[0];
-            io.sockets.in(saveData.file+saveData.scene).emit('startTurn',{turnOrder:data['turnOrder'],events:evs,stageName:data['stageName']});
+            socket.emit("checkedPlayerPlacement",{found:found});
         }
     });
-    //Gets the event data immediately after steeping on the event
-    //This also sets the status to 1
-    socket.on('setEvent',function(data){
-        var event = levelData.setEvent(data);
-        //If the status is 0
-        if(event){
-            socket.emit('setEvent', {stageName:data['stageName'],event:event,host:data['host']});
+    socket.on("confirmPlayerPlacement",function(data){
+        var player = saveData.players.filter(function(obj){
+            return obj.playerId===data['playerId'];
+        })[0];
+        player.ready=true;
+        var waiting = saveData.players.filter(function(obj){
+            return !obj.ready;
+        })[0];
+        //This will be false when all players are ready
+        if(!waiting){
+            //Start the battle now that all players are placed
+            io.sockets.in(saveData.file).emit("confirmedPlayerPlacement",{playerId:data['playerId'],loc:data['loc'],dir:data['dir'],startBattle:true});
+            //We need to see who has the fastest computer
+            //Make an array and put the clients in order of who resonds fastest.
+            saveData.fastestClients = [];
+            io.sockets.in(saveData.file).emit("getFastestClient");
+        } else {
+            io.sockets.in(saveData.file).emit("confirmedPlayerPlacement",{playerId:data['playerId'],loc:data['loc'],dir:data['dir']});
         }
     });
-    
-    socket.on('triggerEvent',function(data){
-        var event = levelData.updateEvent(data);
-        var player = saveData.players.filter(function(obj){
-            return obj.p.playerId==data['host'];
-        })[0];
-        socket.broadcast.to(saveData.file+saveData.scene).emit('triggeredEvent', {stageName:data['stageName'],event:event,host:data['host']});
-    });
-    socket.on("updateEvent",function(data){
-        levelData.updateEvent(data);
-        var player = saveData.players.filter(function(obj){
-            return obj.p.playerId==data['host'];
-        })[0];
-        io.sockets.in(saveData.file+saveData.scene).emit('updatedEvent', {stageName:data['stageName'],eventId:data['eventId']});
-    });
-    
-    socket.on("partOfBattle",function(data){
-        //The host will do all enemy calculations
-        var host = data['host'];
-        //Returns the 'p' of event
-        var event = levelData.updateEvent(data);
-        var player = saveData.players.filter(function(obj){
-            return obj.p.playerId==data['host'];
-        })[0];
-        io.sockets.in(saveData.file+saveData.scene).emit("playersInBattle",{stageName:data['stageName'],turnOrder:event.p.turnOrder,host:host});
-    });
-    
-    //For when a player comes into the battle after it has started
-    socket.on("joinBattle",function(data){
-        for(i=0;i<data['players'].length;i++){
-            var pl = data['players'][i];
-            var player = saveData.players.filter(function(obj){
-                return obj.p.playerId==pl.p.playerId;
-            })[0];
-            io.sockets.in(saveData.file+saveData.scene+"battleWait").emit("joinedBattle",{host:data['battleHost'],player:player,stageName:data['stageName'],levelData:levelData.getLevelData(player.p.area),playerId:player.p.playerId});
-            io.sockets.in(saveData.file+saveData.scene).emit("joinedBattle",{host:data['battleHost'],player:player,stageName:data['stageName'],playerId:player.p.playerId});
+    socket.on("reciveFastestClients",function(data){
+        saveData.fastestClients.push(data['playerId']);
+        //If all players have responded
+        if(saveData.fastestClients.length===saveData.players.length){
+            //Send the turn order and the fastest client
+            //If the turnOrder[0] is the a string, the AI gets generated on the fastest client
+            io.sockets.in(saveData.file).emit("startedTurn",{host:saveData.fastestClients[0],turnOrder:saveData.turnOrder});
+            
         }
+    });
+    socket.on("endTurn",function(data){
+        var lastTurn = data['turnOrder'].shift();
+        var turnOrder = data['turnOrder'];
+        turnOrder.push(lastTurn);
+        saveData.turnOrder = turnOrder;
+        io.sockets.in(saveData.file).emit("startedTurn",{host:saveData.fastestClients[0],turnOrder:turnOrder});
+    });
+    socket.on("removePlayerPlacement",function(data){
+        var player = saveData.players.filter(function(obj){
+            return obj.playerId===data['playerId'];
+        })[0];
+        player.ready=false;
+        var playersPlacedAt = saveData.levelData[saveData.scene].battle.playersStartAt ? saveData.levelData[saveData.scene].battle.playersStartAt : [];
+        for(i=0;i<playersPlacedAt.length;i++){
+            if(data['loc'][0]===playersPlacedAt[i][0]&&data['loc'][1]===playersPlacedAt[i][1]){
+                playersPlacedAt.splice(i,1);
+            }
+        }
+        io.sockets.in(saveData.file).emit("removedPlayerPlacement",{playerId:data['playerId'],loc:data['loc']});
+    });
+    socket.on("readyForBattle",function(data){
+        var player = saveData.players.filter(function(obj){
+            return obj.playerId===data['playerId'];
+        })[0];
+        saveData.turnOrder = saveData.generateTurnOrder(saveData.scene,saveData.players);
+        socket.emit("startedBattle",{turnOrder:saveData.turnOrder,placed:saveData.levelData[saveData.scene].battle.playersStartAt});
     });
     
     socket.on("battleMove",function(data){
-        var player = saveData.players.filter(function(obj){
-            return obj.p.playerId==data['host'];
-        })[0];
-        io.sockets.in(saveData.file+saveData.scene).emit('battleMoved',data);
+        socket.broadcast.to(saveData.file).emit('battleMoved',data);
     });
+    
+    socket.on('endBattle',function(){
+        io.sockets.in(saveData.file).emit("endedBattle");
+    });
+    socket.on("readyForNextScene",function(data){
+        var player = saveData.players.filter(function(obj){
+            return obj.playerId===data['playerId'];
+        })[0];
+        player.ready=true;
+        var waiting = saveData.players.filter(function(obj){
+            return !obj.ready;
+        })[0];
+        //This will be false when all players are ready
+        if(!waiting){
+            saveData.scene = data['nextScene'];
+            io.sockets.in(saveData.file).emit('startedScene',{players:saveData.players,levelData:saveData.getLevelData(saveData.scene)});
+        }
+    });
+    
     socket.on('attack',function(data){
-        var player = saveData.players.filter(function(obj){
-            return obj.p.playerId==data['host'];
-        })[0];
-        socket.broadcast.to(saveData.file+saveData.scene).emit('attacked',data);
-    });
-    socket.on('eventComplete',function(data){
-        var player = saveData.players.filter(function(obj){
-            return obj.p.playerId==data['playerId'];
-        })[0];
-        io.sockets.in(saveData.file+saveData.scene).emit('completedEvent',{event:levelData.completeEvent(data['eventId'],data['stageName'])});
+        //Need to figure out the information that needs to be saved on the server (such as stat changes/exp boosts/ location changes etc)
+       //
+       //  console.log(data['text'])
+        socket.broadcast.to(saveData.file).emit('attacked',data);
     });
 });
 

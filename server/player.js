@@ -7,25 +7,23 @@ var users = {
         "exp": 0,
         "curHp": 25,
         "gender": "M",
-        "types": [
-            "Normal"
-        ],
+        
         "iv": {
             "hp": 8,
             "ofn": 9,
             "dfn": 7,
             "spd":9
         },
-        "other": {
+        "sp": {
             "mind": 3,
             "dexterity": 3,
             "strength": 4,
             "stamina": 9
         },
-        "ability":"RunAway",
+        "abilities":["RunAway"],
         "attacks": [
-            "Scratch",
-            "TailWhip"
+            ["Scratch",1],
+            ["Leer",1]
         ],
         "items": [
             [
@@ -33,9 +31,6 @@ var users = {
                 1
             ]
         ],
-        "special": {
-            "canSwim": false
-        },
         "text": [
             "Hello, I'm Saito!"
         ],
@@ -47,28 +42,26 @@ var users = {
         "sheet":"Professor",
         "level": 1,
         "exp": 0,
-        "curHp": 23,
+        "curHp": 17,
         "gender": "M",
-        "types": [
-            "Water"
-        ],
+        
         "iv": {
             "hp": 6,
             "ofn": 7,
             "dfn": 5,
             "spd": 8
         },
-        "other": {
+        "sp": {
             "mind": 5,
             "dexterity": 3,
             "strength": 4,
             "stamina": 9
         },
-        "ability":"Torrent",
+        "abilities":["Torrent"],
         "attacks": [
-            "Scratch",
-            "Leer",
-            "DumpsterDunk"
+            ["Scratch",1],
+            ["Leer",1],
+            ["DumpsterDunk",1]
         ],
         "items": [
             [
@@ -76,9 +69,6 @@ var users = {
                 1
             ]
         ],
-        "special": {
-            "canSwim": true
-        },
         "text": [
             "Hello, I'm Estevan!"
         ],
@@ -92,25 +82,22 @@ var users = {
         "exp": 0,
         "curHp": 20,
         "gender": "M",
-        "types": [
-            "Fire"
-        ],
         "iv": {
             "hp": 5,
             "ofn": 10,
             "dfn": 5,
             "spd": 7
         },
-        "other": {
+        "sp": {
             "mind": 3,
             "dexterity": 4,
             "strength": 4,
             "stamina": 7
         },
-        "ability":"IronFist",
+        "abilities":["IronFist"],
         "attacks": [
-            "Scratch",
-            "Leer"
+            ["Scratch",1],
+            ["Leer",1]
         ],
         "items": [
             [
@@ -118,9 +105,6 @@ var users = {
                 1
             ]
         ],
-        "special": {
-            "canSwim": false
-        },
         "text": [
             "Hello, I'm Lan!"
         ],
@@ -132,7 +116,35 @@ var Player = function(data){
     var tileSize = 64;
     var playerId = data['playerId'];
     var p = users[data['character']];
-    p.playerId = playerId;
+    var name  = p.name;
+    var className = p.className;
+    var sheet = p.sheet;
+    var level = p.level;
+    var exp = p.exp;
+    var curHp = p.curHp;
+    var gender = p.gender;
+    var stats = {};
+    stats.base = {
+        "hp":5.5,
+        "ofn":6,
+        "dfn":5.5,
+        "spd":8.5
+    };
+    stats.iv = p.iv;
+    stats.sp = p.sp;
+    
+    var abilities = p.abilities;
+    var attacks = p.attacks;
+    var items = p.items;
+    var text = p.text;
+    var file = p.file;
+    
+    var maxHp = Math.round(Math.sqrt((stats.base.hp*level*50)+stats.iv.hp));
+    var ofn = Math.round(Math.sqrt(((stats.base.ofn)/2)*level*stats.iv.ofn*2));
+    var dfn = Math.round(Math.sqrt(((stats.base.dfn)/2)*level*stats.iv.dfn*2));
+    var spd = Math.round(Math.sqrt(stats.base.spd*level*stats.iv.spd));
+
+    
     var getLoc = function(x,y){
         //Returns [locx,locy]
         return [x/tileSize+tileSize/2,y/tileSize+tileSize/2];
@@ -170,7 +182,27 @@ var Player = function(data){
         getY: getY,
         setX: setX,
         setY: setY,
-        p:p
+        
+        playerId:playerId,
+        
+        name:name,
+        className:className,
+        sheet:sheet,
+        level:level,
+        exp:exp,
+        curHp:curHp,
+        gender:gender,
+        stats:stats,
+        abilities:abilities,
+        attacks:attacks,
+        items:items,
+        text:text,
+        file:file,
+        
+        maxHp:maxHp,
+        ofn:ofn,
+        dfn:dfn,
+        spd:spd
     };
 };
 

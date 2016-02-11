@@ -49,11 +49,14 @@ Q.setUpAnimations=function(){
         attackingright:{ frames: [9,10,11], rate:walkRate,loop:false,trigger:"playStand"},
         breathefireright:{ frames: [11,11,10],rate:walkRate,loop:false,trigger:"launchFireball"},
         
-        fainting:{ frames: [0,3,6,9,12,15,18,21,0], rate:walkRate,loop:false,trigger:"fainted"}
+        dying:{ frames: [0,3,6,9,12,15,18,21,0], rate:walkRate/4,loop:false,trigger:"dead"}
     });
     Q.animations("fireball",{
         burning:{frames:[0],rate:standRate},
         engulf:{frames:[1,2,1,2],rate:walkRate/2,loop:false,trigger:"burned"}
+    });
+    Q.animations("ready",{
+        displaying:{frames:[3,6,7,8,8,8,8],rate:standRate}
     });
 };
 };

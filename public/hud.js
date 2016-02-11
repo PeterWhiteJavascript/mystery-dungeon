@@ -1,4 +1,22 @@
 Quintus.HUD = function(Q){
+    //For rotating the player when placing him
+    Q.component("dirControls",{
+        added:function(){
+            this.entity.on("step",this,"step");
+        },
+        step:function(dt){
+            var p = this.entity.p;
+            if(Q.inputs['up']){
+              this.entity.playStand("up");  
+            } else if(Q.inputs['right']){
+                this.entity.playStand("right");
+            } else if(Q.inputs['down']){
+                this.entity.playStand("down");
+            } else if(Q.inputs['left']){
+                this.entity.playStand("left");
+            }
+        }
+    });
     Q.component("pointerControls", {
         added: function() {
           var p = this.entity.p;
@@ -73,13 +91,13 @@ Quintus.HUD = function(Q){
             p.diffX = 0;
             p.diffY = 0;
             if(Q.inputs['left']&&p.loc[0]>p.rangeMinX) {
-              p.diffX = -p.stepDistance;
-              p.loc[0]--;
-              this.moveGuide('x',-p.stepDistance);
+                p.diffX = -p.stepDistance;
+                p.loc[0]--;
+                this.moveGuide('x',-p.stepDistance);
             } else if(Q.inputs['right']&&p.loc[0]<p.rangeMaxX-1) {
-              p.diffX = p.stepDistance;
-              p.loc[0]++;
-              this.moveGuide('x',p.stepDistance);
+                p.diffX = p.stepDistance;
+                p.loc[0]++;
+                this.moveGuide('x',p.stepDistance);
             }
 
             if(Q.inputs['up']&&p.loc[1]>p.rangeMinY) {
@@ -125,32 +143,28 @@ Quintus.HUD = function(Q){
                 
                 name:"Pointer"
             });
-            if(!this.p.player){this.p.player=Q.state.get("playerObj");};
-            this.p.x=this.p.player.p.x;
-            this.p.y=this.p.player.p.y;
-            
-            this.p.tileSize=Q.tileH;
-            this.p.loc=this.p.player.setLocation();
-            this.p.player.p.loc=this.p.player.setLocation();
             var tileLayer = Q.TL;
             this.p.rangeMinX=0;
             this.p.rangeMaxX=tileLayer.p.tiles[0].length;
             this.p.rangeMinY=0;
             this.p.rangeMaxY=tileLayer.p.tiles.length;
-            this.p.player.p.graphWithWeight = new Graph(this.p.player.getWalkMatrix());
-            
+            var pos = Q.setXY(this.p.loc[0],this.p.loc[1]);
+            this.p.x = pos[0];
+            this.p.y = pos[1];
+            Q.addViewport(this);
+            /*
             if(this.p.freeSelecting){
                 Q.stageScene("tophud",3,{target:Q.getTargetAt(this.p.loc[0],this.p.loc[1])});
             }
             else if(this.p.attack){
-                this.p.player.getAttackRange(this.p.attack);
-                this.createAttackArea(this.p.player.getAttackArea(this.p.attack));
+                //this.p.player.getAttackRange(this.p.attack);
+                //this.createAttackArea(this.p.player.getAttackArea(this.p.attack));
                 Q.stageScene("tophud",3,{target:Q.getTargetAt(this.p.loc[0],this.p.loc[1])});
             } else {
                 this.p.player.getRange();
-            }
+            }*/
             this.add("pointerControls");
-            Q.addViewport(this);
+            
         },
         //This function displays the attack area and moves with the pointer
         createAttackArea:function(areas){
@@ -165,57 +179,25 @@ Quintus.HUD = function(Q){
                 }
             }
         },
-        validTarget:function(target){
-            var user = this.p.player;
-            var attack = this.p.attack;
-            switch(user.p.Class){
-                case "Player":
-                    switch(attack.target){
-                        case "enemy":
-                            if(target.p.Class==="Enemy"){
-                                return target;
-                            }
-                            break;
-                        case "self":
-                            if(user.p.id===target.p.id){
-                                return target;
-                            }
-                            break;
-                        case "ally":
-                            if(target.p.Class==="Player"&&user.p.id!==target.p.id){
-                                return target;
-                            }
-                            break;
-                    }
-                    break;
-                case "Enemy":
-                    switch(attack.target){
-                        case "enemy":
-                            if(target.p.Class==="Player"){
-                                return target;
-                            }
-                            break;
-                        case "self":
-                            if(user.p.id===target.p.id){
-                                return target;
-                            }
-                            break;
-                        case "ally":
-                            if(target.p.Class==="Enemy"&&user.p.id!==target.p.id){
-                                return target;
-                            }
-                            break;
-                    }
-                    break;
+        hideGuide:function(){
+            if(this.p.guide.length>0){
+                for(i=0;i<this.p.guide.length;i++){
+                    this.p.guide[i].hide();
+                }
             }
-            
-            return false;
+        },
+        showGuide:function(){
+            if(this.p.guide.length>0){
+                for(i=0;i<this.p.guide.length;i++){
+                    this.p.guide[i].show();
+                }
+            }
         },
         validPointerLoc:function(){
             var guide = this.p.player.p.guide;
             var valid = false;
             for(i=0;i<guide.length;i++){
-                if((guide[i].p.x-Q.tileH/2)/Q.tileH===(this.p.x-Q.tileH/2)/Q.tileH&&(guide[i].p.y-Q.tileH/2)/Q.tileH===(this.p.y-Q.tileH/2)/Q.tileH){
+                if(guide[i].p.loc[0]===this.p.loc[0]&&guide.p.loc[1]===this.p.loc[1]){
                     valid = true;
                 }
             }
@@ -223,116 +205,24 @@ Quintus.HUD = function(Q){
         },
         finished:function(){
             this.trigger("unflash");
-            this.p.player.clearGuide();
-            this.p.player.clearPossTargets();
-            Q.addViewport(this.p.player);
             this.clearGuide();
             this.stage.remove(this);
         },
         
         step:function(dt){
             if(Q.inputs['back']||Q.inputs['esc']){
-                if(this.p.freeSelecting){
-                    if(this.p.x===this.p.player.p.x&&this.p.y===this.p.player.p.y){
-                        this.p.player.resetMovement();
-                    }
-                    this.p.x=this.p.player.p.x;
-                    this.p.y=this.p.player.p.y;
-                    
-                    this.p.stepping=false;
-                    
-                }
-                
-                this.finished();
-                Q.stageScene("playerMenu",3,{player:this.p.player});
+                this.trigger("back");
                 Q.inputs['back']=false;
                 Q.inputs['esc']=false;
             }
             if(Q.inputs['menu']){
-                this.stage.remove(this);
+                this.trigger("menu");
+                Q.inputs['menu']=false;
                 return;
             }
             if(Q.inputs['interact']){
+                this.trigger("interact");
                 Q.inputs['interact']=false;
-                //If we're attacking
-                if(this.p.attack){
-                    if(!this.validPointerLoc()){return;}
-                    //Get the target and make sure the target is valid
-                    var targets = [];
-                    for(i=0;i<this.p.guide.length;i++){
-                        var target = Q.getTarget(this.p.guide[i].p.x,this.p.guide[i].p.y);
-                        if(target&&this.validTarget(target)){
-                            targets.push(target);
-                            
-                        };
-                    }
-                    if(targets.length>0){
-                        this.p.player.useAttack(targets,this.p.attack,this);
-                        this.trigger("unflash");
-                        this.finished();
-                    }
-                    
-                    
-                //If we are moving
-                } else if(this.p.freeSelecting){
-                    if(this.p.destX||this.p.destY){
-                        //I don't think this is in use anymore.
-                        //It was used to move in adventuring phase from the menu
-                        var target = Q.getTarget(this.p.destX,this.p.destY);
-                    } else {
-                        var target = Q.getTargetAt(this.p.loc[0],this.p.loc[1]);
-                    }
-                    //Make sure the target is valid
-                    if(target&&(target.p.id===this.p.player.p.id)){
-                        //Selected this player, go to menu
-                        Q.stageScene("playerMenu",3,{player:this.p.player});
-                        this.destroy();
-                    } else if(target){
-                        //Load talking to menu
-                        var player = this.p.player;
-                       
-                        var dir = "";
-                        target.p.loc = target.setLocation();
-                        player.p.loc = player.setLocation();
-                        //For y
-                        if(target.p.loc[0]-player.p.loc[0]>=-1&&target.p.loc[0]-player.p.loc[0]<=1){
-                            switch(true){
-                                case target.p.y<player.p.y&&target.p.loc[1]-player.p.loc[1]===-1:
-                                    dir+="Up";
-                                    break;
-                                case target.p.y>player.p.y&&target.p.loc[1]-player.p.loc[1]===1:
-                                    dir+="Down";
-                                    break;    
-                            }
-                        }
-                        //For x
-                        if(target.p.loc[1]-player.p.loc[1]>=-1&&target.p.loc[1]-player.p.loc[1]<=1){
-                            switch(true){
-                                case target.p.x<player.p.x&&target.p.loc[0]-player.p.loc[0]===-1:
-                                    dir+="Left";
-                                    break;
-                                case target.p.x>player.p.x&&target.p.loc[0]-player.p.loc[0]===1:
-                                    dir+="Right";
-                                    break;    
-                            }
-                        }
-                        if(dir.length>0){
-                            player.p.dir=dir;
-                            //Here is where we need to load the 'interacting' menu
-                            Q.stageScene("interactingMenu",3,{player:player,target:this.p.target});
-                            //Play the standing animation
-                            this.p.player.playStand(player.p.dir);
-                            //Delete the controls (added after the text is done);
-                            player.disableControls();
-                            this.destroy();
-                            Q.inputs['interact']=false;
-                        }
-                    }
-                    return;
-                } else {
-                    this.p.player.menuMoveTo(this.p.loc);
-                    this.destroy();
-                }
                 return;
             }
         }
@@ -346,9 +236,11 @@ Quintus.HUD = function(Q){
                 w:Q.tileH,h:Q.tileH,
                 opacity:0.3,
                 radius:0,
-                type:Q.SPRITE_NONE
+                type:Q.SPRITE_INTERACTABLE
             });
-            
+            var pos = Q.setXY(this.p.loc[0],this.p.loc[1]);
+            this.p.x = pos[0];
+            this.p.y = pos[1];
         }
     });
       
@@ -936,27 +828,20 @@ Quintus.HUD = function(Q){
 
                 cardPos:1,
                 attackNum:0,
-                border:10,
+                border:5,
                 x:0,y:0,
                 w:400,
                 h:250,
-                cx:0,cy:0
+                cx:0,cy:0,
+                fill:"yellow"
             });
             this.p.x=Q.width-this.p.w-10;
             this.p.y=10;
-            this.p.data=this.p.user.p;
+            this.p.data=this.p.user.p ? this.p.user.p : this.p.user;
             var t = this;
             setTimeout(function(){
                 t.setup();
             },1);
-        },
-
-        createCard:function(){
-            var colors = Q.getGradient(this.p.data.types);
-            if(colors.length===1){
-                colors.push(colors[0]);
-            }
-            this.insert(new Q.Gradient({w:this.p.w,h:this.p.h,col0:colors[0],col1:colors[1]}));
         },
 
         showStats:function(){
@@ -988,10 +873,10 @@ Quintus.HUD = function(Q){
                 sprite:"player"
             }));
             image.add("animation");
-            image.play("standingDown");
+            image.play("standingdown");
             
             for(i=0;i<data.attacks.length;i++){
-                 var attack = data.attacks[i];
+                 var attack = RP.moves[data.attacks[i][0]];
                  imageCont.insert(new Q.UI.Text({
                      label:attack.name,
                      x:imageCont.p.w/2+imageCont.p.border/2,y:imageCont.p.h/2+this.p.border/2+i*20,
@@ -1002,7 +887,7 @@ Quintus.HUD = function(Q){
              } 
             
             imageCont.insert(new Q.UI.Text({
-                label:data.ability.name,
+                label:RP.abilities[data.abilities[0]].name,
                 x:imageCont.p.w/2+imageCont.p.border/2,y:imageCont.p.h/1.15+this.p.border/2,
                 size:16,
                 cx:0,cy:0,
@@ -1033,13 +918,13 @@ Quintus.HUD = function(Q){
             var statValues = [
                 data.className,
                 data.curHp+"/"+data.maxHp,
-                data.mod_ofn+" ("+data.ofn+")",
-                data.mod_dfn+" ("+data.dfn+")",
-                data.mod_spd+" ("+data.spd+")",
-                data.stats.other.mind,
-                data.stats.other.dexterity,
-                data.stats.other.strength,
-                data.stats.other.stamina,
+                data.mod_ofn ? data.mod_ofn : data.ofn+" ("+data.ofn+")",
+                data.mod_dfn? data.mod_dfn : data.dfn+" ("+data.dfn+")",
+                data.mod_spd? data.mod_spd : data.spd+" ("+data.spd+")",
+                data.stats.sp.mind,
+                data.stats.sp.dexterity,
+                data.stats.sp.strength,
+                data.stats.sp.stamina,
                 data.exp,
                 Q.getNextLevelEXP(data.level)
             ];
@@ -1070,6 +955,7 @@ Quintus.HUD = function(Q){
         },
 
         showAttacks:function(num){
+            var attack = RP.moves[this.p.user.p.attacks[num][0]];
             var attackCont = this.insert(new Q.UI.Container({
                 x:this.p.border,
                 y:0,
@@ -1096,7 +982,6 @@ Quintus.HUD = function(Q){
                 "area",
                 "range"
             ];
-            var statValues = this.p.user.p.attacks[num];
             for(j=0;j<stats.length;j++){
                 attackCont.insert(new Q.UI.Container({
                     fill:"#FFF",
@@ -1113,14 +998,14 @@ Quintus.HUD = function(Q){
                     cx:0,cy:0
                 }));
                 attackCont.insert(new Q.UI.Text({
-                    label:""+statValues[keys[j]],
+                    label:""+attack[keys[j]],
                     align:'right',
                     x:attackCont.p.w-10,y:8+j*20,
                     size:14,
                     cx:0,cy:0
                 }));
             }
-            var text = Q.chopText(statValues.desc,attackCont);
+            var text = Q.chopText(attack.desc,attackCont);
             var descCont = attackCont.insert(new Q.UI.Container({
                 fill:"#FFF",
                 border:1,
@@ -1139,6 +1024,7 @@ Quintus.HUD = function(Q){
         },
 
         showAbility:function(){
+            var ability = RP.abilities[this.p.data.abilities[0]];
             var abilityCont = this.insert(new Q.UI.Container({
                 x:this.p.border,
                 y:this.p.border,
@@ -1156,13 +1042,13 @@ Quintus.HUD = function(Q){
                 cx:0,cy:0
             }));
             abilityCont.insert(new Q.UI.Text({
-                label:this.p.data.ability.name,
+                label:ability.name,
                 align:'left',
                 x:10,y:12,
                 size:14,
                 cx:0,cy:0
             }));
-            var text = Q.chopText(this.p.data.ability.desc,abilityCont);
+            var text = Q.chopText(ability.desc,abilityCont);
             abilityCont.insert(new Q.UI.Container({
                 fill:"#FFF",
                 border:1,
@@ -1233,7 +1119,6 @@ Quintus.HUD = function(Q){
         },
         
         setup:function(){
-            this.createCard();
             this.showStats();
         },
         
@@ -1251,11 +1136,9 @@ Quintus.HUD = function(Q){
             switch(this.p.cardPos){
                 case 0:
                     this.p.cardPos++;
-                    this.createCard();
                     this.showStats();
                     break;
                 case 1:
-                    this.createCard();
                     this.showAttacks(this.p.attackNum);
                     this.p.attackNum++;
                     if(this.p.attackNum>this.p.data.attacks.length-1){
@@ -1265,13 +1148,11 @@ Quintus.HUD = function(Q){
                     break;
                 case 2:
                     this.p.cardPos++;
-                    this.createCard();
                     this.showAbility();
                     break;
                 case 3:
                     this.p.cardPos++;
                     if(this.p.data.items!==undefined&&this.p.data.items.length>0){
-                        this.createCard();
                         this.showItems();
                     } else {
                         this.cycleCard();
@@ -1331,24 +1212,10 @@ Quintus.HUD = function(Q){
         }
     };
 
-    Q.getStats=function(user,level){
-        var ofn = (((user.base.atk+user.base.spatk)/2)*level*user.iv.ofn*2);
-        var dfn = (((user.base.def+user.base.spdef)/2)*level*user.iv.dfn*2);
-        return [
-            Math.round(Math.sqrt(user.base.hp*level*50)+user.iv.hp),
-            Math.round(Math.sqrt(ofn)),
-            Math.round(Math.sqrt(dfn)),
-            Math.round(Math.sqrt(user.base.spd*level*user.iv.spd)),
-            user.other.mind,
-            user.other.dexterity,
-            user.other.strength,
-            user.other.stamina
-
-        ];
-    };
+    
 
     Q.getAttack=function(atk){
-        var attack = RP.moves[atk];
+        var attack = RP.moves[atk[0]];
         return attack;
     };
     
@@ -1417,6 +1284,19 @@ Quintus.HUD = function(Q){
             //speed is a number in seconds for how long the fade in lasts
             fader.animate({opacity:0},stage.options.speed||1,Q.Easing.Out,{callback:function(){Q.clearStage(4);}});
         },
+        fadeOut:function(stage){
+            var fader = stage.insert(new Q.UI.Container({
+                x:0,y:0,
+                cx:0,cy:0,
+                w:Q.width,h:Q.height,
+                fill:"black",
+                type:Q.SPRITE_NONE,
+                opacity:0
+            }));
+            fader.add("tween");
+            //speed is a number in seconds for how long the fade in lasts
+            fader.animate({opacity:0},stage.options.speed||1,Q.Easing.Out);
+        },
         dimToNight:function(stage){
             var fader = stage.insert(new Q.UI.Container({
                 x:0,y:0,
@@ -1453,6 +1333,44 @@ Quintus.HUD = function(Q){
                 .chain({ angle: 360 },1)
                 .chain({opacity:0.1}, 0.5, Q.Easing.Quadratic.InOut,{callback:function(){Q.clearStage(4);}});
         },
+        battleStart:function(stage){
+            //Flasher
+            var fader = stage.insert(new Q.UI.Container({
+                x:0,y:0,
+                cx:0,cy:0,
+                w:Q.width,h:Q.height,
+                fill:"yellow",
+                type:Q.SPRITE_NONE
+            }));
+            fader.add("tween");
+            
+            var box = stage.insert(new Q.Sprite({
+                x:Q.width/2,y:Q.height/2,
+                asset:"/images/battle_start.png",
+                type:Q.SPRITE_NONE
+            }));
+            box.add("tween")
+            var gradient = fader.insert(new Q.UI.Container({
+                col1:"yellow",
+                col2:"orange",
+                x:0,y:0,
+                w:0, h:0,
+                cx:0, cy:0, radius:10
+            }));
+            gradient.draw=function(ctx) {
+                var grd=ctx.createLinearGradient(0,0,fader.p.w/2,fader.p.h/2);
+                grd.addColorStop(0,this.p.col1);
+                grd.addColorStop(1,this.p.col2);
+                ctx.fillStyle=grd;
+                ctx.fill();
+            };
+            gradient.add("tween");
+            setTimeout(function(){
+                fader.animate({opacity:0},1,Q.Easing.Out,{callback:function(){Q.clearStage(4);}});
+                box.animate({opacity:0},1,Q.Easing.Out,{callback:function(){Q.clearStage(4);}});
+                gradient.animate({opacity:0},1,Q.Easing.Out,{callback:function(){Q.clearStage(4);}});
+            },500);
+        }
     };
     Q.scene('customAnimate',function(stage){
         var anims = Q.sceneAnimations;
@@ -1469,8 +1387,16 @@ Quintus.HUD = function(Q){
             case "fadeIn":
                 anims.fadeIn(stage);
                 break;
+            //Goes completely black
+            case "fadeOut":
+                anims.fadeOut(stage);
+                break;
             case "dimToNight":
                 anims.dimToNight(stage);
+                break;
+            case "battleStart":
+                anims.battleStart(stage);
+                break;
         }
     });
     Q.scene("lobby",function(stage){
@@ -1504,7 +1430,7 @@ Quintus.HUD = function(Q){
         }));
         var players = Q.state.get("players");
         for(i=0;i<players.length;i++){
-            box.insertPlayerText(players[i].p.name,i);
+            box.insertPlayerText(players[i].name,i);
         }
         if(stage.options.host){
             var startButton = stage.insert(new Q.UI.Button({
@@ -1541,7 +1467,7 @@ Quintus.HUD = function(Q){
             }));
         }
         Q.state.on("change.players",function(){
-            box.insertPlayerText(Q.state.get("players")[Q.state.get("players").length-1].p.name);
+            box.insertPlayerText(Q.state.get("players")[Q.state.get("players").length-1].name);
         });
     })
 };

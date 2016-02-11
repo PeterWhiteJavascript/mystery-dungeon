@@ -51,151 +51,6 @@ Q.checkGroundPos={
         ]
     }
 };
-
-Q.buildCharacter=function(data){
-    var player={p:{}};
-    //Get the user data
-    player.p.sheet=data.sheet;
-    player.p.className = data.className;
-    var sData = RP.classes[player.p.className];
-    player.p.name = data.name;
-    player.p.exp = data.exp;
-    player.p.level= data.level;
-    player.p.curHp = data.curHp;
-    player.p.gender = data.gender;
-    player.p.ability = RP.abilities[data.ability];
-    var attacks = data.attacks;
-    player.p.attacks=[];
-    for(i=0;i<attacks.length;i++){
-        player.p.attacks.push(RP.moves[attacks[i]]);
-    }
-    var itms = [];
-    for(i=0;i<data.items.length;i++){
-        if(Q._isArray(data.items[i])){
-            itms.push({p:RP.items[data.items[i][0]],amount:data.items[i][1]});
-        } else if(Q._isObject(data.items[i])){
-            itms.push(data.items[i]);
-        }
-    }
-
-    player.p.items = itms;
-    player.p.special = data.special;
-    player.p.text = data.text;
-
-    player.p.types = data.types;
-    player.p.stats = {
-        base:sData.baseStats,
-        iv:data.iv,
-        other:data.other
-    };
-    var stats = Q.getStats(player.p.stats,player.p.level);
-    player.p.maxHp = stats[0];
-    player.p.ofn = stats[1];
-    player.p.dfn = stats[2];
-    player.p.spd = stats[3];
-
-    //These properties are use in the damage calculation and are changed by stat modifiers (leer, etc...)
-    player.p.mod_ofn = player.p.ofn;
-    player.p.mod_dfn = player.p.dfn;
-    player.p.mod_spd = player.p.spd;
-
-    player.p.sightRange = player.p.stats.other.mind;
-    player.p.types = RP.classes[player.p.className].types;
-    //[x,y]
-    player.p.loc = data.loc;
-    var pos = Q.setXY(player.p.loc[0],player.p.loc[1]);
-    player.p.x=pos[0];
-    player.p.y=pos[1];
-    //var player = Q.setPosition(player,player.p.loc);
-    player.p.area = data.area;
-    player.p.dir=data.dir;
-    player.p.playerId=data.playerId;
-    return player;
-};
-
-
-Q.component("AI", {
-    added: function() {
-        var p = this.entity.p;
-        var closestTarget = this.getClosestTarget();
-        this.moveToTarget(closestTarget);
-    },
-    getClosestTarget:function(){
-        var getPathCost=function(path){
-            var curCost = 0;
-            for(j=0;j<path.length-1;j++){
-                curCost+=path[j].weight;
-            }
-            return curCost;
-        };
-        var setClosest = function(obj,path,cost){
-            closest = obj;
-            closestPath = path;
-            closestPathCost = cost;
-        };
-        var p = this.entity.p;
-        var players = Q("Player",1).items;
-        var closest = Q("Player",1).first();
-        var closestPath = this.entity.getPath(closest.p.loc,p.graphWithWeight);
-        var closestPathCost = getPathCost(closestPath);
-        for(i=1;i<players.length;i++){
-            var path = this.entity.getPath(players[i].p.loc,p.graphWithWeight);
-            var cost = getPathCost(path);
-            if(cost<closestPathCost){
-                setClosest(players[i],path,cost);
-            } else if(cost===closestPathCost){
-                //Random between 0 and 1
-                if(Math.floor(Math.random()*2)){
-                    setClosest(players[i],path,cost);
-                }
-            }
-        }
-        return closest;
-    },
-    moveToTarget:function(target){
-        if(!target){alert("You lost :)"); return};
-        var p = this.entity.p;
-        p.AITo=target.p.loc;
-        p.target=target;
-        p.AIAtDest="attackTarget";
-    },
-    extend:{
-        checkOutline:function(){
-            var p = this.p;
-            //0 - Top
-            //1 - Right
-            //2 - Bottom
-            //3 - Left
-            var outline = [];
-            outline.push(Q.getTarget(p.x,p.y-Q.tileH));
-            outline.push(Q.getTarget(p.x+Q.tileH,p.y));
-            outline.push(Q.getTarget(p.x,p.y+Q.tileH));
-            outline.push(Q.getTarget(p.x-Q.tileH,p.y));
-            
-            for(i=0;i<outline.length;i++){
-                if(outline[i]){console.log(outline[i],p.target)
-                    if(outline[i].p.character===p.target.p.character){
-                        //Obviously we will want to run a function here to determine the best attack.
-                        //Also, the first parameter is 'targets' so we still need to check the attack area to find more targets
-                        var randAttack = Math.floor(Math.random()*p.attacks.length);
-                        //targets, attack, center
-                        this.useAttack([outline[i]],p.attacks[randAttack],outline[i]);
-                        return true;
-                    }
-                }
-            }
-
-        },  
-        attackTarget:function(){
-            var p = this.p;
-            var attackedTarget = this.checkOutline();
-            if(!attackedTarget){
-                this.endTurn();
-            }
-        },
-    }
-    
-});
     
 Q.component("autoMove", {
     added: function() {
@@ -204,16 +59,9 @@ Q.component("autoMove", {
         if(!p.stepDelay) { p.stepDelay = 0.3; }
         p.stepWait = 0;
         p.stepping=false;
-        
-        if(!p.calcMenuPath){
-            Q.state.get("playerConnection").socket.emit('battleMove',{host:Q.state.get("battleHost"),playerId:p.playerId,stageName:Q.stage(1).scene.name,walkPath:p.menuPath,myTurnTiles:p.myTurnTiles});
-            this.entity.del("autoMove");
-            //p.walkPath = this.moveAlong(p.menuPath);
-        } else {
-            this.entity.on("step",this,"step");
-            p.walkPath = this.moveAlong(p.calcMenuPath);
-            p.calcMenuPath=false;
-        }
+        this.entity.on("step",this,"step");
+        p.walkPath = this.moveAlong(p.calcMenuPath);
+        p.calcMenuPath=false;
     },
     
 
@@ -244,6 +92,7 @@ Q.component("autoMove", {
         this.entity.trigger("atDest");
     },
     moveAlong:function(to){
+        if(!to){this.atDest();return;};
         var p = this.entity.p;
         var walkPath=[];
         p.costPath=[];
@@ -364,7 +213,6 @@ Q.component("autoMove", {
                 //Play the correct direction walking animation
                 this.entity.playWalk(p.dir);
                 p.myTurnTiles-=p.costPath[0];
-                
             };
         }
     }
@@ -378,52 +226,6 @@ Q.component('protagonist', {
         this.entity.add("battleControls");
     }
     
-});
-Q.component('battleControls',{
-    step:function(dt){
-        //This function passes all client inputs to the server to make sure that it is a valid input
-        //For the directional buttons, check the client side .tmx tiles before sending the data off to the server.
-        //The server does not know about the .tmx tilelayer and it only checks against game objects such as players, enemies, and NPC's
-        
-        if(Q.inputs['up']){
-            Q.state.get("playerConnection").socket.emit('input',{dir:"up",playerId:Q.state.get("playerConnection").id});
-        } else if(Q.inputs['down']){
-            Q.state.get("playerConnection").socket.emit('input',{dir:"down",playerId:Q.state.get("playerConnection").id});
-        } else if(Q.inputs['right']){
-            Q.state.get("playerConnection").socket.emit('input',{dir:"right",playerId:Q.state.get("playerConnection").id});
-        } else if(Q.inputs['left']){
-            Q.state.get("playerConnection").socket.emit('input',{dir:"left",playerId:Q.state.get("playerConnection").id});
-        } else if(Q.inputs['menu']&&!this.p.stepping){
-            Q.state.get("playerConnection").socket.emit('input',{dir:"menu",playerId:Q.state.get("playerConnection").id});
-        } else if(Q.inputs['interact']){
-            Q.state.get("playerConnection").socket.emit('input',{dir:"interact",playerId:Q.state.get("playerConnection").id});
-        } else if(Q.inputs['back']){
-            Q.state.get("playerConnection").socket.emit('input',{dir:"back",playerId:Q.state.get("playerConnection").id});
-        }
-    }
-});
-Q.component('storyControls',{
-    step:function(dt){
-        //This function passes all client inputs to the server to make sure that it is a valid input
-        //For the directional buttons, check the client side .tmx tiles before sending the data off to the server.
-        //The server does not know about the .tmx tilelayer and it only checks against game objects such as players, enemies, and NPC's
-        
-        if(Q.inputs['up']){
-            Q.state.get("playerConnection").socket.emit('input',{dir:"up",playerId:Q.state.get("playerConnection").id});
-        } else if(Q.inputs['down']){
-            Q.state.get("playerConnection").socket.emit('input',{dir:"down",playerId:Q.state.get("playerConnection").id});
-        } else if(Q.inputs['right']){
-            Q.state.get("playerConnection").socket.emit('input',{dir:"right",playerId:Q.state.get("playerConnection").id});
-        } else if(Q.inputs['left']){
-            Q.state.get("playerConnection").socket.emit('input',{dir:"left",playerId:Q.state.get("playerConnection").id});
-        } else if(Q.inputs['menu']&&!this.p.stepping){
-            Q.state.get("playerConnection").socket.emit('input',{dir:"menu",playerId:Q.state.get("playerConnection").id});
-        } else if(Q.inputs['interact']){
-            Q.state.get("playerConnection").socket.emit('input',{dir:"interact",playerId:Q.state.get("playerConnection").id});
-        } else if(Q.inputs['back']){
-            Q.state.get("playerConnection").socket.emit('input',{dir:"back",playerId:Q.state.get("playerConnection").id});
-        }
-    }
 });
 //Added to other player controlled characters
 Q.component('actor', {
@@ -489,9 +291,9 @@ Q.component("directionControls", {
     },
     checkEnemyAnim:function(){
         var enemy = Q("Enemy",1).items.filter(function(obj){
-            return obj.p.animation === "fainting";
+            return obj.p.animation === "dying";
         })[0];
-        if(enemy){return true};
+        if(enemy){return true;};
         return false;
     },
     step:function(dt){
@@ -542,31 +344,27 @@ Q.component("directionControls", {
 
 Q.component("animations", {
     added:function(){
-        this.entity.on("playStand");  
-        this.entity.on("fainted");
+        this.entity.on("playStand");
     },
     extend:{
         checkPlayDir:function(dir){
             if(!dir){return this.p.dir;}else{return dir||"down";}
         },
         playStand:function(dir){
-            this.play("standing"+this.checkPlayDir(dir));
-            this.p.dir = dir;
+            this.p.dir = this.checkPlayDir(dir);
+            this.play("standing"+this.p.dir);
         },
         playWalk:function(dir){
-            this.play("walking"+this.checkPlayDir(dir));
-            this.p.dir = dir;
+            this.p.dir = this.checkPlayDir(dir);
+            this.play("walking"+this.p.dir);
         },
         playAttack:function(dir){
-            this.play("attacking"+this.checkPlayDir(dir));
-            this.p.dir = dir;
+            this.p.dir = this.checkPlayDir(dir);
+            this.play("attacking"+this.p.dir);
         },
         playBreatheFire:function(dir){
-            this.play("breathefire"+this.checkPlayDir(dir));
-            this.p.dir = dir;
-        },
-        playFainting:function(){
-            this.play("fainting");
+            this.p.dir = this.checkPlayDir(dir);
+            this.play("breathefire"+this.p.dir);
         }
     }
 });
@@ -819,123 +617,114 @@ Q.component("attacker",{
                 }
             }
         },
-        useAttack:function(targets,attack,center){
-            //Check to see if we have enough pp to use the move.
-            /*for(i=0;i<this.p.attacks.length;i++){
-                if(attack.id===this.p.attacks[i].id){
-                    if(this.p.pp[i][0]>=1){
-                        //Decrease PP for move
-                        this.changePP([i,-1]);
-                    } else {
-                        var text = ["Not enough PP for "+attack.name+"."];
-                        var endFuncs = {addViewport:[{Class:this.p.Class,id:this.p.playerId}],createMenu:[{Class:this.p.Class,id:this.p.playerId}]};
-                        text.push(endFuncs);
-                        Q.stageScene("bottomhud",3,{text:text,player:this});
-                        return;
-                    }
-                }
-            }*/
+        getAllPlayers:function(){
+            return Q("Player",1).items.concat(Q("Ally",1).items.concat(Q("Enemy",1).items));
+        },
+        useAttack:function(props){
+            var targetId = props[0];
+            var attackInfo = props[1];
+            var allPlayers = this.getAllPlayers();
+            var target = allPlayers.filter(function(obj){
+                return obj.p.playerId===targetId;
+            })[0];
+            var attack = RP.moves[attackInfo[0]];
             //Set the direction we need to be facing
-            this.faceTarget({x:center.p.x,y:center.p.y});
+            this.faceTarget({x:target.p.x,y:target.p.y});
             //Play the attack animation
             this.playAttack(this.p.dir);
-            
-            var text =  [{faceTarget:[{Class:this.p.Class,id:this.p.playerId},{x:center.p.x,y:center.p.y}],playAttack:[{Class:this.p.Class,id:this.p.playerId},this.p.dir]},this.p.name+" used "+attack.name+". "];
-            var endFuncs = {addViewport:[{Class:this.p.Class,id:this.p.playerId}],endTurn:[{Class:this.p.Class,id:this.p.playerId}]};
-            //Loop through the targets and generate the proper text
-            for(a=0;a<targets.length;a++){
-                var target = targets[a];
-                //text.push({addViewport:[target]});
-                //Random number between 1 and 100 
-                var rand = Math.floor(Math.random()*100)+1;
-                var hit;
-                var t = this;
-                var facingValue = this.compareDirection(t,targets[a]);
-                rand*=facingValue;
-                rand = Math.floor(rand);
-                //If the attack hits
-                if(rand<=attack.accuracy){
-                    //If the attack does damage
-                    if(attack.power>0){
-                        //Figure out how much damage this attack does 
-                        var damageCalc = RP.attackFuncs.calculateDamage(this,target,attack,facingValue);
-                        //Show the attack text
-                        if(damageCalc.modText.length>0){
-                            for(j=0;j<damageCalc.modText.length;j++){
-                                text.push(damageCalc.modText[j]);
-                            }
-                        }
-                        //We hit!
-                        if(damageCalc.damage>0){
-                            text.push({playSound:"attack.mp3"},"Hit "+target.p.name+" for "+damageCalc.damage+" damage!",{lowerHp:[{Class:target.p.Class,id:target.p.playerId},damageCalc.damage]});
-                            if(target.p.curHp-damageCalc.damage<=0){
-                                text.push({faint:[{Class:target.p.Class,id:target.p.playerId}]},target.p.name+" fainted!");
-                                target.p.defeated=true;
-                                target.removeFromTurnOrder();
-                                target.checkDrop(this);
-                                var expText = target.giveExp();
-                                if(expText&&expText.length>0){
-                                    for(jjj=0;jjj<expText.length;jjj++){
-                                        text.push(expText[jjj]);
-                                    }
-                                }
+            var interaction = [
+                {text:[
+                    {obj:this.p.playerId,func:"faceTarget",props:{x:target.p.x,y:target.p.y}},
+                    {obj:this.p.playerId,func:"playAttack",props:this.p.dir},
+                    this.p.name+" used "+attack.name+". "
+                ]}
+                
+            ];
+            var endFuncs =[ 
+                {text:[{obj:"Q",func:"addViewport",props:this.p.playerId}]},
+                {text:[{obj:this.p.playerId,func:"endTurn"}]}
+            ];
+            //Random number between 1 and 100 
+            var rand = Math.floor(Math.random()*100)+1;
+            var hit;
+            var t = this;
+            var facingValue = this.compareDirection(t,target);
+            rand*=facingValue;
+            rand = Math.floor(rand);
+            //If the attack hits
+            if(rand<=attack.accuracy){
+                //If the attack does damage
+                if(attack.power>0){
+                    //Figure out how much damage this attack does 
+                    var damageCalc = RP.attackFuncs.calculateDamage(this,target,attack,facingValue);
+                    //Show the attack text
+                    interaction.push(damageCalc.modText);
+                    //We hit!
+                    if(damageCalc.damage>0){
+                        interaction.push({text:[{obj:"Q",func:"playSound",props:"attack.mp3"},{obj:target.p.playerId,func:"lowerHp",props:damageCalc.damage},"Hit "+target.p.name+" for "+damageCalc.damage+" damage!"]})
+                        
+                        if(target.p.curHp-damageCalc.damage<=0){
+                            interaction.push({text:[{obj:target.p.playerId,func:"dead"},target.p.name+" died."]});
+                            target.p.defeated=true;
+                            target.removeFromTurnOrder();
+                            target.checkDrop(this);
+                            var expText = target.giveExp();
+                            if(expText&&expText.text.length>0){
+                                interaction.push(expText);
                             }
                         }
                     }
-                    
-                    //If the power is 0, then it doesn't do damage so it is a stat
-                    //Also check for the additional effect here
-                    if(attack.effect.length>0){
-                        var rand = Math.ceil(Math.random()*100);
-                        //Check if we get this additional effect
-                        if(rand<=attack.effect[1]){
-                            var effect = attack.effect;
-                            //Who are we targeting
-                            var effectTarget,effectUser;
-                            switch(effect[0]){
-                                case "both":
-                                    effectTarget=target;
-                                    effectUser = this;
-                                    break;
-                                case "enemy":
-                                    effectTarget=target;
-                                    break;
-                                case "self":
-                                    effectTarget=target;//Maybe combine these since you will be 'targeting' yourself
-                                    break;
-                            }
-                            var effectText = RP.attackFuncs.effects[effect[2]](effect[3],effectTarget,effectUser);
+                }
 
-                            if(effectText.length>0){
-                                for(kk=0;kk<effectText.length;kk++){
-                                    text.push({playSound:"attack.mp3"},effectText[kk]);
-                                }
+                //If the power is 0, then it doesn't do damage so it is a stat
+                //Also check for the additional effect here
+                if(attack.effect.length>0){
+                    var rand = Math.ceil(Math.random()*100);
+                    //Check if we get this additional effect
+                    if(rand<=attack.effect[1]){
+                        var effect = attack.effect;
+                        //Who are we targeting
+                        var effectTarget,effectUser;
+                        switch(effect[0]){
+                            case "both":
+                                effectTarget=target;
+                                effectUser = this;
+                                break;
+                            case "enemy":
+                                effectTarget=target;
+                                break;
+                            case "self":
+                                effectTarget=target;//Maybe combine these since you will be 'targeting' yourself
+                                break;
+                        }
+                        var effectText = RP.attackFuncs.effects[effect[2]](effect[3],effectTarget,effectUser);
+
+                        if(effectText.length>0){
+                            for(kk=0;kk<effectText.length;kk++){
+                                //interaction.push({playSound:"attack.mp3"},effectText[kk]);
                             }
                         }
                     }
-                    hit = true;
                 }
-                //Missed
-                else {
-                    text.push({playSound:"attack.mp3"},"Missed "+target.p.name+"...");
-                    hit = false;
-                }
+                hit = true;
             }
+            //Missed
+            else {
+                interaction.push({text:[{obj:"Q",func:"playSound",props:"attack.mp3"},"Missed "+target.p.name+"..."]});
+                hit = false;
+            }
+            
             
             //Send off what happened so it can be replicated in the other player
             //Note that these calculations are always done on the 'host' machine
             //This will be broadcast to all other clients
             var p = this.p;
             Q.state.get("playerConnection").socket.emit('attack',{
-                text:text,
-                stageName:Q.stage(1).scene.name,
-                playerId:p.playerId,
-                targetId:target.p.playerId,
-                host:Q.state.get("battleHost")
+                text:interaction
             });
             //Finish up with the functions that are called after the text is done
-            text.push(endFuncs);
-            Q.stageScene("bottomhud",3,{text:text,player:this,obj:this,obj2:this,target:target});
+            interaction.push(endFuncs[0],endFuncs[1]);
+            Q.stageScene("interaction",10,{interaction:interaction});
         },
         clearPossTargets:function(){
             if(this.p.possTargets.length){
@@ -950,7 +739,7 @@ Q.component("attacker",{
 
 Q.component("mover",{
     added:function(p){
-        this.entity.on("acceptInput",this,"acceptInputted");  
+        //this.entity.on("acceptInput",this,"acceptInputted");  
         var p = this.entity.p;
         if(!p.stepDistance) { p.stepDistance = Q.tileH; }
         if(!p.stepDelay) { p.stepDelay = 0.3; }
@@ -963,7 +752,7 @@ Q.component("mover",{
             down:false,
             left:false
         };
-        this.entity.on("step",this,"step");
+        //this.entity.on("step",this,"step");
     },
     //When at the tile that you were moving to
     atDest:function(){
@@ -980,77 +769,7 @@ Q.component("mover",{
         this.trigger("acceptInput");
         
     },
-    goOffscreen:function(x,y){
-        Q.playSound("enter_door.mp3");
-        var level = Q.stage(1).options.path;
-        var pathNum = Q.stage(1).options.pathNum;
-        var newPathNum = [pathNum[0]+x,pathNum[1]+y];
-        var playerLoc=[];
-        var p = this.entity.p;
-        switch(true){
-            //Player is going off the right side of this level
-            case x>0:
-                playerLoc[0]=0;
-                break;
-            //Player is going off from the top or bottom of this level
-            case x===0:
-                playerLoc[0]=(p.x-Q.tileH/2)/Q.tileH;
-                break;
-            case x<0:
-                //This string means that we need to figure out the maxX of the tilelayer on the next stage.
-                playerLoc[0]="x";
-                break;
-        }
-        switch(true){
-            //Player is going off the bottom of this level
-            case y>0:
-                playerLoc[1]=0;
-                break;
-            //Player is going off from the right or left of this level
-            case y===0:
-                playerLoc[1]=(p.y-Q.tileH/2)/Q.tileH;
-                break;
-            case y<0:
-                //This string means that we need to figure out the maxY of the tilelayer on the next stage.
-                playerLoc[1]="y";
-                break;
-        }
-        var newArea = level+newPathNum[0]+"_"+newPathNum[1];
-        var player = this.entity;
-        player.p.loc = playerLoc;
-        //we should do some kind of segue into the next area
-        Q.stageScene("customAnimate",4,{anim:"changeArea"});
-        Q.state.get("playerConnection").socket.emit('changeArea',{
-            playerId:Q.state.get("playerConnection").id,
-            props:{
-                x:player.p.x,
-                y:player.p.y,
-                dir:player.p.dir,
-                loc:player.p.loc,
-                animation:player.p.animation,
-                area:newArea
-            }
-        }); 
-        
-        return true;
-    },
     
-    checkOffscreen:function(locTo,tiles){
-        switch(true){
-            case locTo[0]<0:
-                return this.goOffscreen(-1,0);
-                break;
-            case locTo[0]>=tiles[0].length:
-                return this.goOffscreen(1,0);
-                break;
-            case locTo[1]<0:
-                return this.goOffscreen(0,-1);
-                break;
-            case locTo[1]>=tiles.length:
-                return this.goOffscreen(0,1);
-                break;
-        }
-    },
     acceptInputted:function(){
         var p = this.entity.p;
         var inputted=p.inputted;
@@ -1128,6 +847,8 @@ Q.component("mover",{
                         var cost = getWalkable(tiles,this);
                         var objOn=false;
                         objOn = Q.stage(1).locate(colLoc,rowLoc,Q.SPRITE_INTERACTABLE);
+                        //Allow walking over allies
+                        if(objOn&&objOn.p.ally===this.p.ally){objOn=false;};
                         //If this is AI going to, we need to stop one square before the player.
                         //Mark the square that the player is standing on as no object.
                         //In our auto move, if AITo is set, short by 1
@@ -1276,7 +997,7 @@ Q.component("mover",{
 
             }
         },
-        menuMoveTo:function(to){
+        moveTo:function(to){
             this.p.menuPath = this.getPath(to,this.p.graphWithWeight);
             this.clearGuide();
             if(this.p.menuPath.length){
@@ -1288,9 +1009,14 @@ Q.component("mover",{
             this.add("autoMove");
         },
 
-        getPath:function(toLoc,graph,prop,score){
-            var loc = this.setLocation();
-            var start = graph.grid[loc[0]][loc[1]];
+        getPath:function(toLoc,graph,prop,score,loc){
+            var start;
+            if(loc){
+                start = graph.grid[loc[0]][loc[1]];
+            } else {
+                loc = this.setLocation();
+                start = graph.grid[loc[0]][loc[1]];
+            }
             var end = graph.grid[toLoc[0]][toLoc[1]];
             var result;
             if(prop==="maxScore"){
@@ -1306,6 +1032,22 @@ Q.component("mover",{
         }
    } 
 });
+Q.Sprite.extend("DeathAnimation",{
+    init: function(p) {
+        this._super(p, {
+            type:Q.SPRITE_NONE,
+            collisionMask:Q.SPRITE_NONE
+        });
+        this.add("animation,tween");
+        this.play("dying");
+        this.on("dead");
+    },
+    
+    dead: function(){
+        //If we want to have dead things on the ground, do that here
+        this.stage.remove(this);
+    }
+});
 
 Q.component("commonPlayer", {
     extend:{
@@ -1316,14 +1058,9 @@ Q.component("commonPlayer", {
             }
             return loc;
         },
-        faint:function(){
-            this.playFainting();
-            if(this.p.Class==="Enemy"){
-                this.removeFromEnemies();
-            }
-        },
-        fainted:function(){
-            this.stage.remove(this);
+        dead:function(){
+            this.stage.insert(new Q.DeathAnimation({x:this.p.x,y:this.p.y,sprite:this.p.sprite,sheet:this.p.sheet,dir:this.p.dir}));
+            this.destroy();
         },
         removeFromTurnOrder:function(){
             //Remove from the turn order right away so that it won't be this's turn
@@ -1336,34 +1073,34 @@ Q.component("commonPlayer", {
         },
         checkDrop:function(obj){
             if(this.p.drop){
-                obj.getItem(this.p.drop);
+                //obj.getItem(this.p.drop);
             }
         },
         giveExp:function(){
-            var leveledUp = [];
+            var leveledUp = {text:[]};
             if(this.p.Class==="Enemy"){
                 var exp=Math.round((this.p.expGiven*this.p.level)/Q("Player",1).items.length);
                 Q("Player",1).each(function(){
                     var up = this.checkExp(exp);
                     if(up){
-                        leveledUp.push({playSound:"level_up.mp3"},this.p.name+" grew to level "+this.p.level+"!",
-                        {gainExp:[{Class:this.p.Class,id:this.p.playerId},exp]});
+                        leveledUp.text.push({obj:"Q",func:"playSound",props:"level_up.mp3"},this.p.name+" grew to level "+this.p.level+"!",
+                        {obj:this.p.playerId,func:"gainExp",props:exp});
                     } else {
-                        leveledUp.push({gainExp:[{Class:this.p.Class,id:this.p.playerId},exp]});
+                        leveledUp.text.push({obj:this.p.playerId,func:"gainExp",props:exp});
                     };
                 });
-            } else if(this.p.Class==="Player"){
+            }/* else if(this.p.Class==="Player"){
                 var exp = Math.round((this.p.expGiven*this.p.level)/Q("Enemy",1).items.length)||50;
                 Q("Enemy",1).each(function(){
                     var up = this.checkExp(exp);
                     if(up){
-                        leveledUp.push({playSound:"level_up.mp3"},this.p.name+" grew to level "+this.p.level+"!",
+                        leveledUp.text.push({playSound:"level_up.mp3"},this.p.name+" grew to level "+this.p.level+"!",
                         {gainExp:[{Class:this.p.Class,id:this.p.playerId},Math.round(exp)]});
                     } else {
-                        leveledUp.push({gainExp:[{Class:this.p.Class,id:this.p.playerId},exp]});
+                        leveledUp.text.push({gainExp:[{Class:this.p.Class,id:this.p.playerId},exp]});
                     };
                 });
-            }
+            }*/
             return leveledUp;
         },
         checkExp:function(exp){
@@ -1438,18 +1175,15 @@ Q.component("commonPlayer", {
             this.p.opacity=1;
         },
         
-        
+        /*
         tempChangeStat:function(props){
             var player = this;
             var text =  [player.p.name+" raised "+props.p.stat+" by "+props.p.amount+" temporarily.",{endTurn:[{Class:player.p.Class,id:player.p.playerId}]}];
             Q.stageScene("bottomhud",3,{text:text,player:player,obj:player});
             this.p.statsModified[props.p.stat]+=props.p.amount;
-        },
+        },*/
         lowerHp:function(amount){
             this.p.curHp-=amount;
-        },
-        changePP:function(props){
-            this.p.pp[props[0]][0]+=props[1];
         },
         useItem:function(item){
             var itm = item;
@@ -1497,10 +1231,81 @@ Q.component("commonPlayer", {
                 this.initialize();
                 this.playStand(this.p.dir);
             }
+            this.p.z=this.p.y;
         }
     }
 });
-
+//Friendly AI
+Q.Sprite.extend("Ally",{
+    init: function(p) {
+        this._super(p, {
+            frame:0,
+            sprite:"player",
+            Class:"Ally",
+            
+            dir:"down",
+            
+            objInFront:false,
+            initialize:true,
+            guide:[],
+            possTargets:[],
+            
+            type:Q.SPRITE_INTERACTABLE,
+            tileSize:Q.tileH,
+            w:Q.tileH,h:Q.tileH,
+            
+            buffs:[],
+            debuffs:[],
+            defeated:false,
+            ally:"Player"
+        });
+        //Library
+        this.add("2d, animation, tween");
+        //My components
+        this.add("commonPlayer,animations,attacker,mover");
+    },
+    initialize:function(){
+        var pos = Q.setXY(this.p.loc[0],this.p.loc[1]);
+        this.p.x=pos[0];
+        this.p.y=pos[1];
+        //These properties are use in the damage calculation and are changed by stat modifiers (leer, etc...)
+        this.p.mod_ofn = this.p.ofn;
+        this.p.mod_dfn = this.p.dfn;
+        this.p.mod_spd = this.p.spd;
+        
+        this.p.expGiven = this.p.level*this.p.exp;
+        this.p.sheet = this.p.sheet ? this.p.sheet : this.p.className;
+        this.p.name = this.p.className+" "+this.p.playerId;
+        
+        this.playStand(this.p.dir);
+        this.p.initialize = false;
+    },
+    
+    turnStart:function(){
+        Q.addViewport(this);
+        this.p.myTurn=true;
+        this.p.myTurnTiles=this.p.stats.sp.stamina;
+        this.p.startLocation=this.p.loc;
+        this.p.graphWithWeight = new Graph(this.getWalkMatrix());
+         
+        this.add("AI");
+        /*
+        this.p.graphWithWeight = new Graph(this.getWalkMatrix());
+        this.p.menuPath = this.getPath(this.p.AITo,this.p.graphWithWeight);
+        this.add("autoMove");*/
+        
+    },
+    turnOver:function(){
+        this.playStand(this.p.dir);
+        this.p.myTurn=false;
+        this.del("AI");
+        Q.afterDir();
+    },
+    endTurn:function(){
+        this.turnOver();
+        Q.clearStage(3);
+    },
+});
 Q.Sprite.extend("Enemy",{
     init: function(p) {
         this._super(p, {
@@ -1519,15 +1324,10 @@ Q.Sprite.extend("Enemy",{
             tileSize:Q.tileH,
             w:Q.tileH,h:Q.tileH,
             
-            //Character stats
-            statsModified:{
-                ofn:0,
-                dfn:0,
-                spd:0
-            },
             buffs:[],
             debuffs:[],
-            defeated:false
+            defeated:false,
+            ally:"Enemy"
         });
         //Library
         this.add("2d, animation, tween");
@@ -1535,104 +1335,31 @@ Q.Sprite.extend("Enemy",{
         this.add("commonPlayer,animations,attacker,mover");
     },
     initialize:function(){
-        //Make sure that there's nothing standing on the spawn point, else move this enemy
-        this.p.loc = this.confirmLocation(this.p.loc);
-        this.p.x=this.p.loc[0]*Q.tileH+Q.tileH/2;
-        this.p.y=this.p.loc[1]*Q.tileH+Q.tileH/2;
-        var data = RP.classes[this.p.className];
-        this.p.name = this.p.character;
-        this.p.expGiven = data.exp;
-        
-        this.p.exp = RP.expNeeded[this.p.level-1];
-        
-        this.p.ability = RP.abilities[data.abilities[Math.floor(Math.random()*data.abilities.length)]];
-        var attacks = data.attacks;
-        this.p.attacks = [];
-        
-        for(i=0;i<attacks.length;i++){
-            //Right now just push all possible attacks
-            if(attacks[i][1]<=this.p.level){
-                this.p.attacks.push(RP.moves[attacks[i][0]]);
-            }
-        }
-        this.p.items = this.p.items || [];
-        this.p.special = this.p.special || {};
-        this.p.text = this.p.text || ["..."];
-        this.p.species = this.p.character;
-        //Random IV's
-        var iv = {
-            hp:Math.ceil(Math.random()*10),
-            ofn:Math.ceil(Math.random()*10),
-            dfn:Math.ceil(Math.random()*10),
-            spd:Math.ceil(Math.random()*10)
-        };
-        var other = {
-            mind:data.otherSeed.mind,
-            dexterity:data.otherSeed.dexterity,
-            strength:data.otherSeed.strength,
-            stamina:data.otherSeed.stamina
-        };
-        var keys = Object.keys(other);
-        for(i=0;i<keys.length;i++){
-            other[keys[i]]=Math.floor(Math.random()*other[keys[i]][1])+other[keys[i]][0]+1;
-        }
-        this.p.stats = {
-            base:data.baseStats,
-            iv:iv,
-            other:other
-        };
-        var stats = Q.getStats(this.p.stats,this.p.level);
-        this.p.maxHp = stats[0];
-        this.p.ofn = stats[1];
-        this.p.dfn = stats[2];
-        this.p.spd = stats[3];
-        
+        var pos = Q.setXY(this.p.loc[0],this.p.loc[1]);
+        this.p.x=pos[0];
+        this.p.y=pos[1];
         //These properties are use in the damage calculation and are changed by stat modifiers (leer, etc...)
         this.p.mod_ofn = this.p.ofn;
         this.p.mod_dfn = this.p.dfn;
         this.p.mod_spd = this.p.spd;
         
-        this.p.curHp = this.p.maxHp;
-        
-        this.p.types = RP.classes[this.p.className].types;
-        
-        this.p.sheet=this.p.className;
+        this.p.expGiven = this.p.level*this.p.exp;
+        this.p.sheet = this.p.sheet ? this.p.sheet : this.p.className;
         this.p.name = this.p.className+" "+this.p.playerId;
-                
+        
         this.p.graphWithWeight = new Graph(this.getWalkMatrix());
         this.playStand(this.p.dir);
         this.p.initialize = false;
     },
     
-    //This function will remove this enemy from the enmeis array and check if the array is empty so we can go back to phase 1
-    
-    removeFromEnemies:function(){
-        var enm = Q.state.get("enemies");
-        for(i=0;i<enm[this.p.eventId].length;i++){
-            if(this.p.id===enm[this.p.eventId][i].p.id){
-                enm[this.p.eventId].splice(i,1);
-            }
-        }
-        var enemies = Q("Enemy",1).items;
-        if(enemies.length<1){
-            //Broadcast that this event is done
-            var eventId = this.p.eventId;
-            Q.state.get("playerConnection").socket.emit('eventComplete',{playerId:Q.state.get("playerConnection").id,stageName:Q.stage(1).scene.name,eventId:eventId,onCompleted:this.p.onCompleted});
-            Q.state.set("battle",false);
-        }
-    },
-    
     turnStart:function(){
         Q.addViewport(this);
         this.p.myTurn=true;
-        this.p.myTurnTiles=this.p.stats.other.stamina;
+        this.p.myTurnTiles=this.p.stats.sp.stamina;
         this.p.startLocation=this.setLocation();
+        this.p.graphWithWeight = new Graph(this.getWalkMatrix());
          
         this.add("AI");
-        
-        this.p.graphWithWeight = new Graph(this.getWalkMatrix());
-        this.p.menuPath = this.getPath(this.p.AITo,this.p.graphWithWeight);
-        this.add("autoMove");
         
     },
     turnOver:function(){
@@ -1665,54 +1392,53 @@ Q.Sprite.extend("Player",{
             tileSize:Q.tileH,
             w:Q.tileH,h:Q.tileH,
             
-            //Character stats
-            statsModified:{
-                ofn:0,
-                dfn:0,
-                spd:0
-            },
             buffs:[],
             debuffs:[],
-            defeated:false
+            defeated:false,
+            types:["Normal"],
+            ally:"Player"
         });
         //Library
         this.add("2d, animation, tween");
         //My components
         this.add("commonPlayer,animations,attacker,mover");
         this.on("step",this,"checkMenu");
-        this.on("atDest",this,"checkTrigger");
         this.p.num=0;
+        this.p.dir ? this.p.dir : "down";
+        this.p.sheet ? this.p.sheet : this.p.className;
+        var pos = Q.setXY(this.p.loc[0],this.p.loc[1]);
+        this.p.x = pos[0];
+        this.p.y = pos[1];
     },
-    checkTrigger:function(){
-        Q("Trigger",1).invoke("checkLocation");
-    },
-    getDir:function(loc){
-        var dir;
-        if(loc[0]>0&&loc[1]===0){
-            dir='down';
-        } else if(loc[0]===Q.TL.p.tiles[0].length-1&&loc[1]>0){
-            dir='left';
-        } else if(loc[1]>0&&loc[0]===0){
-            dir='right';
-        } else if(loc[1]===Q.TL.p.tiles.length-1&&loc[0]>0){
-            dir='up';
-        } else {
-            dir='down';
-        }
-        return dir;
-    },
-    
     initialize:function(){
-        this.p.dir = this.getDir(this.p.loc);
-        this.p.area=Q.stage(1).scene.name;
+        //These properties are use in the damage calculation and are changed by stat modifiers (leer, etc...)
+        this.p.mod_ofn = this.p.ofn;
+        this.p.mod_dfn = this.p.dfn;
+        this.p.mod_spd = this.p.spd;
+        
         this.p.graphWithWeight = new Graph(this.getWalkMatrix());
-        this.p.canMove=true;
-        this.p.canInput=true;
         
         this.playStand(this.p.dir);
-        this.p.loc=this.setLocation();
-        
         this.p.initialize = false;
+    },
+    //Displays the 'ready' animation
+    showReady:function(){
+        var stage = Q.stage(1);
+        this.p.ready =stage.insert(new Q.Sprite({
+            x:this.p.x,
+            y:this.p.y-Q.tileH,
+            sheet:"objects",
+            sprite:"ready",
+            type:Q.SPRITE_NONE,
+            z:200
+        }));
+        this.p.ready.add("animation");
+        this.p.ready.play("displaying");
+    },
+    destroyReady:function(){
+        if(this.p.ready){
+            this.p.ready.destroy();
+        }
     },
     addControls:function(){
         this.p.canMove=true;
@@ -1735,9 +1461,8 @@ Q.Sprite.extend("Player",{
         Q.addViewport(this);
         this.createMenu();
         this.p.myTurn=true;
-        this.p.myTurnTiles=this.p.stats.other.stamina;
-        this.p.loc=this.setLocation();
-        this.p.startLocation=this.setLocation();
+        this.p.myTurnTiles=this.p.stats.sp.stamina;
+        this.p.startLocation=[this.p.loc[0],this.p.loc[1]];
         
         this.p.canRedo=true;
         this.p.canInput=false;
@@ -1816,14 +1541,6 @@ Q.Sprite.extend("Player",{
         if(itm.p.type===Q.SPRITE_NPC){
             itm.destroy();
         }  
-    },
-    lowerPP:function(itm){
-        var player = this;
-        var attacks = player.p.attacks;
-        var rand = Math.floor(Math.random()*player.p.attacks.length);
-        var attack = Q.getAttack(attacks[rand]);
-        var text =  [player.p.name+" lost "+itm.p.amount+" PP on "+attack.name,{changePP:[{Class:player.p.Class,id:player.p.playerId},[rand,itm.p.amount]],endTurn:[{Class:player.p.Class,id:player.p.playerId}]}];
-        Q.stageScene("bottomhud",3,{text:text,player:player});
     },
     foundNothing:function(){
         var player = this;

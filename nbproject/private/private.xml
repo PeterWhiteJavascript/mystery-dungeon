@@ -4,16 +4,16 @@
     <open-files xmlns="http://www.netbeans.org/ns/projectui-open-files/2">
         <group>
             <file>file:/C:/Users/Peter/Documents/GitHub/mystery-dungeon/public/hud.js</file>
-            <file>file:/C:/Users/Peter/Documents/GitHub/mystery-dungeon/public/index.html</file>
-            <file>file:/C:/Users/Peter/Documents/GitHub/mystery-dungeon/public/tile_costs.js</file>
             <file>file:/C:/Users/Peter/Documents/GitHub/mystery-dungeon/public/objects.js</file>
             <file>file:/C:/Users/Peter/Documents/GitHub/mystery-dungeon/server/save_file.js</file>
             <file>file:/C:/Users/Peter/Documents/GitHub/mystery-dungeon/app.js</file>
+            <file>file:/C:/Users/Peter/Documents/GitHub/mystery-dungeon/public/lib/quintus.js</file>
             <file>file:/C:/Users/Peter/Documents/GitHub/mystery-dungeon/server/player.js</file>
             <file>file:/C:/Users/Peter/Documents/GitHub/mystery-dungeon/public/areas.js</file>
             <file>file:/C:/Users/Peter/Documents/GitHub/mystery-dungeon/public/music.js</file>
             <file>file:/C:/Users/Peter/Documents/GitHub/mystery-dungeon/public/main.js</file>
             <file>file:/C:/Users/Peter/Documents/GitHub/mystery-dungeon/public/animations.js</file>
+            <file>file:/C:/Users/Peter/Documents/GitHub/mystery-dungeon/public/ai.js</file>
         </group>
     </open-files>
 </project-private>

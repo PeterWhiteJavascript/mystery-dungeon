@@ -3,6 +3,7 @@ Quintus.AttackFuncs=function(Q){
         //Calculate extra damage from type advantage/disadvantage
         getTypeModifiers:function(target,attack){
             var modifier = 1;
+            return modifier;
             //If the attack doesn't affect, lower the modifier by 100 and then check later to see if it's less than or equal to 0.
             //First, loop through both types of the target and then compare that to the attack type
             //DONE
@@ -780,6 +781,7 @@ Quintus.AttackFuncs=function(Q){
         //See if the attack has STAB
         getSTAB:function(user,attack){
             var stab = 1;
+            return stab;
             for(i=0;i<user.p.types.length;i++){
                 //If the attack is the same type as one of the user's types
                 if(attack.type===user.p.types[i]){
@@ -797,23 +799,23 @@ Quintus.AttackFuncs=function(Q){
             var defense = target.p.mod_dfn;
             var baseDamage = attack.power;
             var modifier = 1;
-            var modText=[];
+            var modText={text:[]};
             //TODO Need to include ability into STAB
             var stab = RP.attackFuncs.getSTAB(user,attack);
             var typeMod = RP.attackFuncs.getTypeModifiers(target,attack);
             switch(true){
                 case typeMod===0:
                     //Doesn't affect
-                    modText.push(attack.name+" doesn't affect "+target.p.name+"...");
+                    modText.text.push(attack.name+" doesn't affect "+target.p.name+"...");
                     var noEffect=true;
                     break;
                 case typeMod<1:
                     //Not very effective
-                    modText.push(attack.name+" is not very effective against "+target.p.name+"...");
+                    modText.text.push(attack.name+" is not very effective against "+target.p.name+"...");
                     break;
                 case typeMod>1:
                     //Super effective
-                    modText.push(attack.name+" is super effective against "+target.p.name+"!");
+                    modText.text.push(attack.name+" is super effective against "+target.p.name+"!");
                     break;
                 default:
                     //Normal effective
@@ -825,7 +827,7 @@ Quintus.AttackFuncs=function(Q){
             var crit=1;
             if(doCrit<=2){
                 crit=1.5;
-                modText.push("Critical hit!");
+                modText.text.push("Critical hit!");
             }
             //other is Weather, Held items, Stat boosts, etc...
             var other = 1;
