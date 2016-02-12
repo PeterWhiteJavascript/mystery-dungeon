@@ -1,5 +1,5 @@
 Quintus.TileCosts = function(Q){
-Q.getTileCost = function(tile,p){
+Q.getTileCost = function(tile){
     var cost = 2;
     switch(tile){
         case "SPRITE_DEFAULT":

@@ -89,6 +89,7 @@ Q.component("autoMove", {
         }*/
         this.entity.del("autoMove");
         this.entity.trigger("doneAutoMove");
+        
         this.entity.trigger("atDest");
     },
     moveAlong:function(to){
@@ -666,7 +667,7 @@ Q.component("attacker",{
                         if(target.p.curHp-damageCalc.damage<=0){
                             interaction.push({text:[{obj:target.p.playerId,func:"dead"},target.p.name+" died."]});
                             target.p.defeated=true;
-                            target.removeFromTurnOrder();
+                            target.removeFromTurnOrder(target.p.playerId);
                             target.checkDrop(this);
                             var expText = target.giveExp();
                             if(expText&&expText.text.length>0){
@@ -763,6 +764,7 @@ Q.component("mover",{
         p.stepping=false;
         p.canInput=true;
         p.loc = Q.getLoc(p.x,p.y);
+        console.log(p.loc);
         //Check for triggers
         this.entity.trigger("atDest");
         //Run this function to see if we keep moving
@@ -832,31 +834,22 @@ Q.component("mover",{
             return Q.getTileType(loc[0],loc[1]);
         },
         getWalkMatrix:function(){
-            function getWalkable(tiles,obj){
-                return Q.getTileCost(Q.getTileType(i,j),obj.p);
+            function getWalkable(){
+                return Q.getTileCost(Q.getTileType(i_walk,j_walk));
             }
-
+            
             var tiles=Q.TL.p.tiles;
             var cM=[];
             if(tiles){
-                for(i=0;i<tiles[0].length;i++){
+                for(i_walk=0;i_walk<tiles[0].length;i_walk++){
                     var costRow = [];
-                    var colLoc = i*Q.tileH+Q.tileH/2;
-                    for(j=0;j<tiles.length;j++){
-                        var rowLoc=j*Q.tileH+Q.tileH/2;
-                        var cost = getWalkable(tiles,this);
+                    for(j_walk=0;j_walk<tiles.length;j_walk++){
+                        var cost = getWalkable();
                         var objOn=false;
-                        objOn = Q.stage(1).locate(colLoc,rowLoc,Q.SPRITE_INTERACTABLE);
+                        objOn = Q.getTargetAt(i_walk,j_walk);
                         //Allow walking over allies
                         if(objOn&&objOn.p.ally===this.p.ally){objOn=false;};
-                        //If this is AI going to, we need to stop one square before the player.
-                        //Mark the square that the player is standing on as no object.
-                        //In our auto move, if AITo is set, short by 1
-                        if(objOn&&this.p.AITo){
-                            if((objOn.p.x-Q.tileH/2)/Q.tileH===this.p.AITo.x&&(objOn.p.y-Q.tileH/2)/Q.tileH===this.p.AITo.y){
-                                objOn=false;
-                            }
-                        }
+                        //If there's still no enemy on the sqaure, get the tileCost
                         if(!objOn){
                             costRow.push(cost);
                         } else {
@@ -1014,6 +1007,7 @@ Q.component("mover",{
             if(loc){
                 start = graph.grid[loc[0]][loc[1]];
             } else {
+                
                 loc = this.setLocation();
                 start = graph.grid[loc[0]][loc[1]];
             }
@@ -1062,11 +1056,11 @@ Q.component("commonPlayer", {
             this.stage.insert(new Q.DeathAnimation({x:this.p.x,y:this.p.y,sprite:this.p.sprite,sheet:this.p.sheet,dir:this.p.dir}));
             this.destroy();
         },
-        removeFromTurnOrder:function(){
+        removeFromTurnOrder:function(id){
             //Remove from the turn order right away so that it won't be this's turn
             var turnOrder = Q.state.get("turnOrder");
             for(i=0;i<turnOrder.length;i++){
-                if(turnOrder[i]===this.p.playerId){
+                if(turnOrder[i]===id){
                     turnOrder.splice(i,1);
                 }
             }
@@ -1275,7 +1269,8 @@ Q.Sprite.extend("Ally",{
         
         this.p.expGiven = this.p.level*this.p.exp;
         this.p.sheet = this.p.sheet ? this.p.sheet : this.p.className;
-        this.p.name = this.p.className+" "+this.p.playerId;
+        this.p.name = this.p.name ? this.p.name : this.p.className+" "+this.p.playerId;
+        this.p.graphWithWeight = new Graph(this.getWalkMatrix());
         
         this.playStand(this.p.dir);
         this.p.initialize = false;
@@ -1286,17 +1281,12 @@ Q.Sprite.extend("Ally",{
         this.p.myTurn=true;
         this.p.myTurnTiles=this.p.stats.sp.stamina;
         this.p.startLocation=this.p.loc;
-        this.p.graphWithWeight = new Graph(this.getWalkMatrix());
-         
         this.add("AI");
-        /*
-        this.p.graphWithWeight = new Graph(this.getWalkMatrix());
-        this.p.menuPath = this.getPath(this.p.AITo,this.p.graphWithWeight);
-        this.add("autoMove");*/
         
     },
     turnOver:function(){
         this.playStand(this.p.dir);
+        this.p.loc = this.setLocation();
         this.p.myTurn=false;
         this.del("AI");
         Q.afterDir();
@@ -1345,7 +1335,7 @@ Q.Sprite.extend("Enemy",{
         
         this.p.expGiven = this.p.level*this.p.exp;
         this.p.sheet = this.p.sheet ? this.p.sheet : this.p.className;
-        this.p.name = this.p.className+" "+this.p.playerId;
+        this.p.name = this.p.name ? this.p.name :  this.p.className+" "+this.p.playerId;
         
         this.p.graphWithWeight = new Graph(this.getWalkMatrix());
         this.playStand(this.p.dir);
@@ -1357,13 +1347,12 @@ Q.Sprite.extend("Enemy",{
         this.p.myTurn=true;
         this.p.myTurnTiles=this.p.stats.sp.stamina;
         this.p.startLocation=this.setLocation();
-        this.p.graphWithWeight = new Graph(this.getWalkMatrix());
          
         this.add("AI");
-        
     },
     turnOver:function(){
         this.playStand(this.p.dir);
+        this.p.loc = this.setLocation();
         this.p.myTurn=false;
         this.del("AI");
         Q.afterDir();

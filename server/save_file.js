@@ -46,7 +46,7 @@ var saveFile = function(file,levelData){
                 "onStart":{"name":"Prologue_00","music":"talking1"},
                 "onCompleted":{"scene":"Prologue_00_end","music":"talking1",nextScene:"Prologue_01"},
                 "battle": {
-                    "music":"battle1",
+                    "music":"battle3",
                     "status": 0,
                     "playerMax": 2,
                     "playerLocs":[
@@ -56,8 +56,8 @@ var saveFile = function(file,levelData){
                     ],
                     "allies":[
                         [
-                            {"className":"Professor","sheet":"Deino","loc": [14,13],"level": 100,"dir": "left",traits:["aggressive","genius"]},
-                            {"className":"Professor","sheet":"Dratini","loc": [13,13],"level": 100,"dir": "right"},
+                            {"name":"Old Wizard Guy","className":"Professor","sheet":"Deino","loc": [14,13],"level": 100,"dir": "left",traits:["aggressive","genius"]},
+                            {"name":"Young Wizard Guy","className":"Professor","sheet":"Dratini","loc": [13,13],"level": 100,"dir": "right"},
                         ]
                     ],
                     "enemies": [
@@ -79,7 +79,7 @@ var saveFile = function(file,levelData){
                 "onStart":{"name":"Prologue_01","music":"talking1"},
                 "onCompleted":{"scene":"Prologue_01_end","music":"talking1",nextScene:"Prologue_02"},
                 "battle": {
-                    "music":"battle1",
+                    "music":"battle4",
                     "status": 0,
                     "playerMax": 2,
                     "playerLocs":[
@@ -89,8 +89,8 @@ var saveFile = function(file,levelData){
                     ],
                     "allies":[
                         [
-                            {"className":"Professor","sheet":"Deino","loc": [36,6],"level": 100,traits:["aggressive"]},
-                            {"className":"Professor","sheet":"Dratini","loc": [36,7],"level": 100},
+                            {"name":"Old Wizard Guy","className":"Professor","sheet":"Deino","loc": [36,6],"level": 100,traits:["aggressive"]},
+                            {"name":"Young Wizard Guy","className":"Professor","sheet":"Dratini","loc": [36,7],"level": 100},
                         ]
                     ],
                     "enemies": [
@@ -108,7 +108,7 @@ var saveFile = function(file,levelData){
                             {"className": "Professor","loc": [14,11],"moveTo":[15,11],"onArrival":[{func:"playStand",props:"down"}],"level": 2,"dir": "right","hidden":true,"moveForward":[15,13]},
                         ],
                         [
-                            {"className": "Professor","loc": [15,6],"moveTo":[16,13],"onArrival":[{func:"playStand",props:"down"}],"level": 10,"dir": "right"},
+                            {name:"Obama","className": "Professor","loc": [15,6],"moveTo":[16,13],"onArrival":[{func:"playStand",props:"down"}],"level": 20,"dir": "right"},
                         ]
                         
                     ],
@@ -118,7 +118,7 @@ var saveFile = function(file,levelData){
                 }
             },
             "Prologue_02": {
-                "levelMap":{"name":"first_demo1_1"},
+                "levelMap":{"name":"first_demo1_2"},
                 "onStart":{"name":"Prologue_02","music":"talking1"},
                 "onCompleted":{"scene":"Prologue_02_end","music":"talking1",nextScene:"Prologue_03"},
                 "battle": {
@@ -132,17 +132,30 @@ var saveFile = function(file,levelData){
                     ],
                     "allies":[
                         [
-                            {"className":"Professor","loc": [14,13],"level": 10,"dir": "left",traits:["aggressive"]},
-                            {"className":"Professor","sheet":"Dratini","loc": [13,13],"level": 2,"dir": "right"},
+                            {"className":"Professor","loc": [13,19],"level": 1000,"dir": "left",traits:["aggressive"]},
+                            {"className":"Professor","sheet":"Dratini","loc": [14,19],"level": 200,"dir": "down"},
                         ]
                     ],
                     "enemies": [
                         [
                             {"className": "Professor","loc": [12,11],"level": 1,"dir": "right"},
                             {"className": "Professor","loc": [12,10],"level": 1,"dir": "right","drop": {"item": "OranBerry","amount": 1}},
-                            {"className": "Professor","loc": [12,9],"level": 1,"dir": "down"},
+                            {"className": "Professor","loc": [14,11],"level": 1,"dir": "up"},
                             {"className": "Professor","loc": [14,9],"level": 1,"dir": "up"},
-                            //{"className": "Professor","loc": [16,10],"level": 1,"dir": "left"}
+                            {"className": "Professor","loc": [16,10],"level": 1,"dir": "left"},
+                            
+                            {"className": "Professor","loc": [13,11],"level": 1,"dir": "right"},
+                            {"className": "Professor","loc": [14,10],"level": 1,"dir": "right","drop": {"item": "OranBerry","amount": 1}},
+                            {"className": "Professor","loc": [20,12],"level": 1,"dir": "up"},
+                            {"className": "Professor","loc": [16,9],"level": 1,"dir": "up"},
+                            {"className": "Professor","loc": [17,12],"level": 1,"dir": "left"},
+                            
+                            {"className": "Professor","loc": [15,11],"level": 1,"dir": "right"},
+                            {"className": "Professor","loc": [17,10],"level": 1,"dir": "right","drop": {"item": "OranBerry","amount": 1}},
+                            {"className": "Professor","loc": [20,11],"level": 1,"dir": "up"},
+                            {"className": "Professor","loc": [15,9],"level": 1,"dir": "up"},
+                            {"className": "Professor","loc": [14,12],"level": 1,"dir": "left"}
+                            
                         ]
                     ],
                     "pickups": [

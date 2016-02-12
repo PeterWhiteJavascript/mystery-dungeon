@@ -10,7 +10,12 @@ Q.component("AI", {
         if(!traits){console.log(p);traits=["aggressive"];};
         var trait = traits[Math.floor(Math.random()*traits.length)];
         delete(p.AI);
-        p.AI = this[trait]();
+        //If we're wanting to strike with a melee attack, we need to get the possible targets that we can reach to do that
+        //Get all of the information on what possible interactions we can have this turn
+        p.targetsInfo = this.getTargetsInfo(p.opponents);
+        //p.rangedTargets = [];
+        p.AI = this[trait](p.targetsInfo);
+        console.log(p.AI)
         p.calcMenuPath = p.AI.path;
         //Send off the AI to the other clients
         //Make the enemy move on other clients and then send the attacking action after the move
@@ -25,11 +30,16 @@ Q.component("AI", {
             }
         });
         //If we are moving
-        if(p.AI.path.length){
+        //Make sure there's a path and that path has at least one spot to move to
+        if(p.AI.path&&p.AI.path.length){
             Q.state.get("playerConnection").socket.emit('battleMove',{playerId:p.playerId,walkPath:p.AI.path});
             this.entity.add("autoMove");
-        } 
-        //If we're not moving, do the action
+        }
+        //If we cannot move, but can attack
+        else if(p.AI.action[0]==="attackTarget"){
+            this.entity[p.AI.action[0]](p.AI.action[1]);
+        }
+        //If we're not moving or attacking, do the action
         else {
             //If there's an action
             if(p.AI.action){
@@ -46,57 +56,56 @@ Q.component("AI", {
     
     //START TRAITS
     //Attacks with highest damage attack and positioning.
-    aggressive:function(){
+    aggressive:function(targetsInfo){
         var p = this.entity.p;
-        //Short for opponents
-        var ops = p.opponents;
-        //If we're wanting to strike with a melee attack, we need to get the possible targets that we can reach to do that
-        //Get all of the information on what possible interactions we can have this turn
-        //var targets = this.getTargetsInfo(ops);
-        //Figure out which enemies can be reached this turn
-        var targets = this.getMeleeTargets(ops);
-        //Returns the closest path that puts the AI behind a target
-        var closestBehind = this.getClosestBehindTarget(targets);
-        //If we can't get behind, try the side
-        if(!closestBehind){
-            var closestSide = this.getClosestSideTarget(targets);
-        } else {
-            console.log(closestBehind)
-        }
-        
+        var AI;
+        var info = targetsInfo;
+        //TODO
         //We will need to figure out what type of attack we use
         var attack = p.attacks[0];
-        //If there's someone we can get behind, go there, else go to the closet spot
-        var AI;
-        //If we can get behind someone
-        if(closestBehind){
-            AI = closestBehind;
-            //[function,target,attack]
-            AI.action = ["attackTarget",[AI.target,attack]];
-            console.log("BEHIND")
+        
+        //Get the closest behind path
+        //If we can reach the closest behind, target it
+        info.closestBehind = this.getClosestBehindTarget(info.meleeTargets);
+        if(info.closestBehind){
+            AI = info.closestBehind;
+            AI.action = ["attackTarget",[AI.playerId,attack]];
+            return AI;
         } 
-        //If we can go to the side of someone
-        else if(closestSide){
-            AI = closestSide;
-            //[function,target,attack]
-            AI.action = ["attackTarget",[AI.target,attack]];
-            console.log("SIDE")
+        //Next best is to attack the closest from the side
+        //Get the closest side path
+        info.closestSide = this.getClosestSideTarget(info.meleeTargets);
+        if(info.closestSide){
+            AI = info.closestSide;
+            AI.action = ["attackTarget",[AI.playerId,attack]];
+            return AI;
         }
-        //Figure out the next best option for attack
-        else if(targets.length){
-            AI = targets[0].paths[targets[0].closest.id];
-            AI.target = targets[0].target.p.playerId;
-            //[function,target,attack]
-            AI.action = ["attackTarget",[AI.target,attack]];
-        } 
-        //If we can't attack, just move somewhere
-        else {
-            //Need to figure out a square that is close to the enemies since this is aggressive
-            AI = this.getCloseToEnemies(ops);
-            //AI.action is what happens after the move
-            AI.action = ["endTurn"];
+        //Determine if there are any opponents that can be attacked without moving
+        info.outlineTargets = this.getOutlineTargets(p.opponents);
+        if(info.outlineTargets.length){
+            var target;
+            //Need to determine which target is better to attack
+            //TODO
+            for(i=0;i<info.outlineTargets.length;i++){
+                var t = info.outlineTargets[i];
+                if(!target){target=t;};
+            }
+            AI = {};
+            AI.action = ["attackTarget",[target.p.playerId,attack]];
+            return AI;
         }
-        //For now, let's attack the closest target, prioritizing the closest behind target
+        
+        //If we can't get behind and can't get to the side, just go to the closest
+        //Get the absolute closest path
+        info.closestPath = this.getClosestPath(info.meleeTargets);
+        if(info.closestPath){
+            AI = info.closestPath;
+            AI.action = ["attackTarget",[AI.playerId,attack]];
+            return AI;
+        }
+        //If there's none of the above paths, try to move towards the enemies
+        //This also sets the AI.action
+        AI = this.getCloseToEnemies(p.opponents);
         return AI;
     },
     //Defends weaker allies by positioning itself in front of allies instead of attacking if necessary.
@@ -108,8 +117,6 @@ Q.component("AI", {
 
     },
     //END TRAITS
-    
-    
     
     
     //Trims the end of the path so that the object doesn't land on another object
@@ -148,64 +155,124 @@ Q.component("AI", {
                 return this.checkPathForObjs(newPath);
             }
         }
-        console.log("This should not happen as this object can make it to an enemy")
+        console.log("This should not happen as this object can make it to an enemy");
+        console.log("This does happens when the AI goes 'into' the enemy when they are already surrounded")
         return newPath;
     },
-    //Gets a close square to the enemies if this AI can't get within melee range.
+    //Gets a close square to the enemies if this AI can't move to attack
+    //This function also handles when the unit stands still to attack
     getCloseToEnemies:function(ops){
         var p = this.entity.p;
         //For now, just move to the first enemy
         var closest = ops[0];
         var path = this.entity.getPath(closest.p.loc,p.graphWithWeight);
+        //If the path is 1 long and the square is weight 10000 (enemy)
+        if(path.length===1&&path[0].weight===10000){console.log("this shouldn't happen because the outline should've been dealt with at the start");
+            var op = ops.filter(function(obj){
+                return obj.p.loc[0]===path[0].x&&obj.p.loc[1]===path[0].y;
+            })[0];
+            return {path:path,action:["attackTarget",[op.p.playerId,p.attacks[0]]]};
+        }
+        //If we're moving somewhere, trim the ends that land on top of friendlies
         var path = this.cutPath(path,p.myTurnTiles);
-        return {path:path};
+        //Do some AI that determines if we can do a buff or heal (or some other self/ally target move)
+        return {path:path,action:["endTurn"]};
     },
-    getClosestSideTarget:function(targets){
-        var closestSide;
-        for(i=0;i<targets.length;i++){
-            if(Q._isObject(targets[i].side)){
-                if(!closestSide||(closestSide.side&&targets[i].side.cost<closestSide.side.cost)){
-                    closestSide = targets[i].paths[targets[i].side.id];
-                    closestSide.target = targets[i].target.p.playerId;
-                }
-            } 
-            else if(Q._isArray(targets[i].side)){
-                for(si=0;si<targets[i].side.length;si++){
-                    if(!closestSide||(closestSide.side&&targets[i].side[si].cost<closestSide.side[si].cost)){
-                        closestSide = targets[i].paths[targets[i].side[si].id];
-                        closestSide.target = targets[i].target.p.playerId;
-                    }
-                }
+    getOutlineTargets:function(targets){
+        var p = this.entity.p;
+        var borderTargets = [];
+        //The bordering squares of the user
+        var outline = [
+            [p.loc[0],p.loc[1]-1],//Above
+            [p.loc[0]+1,p.loc[1]],//Right
+            [p.loc[0],p.loc[1]+1],//Below
+            [p.loc[0]-1,p.loc[1]]//Left
+        ];
+        for(i=0;i<outline.length;i++){
+            var target = targets.filter(function(obj){
+                return obj.p.loc[0]===outline[i][0]&&obj.p.loc[1]===outline[i][1];
+            })[0];
+            if(target){
+                borderTargets.push(target);
             }
         }
-        return closestSide;
+        console.log(borderTargets)
+        return borderTargets;
     },
     getClosestBehindTarget:function(targets){
-        var closestBehind;
+        var closestBehind=false;
         //Loop through all of the targets
         for(i=0;i<targets.length;i++){
             //Make sure there is a behind for this target
-            if(targets[i].behind!==undefined){
+            if(targets[i].behind){
                 //Check to see if this behind path is better than the other one
-                if(!closestBehind||(closestBehind.behind&&targets[i].behind.cost<closestBehind.behind.cost)){
-                    //Make sure that the behind path is moveable
-                    if(targets[i].behind.cost<=this.entity.p.myTurnTiles){
-                        closestBehind = targets[i].paths[targets[i].behind.id];
-                        closestBehind.target = targets[i].target.p.playerId;
+                if(!closestBehind||(closestBehind&&targets[i].behind.cost<closestBehind.path.cost)){
+                    //Make sure there's a path
+                    if(targets[i].behind.path&&targets[i].behind.path.length){
+                        closestBehind = {
+                            path:targets[i].behind.path,
+                            cost:targets[i].behind.cost,
+                            playerId:targets[i].playerId
+                        };
                     }
                 }
             }
         }
         return closestBehind;
     },
-    //Returns the total cost of a path
-    getPathCost:function(path){
-        var curCost = 0;
-        for(j=0;j<path.length;j++){
-            curCost+=path[j].weight;
+    getClosestSideTarget:function(targets){
+        var closestSide=false;
+        //TODO add logic for determining a tie between left and right (right now, right wins)
+        for(i=0;i<targets.length;i++){
+            //Check left
+            if(targets[i].left){
+                //Check to see if this left path is better than the other one
+                if(!closestSide||(closestSide&&targets[i].left.cost<closestSide.path.cost)){
+                    //Make sure there's a path
+                    if(targets[i].left.path&&targets[i].left.path.length){
+                        closestSide = {
+                            path:targets[i].left.path,
+                            cost:targets[i].left.cost,
+                            playerId:targets[i].playerId
+                        };
+                    }
+                }
+            }
+            //Check right
+            if(targets[i].right){
+                //Check to see if this left path is better than the other one
+                if(!closestSide||(closestSide&&targets[i].right.cost<closestSide.path.cost)){
+                    //Make sure there's a path
+                    if(targets[i].right.path&&targets[i].right.path.length){
+                        closestSide = {
+                            path:targets[i].right.path,
+                            cost:targets[i].right.cost,
+                            playerId:targets[i].playerId
+                        };
+                    }
+                }
+            }
         }
-        return curCost;
+        return closestSide;
     },
+    getClosestPath:function(targets){
+        var closestPath = false;
+        for(i=0;i<targets.length;i++){
+            if(!closestPath||(closestPath&&targets[i].closest.cost<closestPath.cost)){
+                
+                //Make sure there's a path
+                if(targets[i].closest.path&&targets[i].closest.path.length){
+                    closestPath= {
+                        path:targets[i].closest.path,
+                        cost:targets[i].closest.cost,
+                        playerId:targets[i].playerId
+                    };
+                }
+            }
+        }
+        return closestPath;
+    },
+    
     //Compares two direction and returns the interaction
     compareDirection:function(dir1,dir2){
         var getDirection = function(dir,dirs){
@@ -222,14 +289,6 @@ Q.component("AI", {
             }
             return num;
         };
-        //0.50 is from behind
-        //1.00 is side
-        //1.50 is from front
-        //Set values that we will multiply accuracy and power by later on
-        var back = 0.5;
-        var side = 1;
-        var front = 1.5;
-
         //Array of possible directions clockwise from 12 o'clock
         var dirs = ["up", "right", "down", "left"];
         //Get the number for the user dir
@@ -239,7 +298,7 @@ Q.component("AI", {
         //An array of the values (also clockwise from 12 o'clock)
         //EX:
         //if both user and target are 'up', they will both be 0 and that will give the back value (since they are both facing up, the user has attacked from behind).
-        var values = [back,side,front,side];
+        var values = ["behind","right","front","left"];
         for(jjjj=0;jjjj<values.length;jjjj++){
             //Make sure we are in bounds, else loop around to the start of the array
             if(checkBounds(userDir+jjjj)===targetDir){
@@ -248,7 +307,12 @@ Q.component("AI", {
             }
         }
     },
-    checkLocForObj:function(loc){
+    checkLocForObjOrWall:function(loc){
+        //Check for wall first
+        if(Q.getTileType(loc[0],loc[1])==="SPRITE_DEFAULT"){
+            return "Wall";
+        };
+        //If there's no wall, check if there's an object that is not itself
         var objs = Q(".commonPlayer",1).items;
         for(o=0;o<objs.length;o++){
             //Don't care if this square is occupied by this object itself
@@ -262,149 +326,127 @@ Q.component("AI", {
         }
         return false;
     },
-    //Returns the closest side of an opponent that we are trying to reach
-    getClosestSide:function(opLoc,opDir){
+    //This is the main AI function that returns all of the possible targets that we can reach and information about them such as:
+    getTargetsInfo:function(opponents){
+        var ops = opponents;
+        
+        var targetsInfo = {
+            closestBehind:false,
+            closestSide:false,
+            closestPath:false,
+            meleeTargets:[],
+            rangedTargets:[]
+        };
+        //Sample interaction where y is attacking x
+        //Right side is closest
+        //Behind is offensive, Right is defensive
+        /*      x -->
+         *      
+         *      ^
+         *      |
+         *    y y y
+         */
+        
+        //Sample targets data:
+        /*  {
+         *      playerId:playerId,
+         *      offensive:behind,
+         *      defensive:closestToAllies
+         *      
+         *      front:frontPath
+         *      right:rightPath,
+         *      behind:behindPath,
+         *      left:path
+         *  }
+        */
+       //Loop through all opponents in the scene and fill the targets array
+        for(tarLen=0;tarLen<ops.length;tarLen++){
+            //Figure out if we can get to the top, right, bottom, or left of a target
+            var target = this.getTargetPaths(ops[tarLen]);
+            targetsInfo.meleeTargets.push(target);
+            //Once we have the information on which squares we can reach,
+            //use the AI's trait to determine what we do with this information
+            
+            
+            
+            //Determine how close we are to the other enemies in the stage
+            //If we are close to lots of enemies, the score is higher,
+            //Whereas further from enemies is lower score
+            //This should return an object
+            /*  score:{
+             *      canBeAttackedByNextTurn:[],//An array that stores which enemies will be able to reach us at this location based off of their stamina
+             * 
+             * 
+             */
+
+            //var score = this.getScore(check[ii]);
+            //if(!info.aggressive||(info.aggressive))
+            //Check if this is the defensive path
+        }
+        return targetsInfo;
+    },
+    getTargetPaths:function(op){
+        //The single target that we are checking its four sides for.
+        var target = op;
+        var targLoc = target.p.loc;
         var p = this.entity.p;
+        p.graphWithWeight = new Graph(this.entity.getWalkMatrix());
         var check = [
-            [opLoc[0],opLoc[1]-1],//UP
-            [opLoc[0]+1,opLoc[1]],//RIGHT
-            [opLoc[0],opLoc[1]+1],//DOWN
-            [opLoc[0]-1,opLoc[1]]//LEFT
+            [targLoc[0],targLoc[1]-1],//UP
+            [targLoc[0]+1,targLoc[1]],//RIGHT
+            [targLoc[0],targLoc[1]+1],//DOWN
+            [targLoc[0]-1,targLoc[1]]//LEFT
         ];
         //Loop through all of the four areas around the target and get a path if if there's nothing in the way
-        var paths = [];
+        var info = {
+            playerId:target.p.playerId,//The target's ID
+            closest:false,//The closest path
+            //TODO
+            offensive:false,//The path that gets the user close to many enemies while still attacking
+            //TODO
+            defensive:false,//The path that gets the user furthest from many enemies while still attacking
+            //TODO
+            safe:false,//The path that gets the user the furthest from enemies without attacking
+            //TODO
+            ofnHeal:false,//The path that allows the user to heal, while walking towards enemies
+            //TODO
+            dfnHeal:false,//The path that allows the user to heal an ally or self and get furthest away from enemies
+            
+            front:false,//Attacking from front
+            right:false,//Attacking from right side
+            behind:false,//Attacking from behind
+            left:false//Attacking from left side
+        };
+        //Start from attacking facing down
+        var userDirs = ["down","left","up","right"];
         for(ii=0;ii<check.length;ii++){
-            //Need to check if there's already an object
-            //This function will return false if there is no object
+            //Need to check if there's already an object or wall
+            //This function will return false if there is no object or wall
             //If there is an obj, it will return the obj (not used here)
-            if(!this.checkLocForObj(check[ii])){
+            if(!this.checkLocForObjOrWall(check[ii])){
+                var hitsFrom = this.compareDirection(userDirs[ii],target.p.dir);
                 var path = this.entity.getPath(check[ii],p.graphWithWeight);
+                var cost = this.getPathCost(path);
                 //Make sure there is a path that's not empty and that path is able to be gone to
-                if(this.getPathCost(path)<=p.myTurnTiles){
-                    paths.push(path);
+                if(cost<=p.myTurnTiles){
+                    //Set the proper path
+                    info[hitsFrom]={cost:cost,path:path};
+                    //Check if this is the closest path
+                    if(!info.closest||(info.closest.cost>info[hitsFrom].cost)){
+                        info.closest = info[hitsFrom];
+                    }
                 }
             };
         }
-        //Set the lowest cost to be myTurnTiles+1 so that any valid path will result in the lowestCost
-        var lowestCost = p.myTurnTiles+1;
-        var closestPath;
-        var behindPath;
-        var sidePath;
-        //The AI is checking starting from above, so it is facing down
-        var dirs = ["down", "left", "up", "right"];
-        //Which locations are possible
-        var possibleTargetLocations = [];
-        for(ii=0;ii<paths.length;ii++){
-            //If there was a path at that direction
-            if(paths[ii].length){
-                var cost = this.getPathCost(paths[ii]);
-                //If we can move to one of the spots, store this as a possible target
-                if(cost<=p.myTurnTiles){
-                    var hitsFrom = 0;
-                    //Figure out if this is the lowest cost direction
-                    if(cost<lowestCost){
-                        lowestCost=cost;
-                        closestPath={id:possibleTargetLocations.length,cost:cost};
-                    }
-                    //Figure out which way we're hitting from here
-                    hitsFrom = this.compareDirection(dirs[ii],opDir);
-                    if(hitsFrom===0.5){
-                        behindPath={id:possibleTargetLocations.length,cost:cost};
-                    }
-                    if(hitsFrom===1){
-                        //If sidePath is set, this means we can get to both sides
-                        if(sidePath){
-                            //Converted to array with both elements
-                            sidePath = [sidePath,{id:possibleTargetLocations.length,cost:cost}];
-                        }
-                        sidePath={id:possibleTargetLocations.length,cost:cost};
-                    }
-                    possibleTargetLocations.push({path:paths[ii],cost:cost,hitsFrom:hitsFrom});
-                    
-                    
-                }
-            } 
-            //If we're not moving
-            else {
-                hitsFrom = this.compareDirection(dirs[ii],opDir);
-                closestPath={id:possibleTargetLocations.length,cost:0};
-                possibleTargetLocations.push({path:[],cost:0,hitsFrom:hitsFrom});
-            }
-        }
-        //If we can reach the target
-        if(possibleTargetLocations.length){
-            //Here, we should return as much information as needed
-            //Useful info is 
-            //Closest path
-            //Which path can be attacking from behind
-            //Which path/s can we hit from the side
-            return [possibleTargetLocations,closestPath,behindPath,sidePath];
-            
-        } 
-        //If we can't reach the target
-        else {
-            return false;
-        }
+        return info;
     },
-    
-    //Returns all opponents that can be reached and attacked from 1 square away
-    getMeleeTargets:function(ops){
-        var p = this.entity.p;
-        var targets = [];
-        //For each of the opponents, figure out which ones we can get within melee range of
-        for(i=0;i<ops.length;i++){
-            //Get some information about all possible melee areas that we can target the ops[i]
-            var targetLocs = this.getClosestSide(ops[i].p.loc,ops[i].p.dir);
-            //If there is a way to get into melee range of this target
-            if(targetLocs[0]){
-                targets.push({target:ops[i],paths:targetLocs[0],closest:targetLocs[1],behind:targetLocs[2],side:targetLocs[3]});
-            }
+    //Returns the total cost of a path
+    getPathCost:function(path){
+        var curCost = 0;
+        for(j=0;j<path.length;j++){
+            curCost+=path[j].weight;
         }
-        return targets;
-    },
-    //This is the main AI function that returns all of the possible targets that we can reach and information about them such as:
-    //GLOBAL
-    //Closest target
-    //Closest behind of target
-    //
-    //INDIVIDUAL
-    //Can hit from behind?
-    //Can hit from sides?
-    //Closest side to allies
-    //
-    getTargetsInfo:function(opponents){
-        var ops = opponents;
-        //All possible targets that we can get within melee range
-        var targets = [];
-        for(i=0;i<ops.length;i++){
-            //Figure out if we can get to the top, right, bottom, or left of a target
-        }
-    },
-    getClosestTarget:function(ops){
-        var setClosest = function(obj,path,cost){
-            closest = obj;
-            closestPath = path;
-            closestPathCost = cost;
-        };
-        var p = this.entity.p;
-        var closest = ops[0];
-        var closestPath = this.entity.getPath(closest.p.loc,p.graphWithWeight);
-        var closestPathCost = getPathCost(closestPath);
-        for(i=1;i<ops.length;i++){
-            var path = this.entity.getPath(ops[i].p.loc,p.graphWithWeight);
-            var cost = getPathCost(path);
-            if(cost<closestPathCost){
-                setClosest(ops[i],path,cost);
-            } 
-            //If there are two that are just as close
-            else if(cost===closestPathCost){
-                //Random between 0 and 1
-                if(Math.floor(Math.random()*2)){
-                    setClosest(ops[i],path,cost);
-                }
-            }
-        }
-        return closest;
+        return curCost;
     },
     extend:{
         attackTarget:function(target,attack){//console.log(target,attack)

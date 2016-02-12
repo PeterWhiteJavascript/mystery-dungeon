@@ -12,37 +12,39 @@ Q.givePlayerProperties=function(stage,data,loc,dir){
     return player;
 };
 Q.afterDir=function(){
-    var turnOrder = Q.state.get("turnOrder");
-    var allies = [];
-    var enemies = [];
-    var players = [];
-    for(i=0;i<turnOrder.length;i++){
-        if(turnOrder[i][0]==="e"){enemies.push(turnOrder[i]);}
-        else if(turnOrder[i][0]==="a"){allies.push(turnOrder[i]);}
-        else{players.push(turnOrder[i]);}
-    }
-    //If there are no more enemies
-    if(enemies.length===0){
-        //Emit that the battle is done
-        setTimeout(function(){
-            Q.state.get("playerConnection").socket.emit('endBattle');
-        },200);
-    } 
-    //If there are no more friendlies
-    else if(allies.length===0&&players.length===0){
-        //Play the lose scene
-        setTimeout(function(){
-            Q.state.get("playerConnection").socket.emit('loseBattle');
-        },200);
-    } 
-    //If we're still battling
-    else {
-        setTimeout(function(){
-            Q.state.get("playerConnection").socket.emit('endTurn',{
-                turnOrder:turnOrder
-            });
-        },200);
-    }
+    setTimeout(function(){
+        var turnOrder = Q.state.get("turnOrder");
+        var allies = [];
+        var enemies = [];
+        var players = [];
+        for(i=0;i<turnOrder.length;i++){
+            if(turnOrder[i][0]==="e"){enemies.push(turnOrder[i]);}
+            else if(turnOrder[i][0]==="a"){allies.push(turnOrder[i]);}
+            else{players.push(turnOrder[i]);}
+        }
+        //If there are no more enemies
+        if(enemies.length===0){
+            //Emit that the battle is done
+            setTimeout(function(){
+                Q.state.get("playerConnection").socket.emit('endBattle');
+            },200);
+        } 
+        //If there are no more friendlies
+        else if(allies.length===0&&players.length===0){
+            //Play the lose scene
+            setTimeout(function(){
+                Q.state.get("playerConnection").socket.emit('loseBattle');
+            },200);
+        } 
+        //If we're still battling
+        else {
+            setTimeout(function(){
+                Q.state.get("playerConnection").socket.emit('endTurn',{
+                    turnOrder:turnOrder
+                });
+            },200);
+        }
+    },100);
 };
 Q.addViewport=function(obj){
     if(Q._isString(obj)){

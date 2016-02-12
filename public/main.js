@@ -177,7 +177,7 @@ Q.scene('soundControls',function(stage){
     if(pos==="right"){soundCont.p.x=100;}
     //Disable/enable music
     soundCont.insert(new Q.UI.Button({
-        label:"Music on/off",
+        label:"Music",
         radius:8,
         border:0,
         
@@ -203,7 +203,7 @@ Q.scene('soundControls',function(stage){
     
     //Disable/enable sounds
     soundCont.insert(new Q.UI.Button({
-        label:"Sound on/off",
+        label:"Sound",
         radius:8,
         border:0,
         stroke:"black",
@@ -220,6 +220,36 @@ Q.scene('soundControls',function(stage){
         } else {
             this.p.fill="#447ba4";
             Q.state.set("soundEnabled",false);
+        }
+        
+    }));
+    
+    //Disable/enable autoScroll
+    soundCont.insert(new Q.UI.Button({
+        label:"AutoScroll",
+        radius:8,
+        border:0,
+        stroke:"black",
+        fill:Q.state.get("autoScroll") ? "#345894" : "#447ba4",
+        y:100,
+        w:150,
+        h:30
+
+    },function(){
+        var scroll=Q.state.get("autoScroll");
+        if(!scroll){
+            this.p.fill="#345894";
+            Q.state.set("autoScroll",true);
+            var box = Q.interactionBox;
+            if(box){
+                box.setAutoScroll();
+            }
+        } else {
+            this.p.fill="#447ba4";
+            Q.state.set("autoScroll",false);
+            if(box){
+                box.stopAutoScroll();
+            }
         }
         
     }));
@@ -386,7 +416,7 @@ require(objectFiles, function () {
             Q.state.set("turnOrder",data['turnOrder']);
             Q.state.set("battle",true);
             Q.afterDir();
-            Q.stageScene("customAnimate",4,{anim:"battleStart"});
+            //Q.stageScene("customAnimate",4,{anim:"battleStart"});
             
             //TEMP
             return;
@@ -677,8 +707,12 @@ require(objectFiles, function () {
                 }
                 //If this is the host, calculate the AI here
                 if(data['host']===selfId){
+                    //This only happens when it's the turn of a dead enemy.
+                    //Not sure why, but it may be due to the enemy not being actually dead when the turn order gets sent off
                     if(!AITurn){
                         console.log(AITurn,tO[0])
+                        Q.afterDir();
+                        return;
                     }
                     Q.addViewport(AITurn);
                     AITurn.turnStart();
@@ -706,6 +740,8 @@ require(objectFiles, function () {
             musicEnabled:true,//true,
             //sound effects
             soundEnabled:true,
+            //Auto scrolling for the interacting boxes
+            autoScroll:false,
             //Which tunes have been loaded (so that we don't load music twice)
             loadedMusic:[],
             //The current music
@@ -736,8 +772,8 @@ require(objectFiles, function () {
             battle:false,
 
             //The speed at which the enemy ai text goes (actually, this is just used for all bottomtextbox cycling now)
-            //30-60-90
-            textSpeed:90
+            //1-2-3
+            textSpeed:1
         });
     };
 
@@ -760,13 +796,18 @@ require(objectFiles, function () {
         
         var musicToLoad =[
             "adventure1.mp3",
-            "battle1.mp3",
+            "adventure2.mp3",
+            
+            "battle3.mp3",
+            "battle4.mp3",
+            
             "talking1.mp3"
         ];
         var ld =Q.state.get("loadedMusic");
         for(i=0;i<musicToLoad.length;i++){
             musicToLoad[i]="scenes/"+musicToLoad[i];
         }
+        
         //Start loading the music
         Q.load(musicToLoad.join(','),function(){
             for(i=0;i<musicToLoad.length;i++){
@@ -845,7 +886,7 @@ require(objectFiles, function () {
                     var interaction = [
                         {asset:"Professor_Story_Idle.png",pos:"right",text:["Hah, they thought they could take me out!","They should save their dreams for when they are sleeping!"]},
                         {asset:"Dratini_Story_Idle.png",pos:"left",text:["Hmm..."]},
-                        {asset:"Professor_Story_Idle.png",pos:"right",text:["Let's get back to the village now!",
+                        {asset:"Professor_Story_Idle.png",pos:"right",text:["Let's get back to the village now!","We must tell chief Obama what has happened here.",
                             {obj:prof,func:"startAutoMove",props:[14,0]},
                             {obj:drat,func:"startAutoMove",props:[14,0]},
                             {obj:window,func:"setTimeout",props:function(){
@@ -857,7 +898,34 @@ require(objectFiles, function () {
                     Q.stageScene("interaction",10,{interaction:interaction});
                     break;
                 case "Prologue_01_end":
-                    console.log("emonpsa")
+                    var stage = Q.stage(1);
+                    var objs = Q(".commonPlayer",1).items;
+                    var prof = objs.filter(function(obj){
+                        return obj.p.playerId === "a0";
+                    })[0];
+                    var drat = objs.filter(function(obj){
+                        return obj.p.playerId === "a1";
+                    })[0];
+                    prof.del("storySprite,AI");
+                    drat.del("storySprite,AI");
+                    prof.off("doneAutoMove");
+                    drat.off("doneAutoMove");
+                    prof.add("storySprite");
+                    drat.add("storySprite");
+                    prof.p.onArrival = [{func:"disappear"}];
+                    drat.p.onArrival = [{func:"disappear"}];
+                    var interaction = [
+                        {asset:"Professor_Story_Idle.png",pos:"right",text:["We need to check if the townspeople are okay.","Quickly, let's go!"]},
+                        {asset:"Dratini_Story_Idle.png",pos:"left",text:["Yes...",
+                            {obj:prof,func:"startAutoMove",props:[10,17]},
+                            {obj:drat,func:"startAutoMove",props:[10,17]},
+                            {obj:window,func:"setTimeout",props:function(){
+                                Q.stageScene("customAnimate",4,{anim:"fadeOut",speed:5});
+                                setTimeout(function(){Q.goToNextScene();},3000);
+                            }}]}
+                    ];
+                    Q.stageScene("interaction",10,{interaction:interaction});
+                    
                     break;
             }
         });
@@ -969,13 +1037,13 @@ require(objectFiles, function () {
                                     Q.stageScene("customAnimate",9,{anim:"dimToNight",speed:10});
                                     Q.clearStage(10);
                                     //Prof move to above drat
-                                    prof.startAutoMove([13,18]);
+                                    prof.startPresetAutoMove([[14,18],[13,18]]);
                                     prof.p.onArrival=[{
                                         func:function(dir){
                                             prof.playStand(dir);
                                             //Set what happens when you see the enemies
                                             viewMover.seeEnemies=function(){
-                                                Q.playMusic("battle1.mp3");
+                                                Q.playMusic(data.battle.music+".mp3");
                                                 var interaction = [
                                                     {asset:"Professor_Story_Idle.png",pos:"right",text:["Looks like they found us.","If they think they can stop me, then they are wrong.","Come, let us fight!"]},
                                                     {asset:"Dratini_Story_Idle.png",pos:"left",text:["Let's fight then!",{obj:Q,func:"readyForBattle"}]}
@@ -1049,22 +1117,22 @@ require(objectFiles, function () {
                                 func:function(){
                                     prof.playStand("left");
                                     var interaction = [
-                                        {asset:"Professor_Story_Idle.png",pos:"right",text:["Chief!","We encountered some bandits on the way here.","Have they made it to the village yet?"]},
-                                        {asset:"Dratini_Story_Idle.png",pos:"left",text:["...","I can't say I've seen any bandits today."]},
+                                        {asset:"Professor_Story_Idle.png",pos:"right",text:["Obama!","We encountered some bandits on the way here.","Have they made it to the village yet?"]},
+                                        {asset:"obama_serious.jpg",pos:"left",text:["...","I can't say I've seen any bandits today."]},
                                         {asset:"Professor_Story_Idle.png",pos:"right",text:["Where are the townspeople?","The town square is usually filled at this time of day."]},
-                                        {asset:"Dratini_Story_Idle.png",pos:"left",text:["Tonight, we are having a banquet to discuss and celebrate this town's new industry!","Everyone is already at the town hall."]},
-                                        {asset:"Professor_Story_Idle.png",pos:"left",text:["A new source of income?","That's just what we needed after last year's of famine!"]},
-                                        {asset:"Dratini_Story_Idle.png",pos:"left",text:[{obj:Q,func:"playMusic",props:"gambling1.mp3"},"Yes, yes.","You two had better get going before the food is all eaten!","My back is aching with old age so I'll be right behind you!"]},
+                                        {asset:"obama_happy.jpg",pos:"left",text:["Tonight, we are having a banquet to discuss and celebrate this town's new industry!","Everyone is already at the town hall."]},
+                                        {asset:"Professor_Story_Idle.png",pos:"right",text:["A new source of income?","That's just what we needed after last year's of famine!"]},
+                                        {asset:"obama_winking.jpg",pos:"left",text:[{obj:Q,func:"playMusic",props:"gambling1.mp3"},"Yes, yes.","You two had better get going before the food is all eaten!","My back is aching with old age so I'll be right behind you!"]},
                                         {asset:"Professor_Story_Idle.png",pos:"right",text:["Hmm...","Alright, let's go!",
-                                            {obj:prof,func:"setProp",props:["onArrival",[{func:"playStand",props:"left"},{func:function(){funnelEnemies();}}]]},
-                                            {obj:prof,func:"setProp",props:["stepDelay",0.7]},
-                                            {obj:prof,func:"startAutoMove",props:[16,15]},
+                                            {obj:prof,func:"setProp",props:["onArrival",[{func:"playStand",props:"left"}]]},
+                                            {obj:prof,func:"setProp",props:["stepDelay",0.65]},
+                                            {obj:prof,func:"startPresetAutoMove",props:[[16,15],[13,15]]},
                                             {obj:drat,func:"setProp",props:["onArrival",[{func:"playStand",props:"left"}]]},
-                                            {obj:drat,func:"setProp",props:["stepDelay",0.7]},
-                                            {obj:drat,func:"startAutoMove",props:[16,16]},
-                                            {obj:chief,func:"setProp",props:["onArrival",[{func:"playStand",props:"left"}]]},
+                                            {obj:drat,func:"setProp",props:["stepDelay",0.65]},
+                                            {obj:drat,func:"startPresetAutoMove",props:[[16,16],[13,16]]},
+                                            {obj:chief,func:"setProp",props:["onArrival",[{func:"playStand",props:"left"},{func:function(){funnelEnemies();}}]]},
                                             {obj:chief,func:"setProp",props:["stepDelay",0.7]},
-                                            {obj:chief,func:"startPresetAutoMove",props:[[16,6],[16,15]]}
+                                            {obj:chief,func:"startPresetAutoMove",props:[[15,6],[17,14]]}
                                         ]},
                                             
                                         
@@ -1089,24 +1157,26 @@ require(objectFiles, function () {
                         };
                         //Make the enemies come out of all 3 houses
                         var funnelEnemies = function(){
+                            Q.playSound("whistle.mp3");
                             prof.p.onArrival = [{
                                 func:function(){
-                                    Q.playMusic("battle1.mp3",function(){
+                                    Q.playMusic(data.battle.music+".mp3",function(){
                                         var interaction = [
-                                            {asset:"Dratini_Story_Idle.png",pos:"left",text:["Hah!","You've walked right into our trap.","We'll be taking your valuable stone now."]},
+                                            {asset:"bandit_happy.png",pos:"left",text:["Hah!","You've walked right into our trap.","We'll be taking your valuable stone now."]},
                                             {asset:"Professor_Story_Idle.png",pos:"left",text:["Chief!","What is the meaning of this?"]},
-                                            {asset:"Dratini_Story_Idle.png",pos:"right",text:["I suppose it's time to reveal my true identity!","I am the notorious villain!","If you hand over that stone, I will give you a painless death!",{obj:chief,func:"moveForward"}]},
+                                            {asset:"obama_serious.jpg",pos:"right",text:["I suppose it's time to reveal my true identity!","I am the notorious villain, Obama!","If you hand over that stone, I will give you a painless death!",{obj:chief,func:"moveForward"}]},
                                             {asset:"Professor_Story_Idle.png",pos:"left",text:["I will never give it up!","Come on, I'll take you all on!",{obj:Q,func:"readyForBattle"}]},
                                         ];
                                         Q.stageScene("interaction",10,{interaction:interaction});
+                                        prof.p.stepDelay=0.3;
+                                        drat.p.stepDelay=0.3;
+                                        prof.off("doneAutoMove");
+                                        drat.off("doneAutoMove");
+                                        chief.off("doneAutoMove");
                                     });
                                 }
                             }];
                             drat.p.onArrival = [{func:"playStand",props:"left"}];
-                            setTimeout(function(){
-                                prof.startAutoMove([13,15]);
-                                drat.startAutoMove([13,16]);
-                            },4);
                             setTimeout(function(){
                                 var wave = 0;
                                 var enemies = Q.createEnemies(data.curEnemies[0],stage);
@@ -1130,6 +1200,7 @@ require(objectFiles, function () {
                         
                         break;
                     case "Prologue_02":
+                        alert("That's all folks!");
                         Q.stageScene("customAnimate",4,{anim:"fadeIn",speed:5});
                         Q.createAllies(data.curAllies[0],stage);
                         Q.createEnemies(data.curEnemies[0],stage);
@@ -1155,6 +1226,7 @@ require(objectFiles, function () {
             var pos = Q.setXY(this.p.loc[0],this.p.loc[1]);
             this.p.x = pos[0];
             this.p.y = pos[1];
+            this.p.z = this.p.y;
         }
     });
     Q.Sprite.extend("Fireball",{
@@ -1171,6 +1243,7 @@ require(objectFiles, function () {
             var pos = Q.setXY(this.p.loc[0],this.p.loc[1]);
             this.p.x = pos[0];
             this.p.y = pos[1];
+            this.p.z = this.p.y+Q.tileH;
             this.play("burning");
             this.on("sensor");
             this.on("burned");
@@ -1239,6 +1312,7 @@ require(objectFiles, function () {
             p.stepDelay=0.4;
             p.stepDistance=64;
             p.type=Q.SPRITE_NONE;
+            p.z = p.y;
         },
         extend:{
             disappear:function(){
@@ -1315,9 +1389,10 @@ require(objectFiles, function () {
                 w:300,h:450,
                 type:Q.SPRITE_NONE
             });
-            this.p.asset="/images/"+this.p.asset;
-            this.p.x = this.p.pos==="left" ? 0 : Q.width-this.p.w;
+            this.p.asset="/images/story/"+this.p.asset;
+            this.p.x = this.p.pos==="left" ? this.p.w : Q.width-this.p.w;
             this.p.y-=this.p.h;
+            this.p.flip = this.p.pos==="left" ? 'x' : false;
         }
     });
     Q.UI.Text.extend("InteractionText",{
@@ -1330,7 +1405,7 @@ require(objectFiles, function () {
                 cx:0,
                 charNum:0,
                 time:0,
-                speed:4,
+                speed:Q.state.get("textSpeed"),
                 label:"_"
             });
             //this.p.x = this.p.pos==="left" ? 300 : Q.width - 300; 
@@ -1377,9 +1452,17 @@ require(objectFiles, function () {
                 canInteract:true
             });
             this.p.y=Q.height-this.p.h;
+            if(Q.state.get("autoScroll")){
+                this.setAutoScroll();
+            }
+        },
+        setAutoScroll:function(){
             this.p.interval = setInterval(function(){
                 Q.inputs['interact']=true;
-            },200);
+            },1000);
+        },
+        stopAutoScroll:function(){
+            clearInterval(this.p.interval);
         },
         destroyText:function(){
             this.p.textDisplay.destroy();
@@ -1394,7 +1477,9 @@ require(objectFiles, function () {
                 this.children[i].destroy();
             }
             this.destroy();
-            clearInterval(this.p.interval);
+            if(this.p.interval){
+                this.stopAutoScroll();
+            }
         },
         cycleInteraction:function(){
             if(this.p.interactionNum>=this.p.interaction.length){
@@ -1475,8 +1560,8 @@ require(objectFiles, function () {
         }
     });
     Q.scene('interaction',function(stage){
-        var box = stage.insert(new Q.InteractionBox({interaction:stage.options.interaction}));
-        box.cycleInteraction();
+        Q.interactionBox = stage.insert(new Q.InteractionBox({interaction:stage.options.interaction}));
+        Q.interactionBox.cycleInteraction();
         Q.inputs['interact']=false;
     });
     
@@ -1487,9 +1572,6 @@ require(objectFiles, function () {
         "Dratini.png",
         "Deino60x60.png",
         "Totodile60x60.png",
-        
-        "Dratini_Story_Idle.png",
-        "Professor_Story_Idle.png",
         
         "bullets.png",
         
@@ -1506,7 +1588,19 @@ require(objectFiles, function () {
     for(i=0;i<imageFiles.length;i++){
         imageFiles[i]="/images/"+imageFiles[i];
     }
-    
+    var storyImages = [
+        "Dratini_Story_Idle.png",
+        "Professor_Story_Idle.png",
+        
+        "obama_happy.jpg",
+        "obama_serious.jpg",
+        "obama_winking.jpg",
+        
+        "bandit_happy.png"
+    ];
+    for(i=0;i<storyImages.length;i++){
+        storyImages[i]="/images/story/"+storyImages[i];
+    }
     var soundFiles = [
         "enter_door.mp3",
         "attack.mp3",
@@ -1515,13 +1609,14 @@ require(objectFiles, function () {
         "level_up.mp3",
         "text_stream.mp3",
         "explosion_1.mp3",
-        "explosion_2.mp3"
+        "explosion_2.mp3",
+        "whistle.mp3"
     ];
     
     for(i=0;i<soundFiles.length;i++){
         soundFiles[i]="sounds/"+soundFiles[i];
     }
-    Q.load(imageFiles.concat(soundFiles).join(','),function(){
+    Q.load(imageFiles.concat(soundFiles).concat(storyImages).join(','),function(){
         
         Q.setUpAnimations();
         //Stage the title scene

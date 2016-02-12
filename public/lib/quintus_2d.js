@@ -148,7 +148,8 @@ Quintus["2D"] = function(Q) {
         blockTileW: 10,
         blockTileH: 10,
         type: 1,
-        renderAlways: true
+        renderAlways: true,
+        z:0
       });
       if(this.p.dataAsset) {
         this.load(this.p.dataAsset);
