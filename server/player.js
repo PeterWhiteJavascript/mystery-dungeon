@@ -113,7 +113,6 @@ var users = {
 };
 
 var Player = function(data){
-    var tileSize = 64;
     var playerId = data['playerId'];
     var p = users[data['character']];
     var name  = p.name;
@@ -143,46 +142,16 @@ var Player = function(data){
     var ofn = Math.round(Math.sqrt(((stats.base.ofn)/2)*level*stats.iv.ofn*2));
     var dfn = Math.round(Math.sqrt(((stats.base.dfn)/2)*level*stats.iv.dfn*2));
     var spd = Math.round(Math.sqrt(stats.base.spd*level*stats.iv.spd));
-
     
-    var getLoc = function(x,y){
-        //Returns [locx,locy]
-        return [x/tileSize+tileSize/2,y/tileSize+tileSize/2];
+    
+    var levelUp = function(levelsGained){
+        console.log(levelsGained)
+        
     };
-    var getXFromLoc = function(loc){
-        //Returns x
-        return loc[0]*tileSize+tileSize/2;
-    };
-    var getYFromLoc = function(loc){
-        //Returns y
-        return loc[1]*tileSize+tileSize/2;
-    };
-    var getX = function() {
-        return x;
-    };
-
-    var getY = function() {
-        return y;
-    };
-
-    var setX = function(newX) {
-        x = newX;
-    };
-
-    var setY = function(newY) {
-        y = newY;
-    };
+    
     
     
     return  {
-        getLoc: getLoc,
-        getXFromLoc: getXFromLoc,
-        getYFromLoc: getYFromLoc,
-        getX: getX,
-        getY: getY,
-        setX: setX,
-        setY: setY,
-        
         playerId:playerId,
         
         name:name,

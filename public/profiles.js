@@ -391,8 +391,8 @@ RP.moves = {
         "cat": "PHYS",
         "area": 2,
         "range": 3,
-        "desc": "Dumpster dunk all enemies in your way",
-        "target": "enemy"
+        "desc": "Dumpster dunk all in your way",
+        "target": "all"
     }
 };
 RP.abilities={
@@ -456,7 +456,7 @@ RP.items={
         "name": "Potion",
         "effect":["stat",{curHp:20}],
         "desc": "Heals 20 hp.",
-        "target": "all",
+        "target": "single",
         "kind": "Consumable"
     },
     //Berries
@@ -465,7 +465,7 @@ RP.items={
         "name": "Oran Berry",
         "effect":["stat",{curHp:10}],
         "desc": "Heals 10 hp.",
-        "target": "all",
+        "target": "single",
         "kind": "Consumable"
     },
     "CheriBerry":{
@@ -473,7 +473,7 @@ RP.items={
         "name": "Cheri Berry",
         "effect":["buff",{paralyzed:"heal"}],
         "desc": "Cures paralysis.",
-        "target": "all",
+        "target": "single",
         "kind": "Consumable"
     },
     "PechaBerry":{
@@ -481,7 +481,7 @@ RP.items={
         "name": "Pecha Berry",
         "effect":["buff",{poisoned:"heal",toxic:"heal"}],
         "desc": "Cures poison.",
-        "target": "all",
+        "target": "single",
         "kind": "Consumable"
     },
     //Held items

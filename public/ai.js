@@ -15,7 +15,7 @@ Q.component("AI", {
         p.targetsInfo = this.getTargetsInfo(p.opponents);
         //p.rangedTargets = [];
         p.AI = this[trait](p.targetsInfo);
-        console.log(p.AI)
+        //console.log(p.AI)
         p.calcMenuPath = p.AI.path;
         //Send off the AI to the other clients
         //Make the enemy move on other clients and then send the attacking action after the move
@@ -47,6 +47,7 @@ Q.component("AI", {
             } 
             //If there's no action, end the turn
             else {
+                Q.state.get("playerConnection").socket.emit("setDirection",{playerId:Q.state.get("playerConnection").id,dir:this.p.dir});
                 this['endTurn'];
             }
         }
@@ -196,7 +197,6 @@ Q.component("AI", {
                 borderTargets.push(target);
             }
         }
-        console.log(borderTargets)
         return borderTargets;
     },
     getClosestBehindTarget:function(targets){
@@ -449,8 +449,9 @@ Q.component("AI", {
         return curCost;
     },
     extend:{
-        attackTarget:function(target,attack){//console.log(target,attack)
-            this.useAttack(target,attack);
+        attackTarget:function(props){
+            //For now, just create single element array for target.
+            this.useAttack([props[0]],props[1]);
         }
     }
 });

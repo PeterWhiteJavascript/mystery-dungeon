@@ -35,7 +35,7 @@ Quintus.HUD = function(Q){
         },
         flashObjs:function(guide){
             var obj = Q.getTarget(guide.p.x,guide.p.y);
-            if(obj&&this.entity.validTarget(obj)){
+            if(obj&&this.entity.p.player.checkValidTarget(obj,this.entity.p.attack)){
                 obj.flash();
                 this.entity.p.flashObjs.push(obj);
             }
@@ -152,30 +152,32 @@ Quintus.HUD = function(Q){
             this.p.x = pos[0];
             this.p.y = pos[1];
             Q.addViewport(this);
-            /*
-            if(this.p.freeSelecting){
-                Q.stageScene("tophud",3,{target:Q.getTargetAt(this.p.loc[0],this.p.loc[1])});
+            var target = Q.getTargetAt(this.p.loc[0],this.p.loc[1]);
+            if(target){
+                Q.stageScene("tophud",3,{target:target});
             }
-            else if(this.p.attack){
-                //this.p.player.getAttackRange(this.p.attack);
-                //this.createAttackArea(this.p.player.getAttackArea(this.p.attack));
-                Q.stageScene("tophud",3,{target:Q.getTargetAt(this.p.loc[0],this.p.loc[1])});
-            } else {
-                this.p.player.getRange();
-            }*/
             this.add("pointerControls");
             
         },
         //This function displays the attack area and moves with the pointer
         createAttackArea:function(areas){
+            this.p.attackAreas=areas;
             for(i=0;i<areas.length;i++){
-                this.p.guide.push(Q.stage(1).insert(new Q.PathBox({x:(this.p.loc[0]+areas[i][0])*Q.tileH+Q.tileH/2,y:(this.p.loc[1]+areas[i][1])*Q.tileH+Q.tileH/2,loc:this.p.loc}),false,true));
+                this.p.guide.push(Q.stage(1).insert(new Q.PathBox({loc:[this.p.loc[0]+areas[i][0],this.p.loc[1]+areas[i][1]]}),false,true));
             }
         },
         clearGuide:function(){
             if(this.p.guide.length>0){
                 for(i=0;i<this.p.guide.length;i++){
                     this.p.guide[i].destroy();
+                }
+            }
+        },
+        //Clears the guide that shows where you can place a player at the start of the scene
+        clearStartGuide:function(){
+            if(this.p.startGuide.length>0){
+                for(i=0;i<this.p.startGuide.length;i++){
+                    this.p.startGuide[i].destroy();
                 }
             }
         },
@@ -206,6 +208,7 @@ Quintus.HUD = function(Q){
         finished:function(){
             this.trigger("unflash");
             this.clearGuide();
+            Q.clearStage(3);
             this.stage.remove(this);
         },
         
@@ -238,9 +241,14 @@ Quintus.HUD = function(Q){
                 radius:0,
                 type:Q.SPRITE_INTERACTABLE
             });
-            var pos = Q.setXY(this.p.loc[0],this.p.loc[1]);
-            this.p.x = pos[0];
-            this.p.y = pos[1];
+            if(!this.p.x||!this.p.y){
+                var pos = Q.setXY(this.p.loc[0],this.p.loc[1]);
+                this.p.x = pos[0];
+                this.p.y = pos[1];
+            }
+            if(!this.p.loc){
+                this.p.loc = Q.getLoc(this.p.x,this.p.y);
+            }
         }
     });
       
@@ -282,95 +290,6 @@ Quintus.HUD = function(Q){
             this.p.label="Moves left: "+this.p.curChar.p.myTurnTiles;
         }
     });
-    /*
-    Q.UI.Container.extend("StatBar",{
-        init: function(p){
-            this._super(p,{
-                radius:0,
-                curStat:0,
-                w:100,
-                h:10,
-                cx:0
-            });
-            if(this.p.isFill==="HP"){
-                this.p.curChar.on("change.hp",this,"changeHpBar");
-                this.p.curChar.on("change.maxHp",this,"changeHpBar");
-                this.changeHpBar();
-            }
-        },
-        changeCurChar:function(){
-            //Turn off the previous curChar
-            if(this.p.isFill==="HP"){
-                this.p.curChar.off("change.hp",this,"changeHpBar");
-                this.p.curChar.off("change.maxHp",this,"changeHpBar");
-
-                this.p.curChar=Q.state.get("turnOrder")[Q.state.get("currentCharacterTurn")];
-                this.changeHpBar();
-
-                this.p.curChar.on("change.hp",this,"changeHpBar");
-                this.p.curChar.on("change.maxHp",this,"changeHpBar");
-            }
-        },
-        changeHpBar: function(){
-            var hp = this.p.curChar.p.curHp;
-            var maxHp = this.p.curChar.p.maxHp;
-            var num = (hp/maxHp)*100;
-            if(num<0){num=0;};
-            this.p.w = num;
-        }
-    });
-    
-    Q.UI.Text.extend("StatValue",{
-        init: function(p){
-            this._super(p,{
-                label:"",
-                color:"white",
-                size:16,
-                outlineWidth:5,
-                cx:0
-            });
-            this.getLabel();
-        },
-        
-        changeCurChar:function(){
-            this.p.curChar.off("change.curHp",this,"changeStat");
-            this.p.curChar=Q.state.get("turnOrder")[Q.state.get("currentCharacterTurn")];
-            this.getLabel();
-        },
-        
-        getLabel: function(){
-            this.p.label=this.p.curChar.p.curHp+"/"+this.p.curChar.p.maxHp;
-            this.p.curChar.on("change.curHp",this,"changeStat");
-        },
-
-        changeStat: function(){
-            var statValue = this.p.curChar.p.curHp;
-            var maxStat = this.p.curChar.p.maxHp;
-            this.p.label=statValue+"/"+maxStat;
-        }
-    });
-    
-    Q.UI.Text.extend("StatText",{
-        init: function(p){
-            this._super(p,{
-                label:"",
-                curStat:0,
-                hudText:["HP","EXP"],
-                color:"white",
-                outlineWidth:5,
-                size:20,
-                cx:0
-            });
-            this.getLabel();
-        },
-        changeCurChar:function(){
-            
-        },
-
-        getLabel: function(){
-            this.p.label=this.p.hudText[this.p.curStat];
-        }
-    });*/
     
     //MENUS BELOW
     Q.UI.Container.extend("BottomTextBox",{
@@ -477,123 +396,124 @@ Quintus.HUD = function(Q){
     
     Q.component("playerMenu",{
        extend:{
-            useAttack:function(params){
-                var player = params.player;
-                this.showPointer(player,params.p);
+           //This runs when the user selects an attack to use
+            useAttack:function(menu){
+                var player = menu.p.player;
+                //Get attack info
+                var attack = player.p.attacks[menu.p.curText];
+                player.createPointer(attack);
+                this.p.disabled=true;
+                this.hide();
             },
         
-            showAttacks:function(p){
+            showAttacks:function(menu){
+                var player = menu.p.player;
                 this.destroyTexts();
-                this.p.maxText = p.player.p.attacks.length-1;
+                this.p.maxText = player.p.attacks.length-1;
                 this.p.curText=0;
-                for(i=0;i<p.player.p.attacks.length;i++){
-                    this.p.texts.push(this.stage.insert(new Q.MenuText({x:this.p.x-this.p.w/2+this.p.spacing,y:this.p.y-this.p.h/2+this.p.spacing+(this.p.textH*i),label:p.player.p.attacks[i].name,func:"useAttack",params:["player",p.player.p.attacks[i]],align:"left"})));
+                for(i=0;i<player.p.attacks.length;i++){
+                    this.p.texts.push(menu.insert(new Q.MenuText({x:-menu.p.w/2+menu.p.spacing,y:menu.p.spacing+(menu.p.textH*i),label:player.p.attacks[i][0],func:"useAttack",align:"left"})));
                 }
-
-                this.createSel();
+                for(i=0;i<player.p.attacks.length;i++){
+                    this.p.otherTexts.push(menu.insert(new Q.MenuText({x:menu.p.w/2-menu.p.spacing,y:menu.p.spacing+(menu.p.textH*i),label:""+player.p.attacks[i][1],align:"right"})));
+                }
+                this.p.selectorBox = this.createSel();
                 if(this.p.path[this.p.path.length-1][0]!=="showAttacks"){
-                    this.p.path.push(["showAttacks",p.player]);
+                    this.p.path.push(["showAttacks"]);
                 }
             },
             //When 'Move' is selected
-            showPointer:function(player,attack){
+            showPointer:function(menu){
                 Q.clearStage(3);
-                if(player&&attack){
-                    Q.stage(1).insert(new Q.Pointer({player:player,attack:attack}));
-                } else {
-                    Q.stage(1).insert(new Q.Pointer());
-                }
-                
+                var player = menu.p.player;
+                player.createPointer();
             },
 
-            useItem:function(props){
+            useItem:function(){
                 //TODO: Code the logic for using items in the RP global since it stores constants.
                 //Make a variable for 'used' 'threw' etc
-                var player = props.player;
-                var text = [];
-                text.push({playSound:"use_item.mp3"},player.p.name+" used "+props.p.p.name);
-                var itemText = player.useItem(props.p);
-                text.push(itemText);
-                var endFuncs = {endTurn:[{Class:player.p.Class,id:player.p.playerId}]};
-                text.push(endFuncs);
-                Q.stageScene("bottomhud",3,{text:text,player:player});
+                var item = this.p.itemToUse;
+                var player = this.p.player;
+                var interaction = [];
+                interaction.push({text:[{obj:"Q",func:"playSound",props:"use_item.mp3"},player.p.name+" used "+item.name]});
+                var itemText = player.useItem(item);
+                interaction[0].text.push(itemText);
+                var endFuncs = {obj:player.p.playerId,func:"endTurn"};
+                interaction[0].text.push(endFuncs);
+                Q.stageScene("interaction",10,{interaction:interaction});
+                this.p.disabled=true;
             },
-            askUseItem:function(props){
+            askUseItem:function(){
+                var item = RP.items[this.p.player.p.items[this.p.curText][0]];
+                this.p.itemToUse = item;
                 this.destroyTexts();
                 this.p.curText=0;
                 this.p.maxText=1;
-                this.p.texts.push(this.stage.insert(new Q.MenuText({x:this.p.x,y:this.p.y-this.p.h/2+this.p.spacing+(this.p.textH*0),label:"Use "+props.p.p.name+"?",func:"useItem",params:["player",props.p]})));
-                this.p.texts.push(this.stage.insert(new Q.MenuText({x:this.p.x,y:this.p.y-this.p.h/2+this.p.spacing+(this.p.textH*1),label:"Go Back",func:"goBack",params:["player"]})));
+                this.p.texts.push(this.insert(new Q.MenuText({x:this.p.spacing,y:this.p.spacing+(this.p.textH*0),label:"Use "+item.name+"?",func:"useItem"})));
+                this.p.texts.push(this.insert(new Q.MenuText({x:this.p.spacing,y:this.p.spacing+(this.p.textH*1),label:"Go Back",func:"goBack"})));
                 if(this.p.path[this.p.path.length-1][0]!=="askUseItem"){
                     this.p.path.push(["askUseItem",false,["player"]]);
                 }
-                this.createSel();
+                this.p.selectorBox = this.createSel();
             },
-            showItemList:function(p){
-                if(this.p.texts.length>0){
-                    for(i=0;i<this.p.texts.length;i++){
-                        this.p.texts[i].destroy();
-                    }
-                    this.p.texts=[];
-                }
-                if(this.p.otherTexts.length>0){
-                    for(i=0;i<this.p.otherTexts.length;i++){
-                        this.p.otherTexts[i].destroy();
-                    }
-                    this.p.otherTexts=[];
-                }
-                if(this.p.maxText===-1){
-                    this.p.texts.push(this.stage.insert(new Q.MenuText({x:this.p.x,y:this.p.y-this.p.h/2+this.p.spacing,label:"No Items",func:"showItems",params:["player",p]})));
-                    return;
-                }
-                for(i=this.p.curItem;i<this.p.curItem+this.p.maxShowing;i++){
-                    this.p.texts.push(this.stage.insert(new Q.MenuText({x:this.p.x-this.p.w/2+this.p.spacing,y:this.p.y-this.p.h/2+this.p.spacing+(this.p.textH*(i-this.p.curItem)),label:p.player.p.items[i].p.name,func:"askUseItem",params:["player",p.player.p.items[i]],align:'left'})));
-                    this.p.otherTexts.push(this.stage.insert(new Q.MenuText({x:this.p.x+this.p.w/2-this.p.spacing,y:this.p.y-this.p.h/2+this.p.spacing+(this.p.textH*(i-this.p.curItem)),label:""+p.player.p.items[i].amount,align:'right'})));
-                }
-            },
-            showItems:function(p){
+            showItemList:function(player){
                 this.destroyTexts();
-                this.p.maxText = p.player.p.items.length-1;
+                //If there are no items
+                if(this.p.maxText===-1){
+                    this.p.maxText = 0;
+                    this.p.texts.push(this.insert(new Q.MenuText({x:this.p.spacing,y:this.p.spacing,label:"No Items",func:"showItems"})));
+                } else {
+                    for(i=this.p.curItem;i<this.p.curItem+this.p.maxShowing;i++){
+                        var itemName = RP.items[player.p.items[i][0]].name;
+                        this.p.texts.push(this.insert(new Q.MenuText({x:-this.p.w/2+this.p.spacing,y:this.p.spacing+(this.p.textH*(i-this.p.curItem)),label:itemName,func:"askUseItem",align:'left'})));
+                        this.p.otherTexts.push(this.insert(new Q.MenuText({x:this.p.w/2-this.p.spacing,y:this.p.spacing+(this.p.textH*(i-this.p.curItem)),label:""+player.p.items[i][1],align:'right'})));
+                    }
+                }
+            },
+            showItems:function(menu){
+                var player = menu.p.player;
+                this.destroyTexts();
+                this.p.maxText = player.p.items.length-1;
                 this.p.curText=0;
                 this.p.curItem=0;
                 this.p.cyclingItems=true;
                 this.p.maxShowing = 6;
-                if(p.player.p.items.length<6){this.p.maxShowing=p.player.p.items.length;};
-                this.showItemList(p);
-                this.createSel();
+                if(player.p.items.length<6){this.p.maxShowing=player.p.items.length;};
+                this.showItemList(player);
+                this.p.selectorBox = this.createSel();
                 if(this.p.path[this.p.path.length-1][0]!=="showItems"){
-                    this.p.path.push(["showItems",p]);
+                    this.p.path.push(["showItems"]);
                 }
             },
 
-            showStatus:function(p){
+            showStatus:function(menu){
+                var player = menu.p.player;
                 this.destroyTexts();
                 this.stage.insert(new Q.Card({
-                    user:p.player,
+                    user:player,
                     menu:this
                 }));
                 this.p.disabled=true;
                 this.hide();
             },
 
-            checkGround:function(p){
-                p.player.checkGround();
+            checkGround:function(menu){
+                console.log("Check ground")
             },
-            resetMovement:function(p){
+            resetMovement:function(menu){
+                var player = menu.p.player;
                 //Only reset if the player can redo (he hasn't done anything that cannot be reversed just by moving back)
-                if(p.player.p.canRedo){
-                    p.player.p.x=p.player.p.w/2+p.player.p.startLocation[0]*Q.tileH;
-                    p.player.p.y=p.player.p.h/2+p.player.p.startLocation[1]*Q.tileH;
-                    p.player.p.loc = [(p.player.p.x-p.player.p.w/2)/Q.tileH,(p.player.p.y-p.player.p.h/2)/Q.tileH];
-                    p.player.resetMove();
-                    //this.exitMenu();
+                if(player.p.canRedo){
+                    Q.state.get("playerConnection").socket.emit('resetMovement',{playerId:player.p.playerId});
+                    player.resetMove();
                 } else {
                     //Play can't do that sound
                 }
             },
 
-            endTurn:function(p){
-                p.player.endTurn();
+            endTurn:function(menu){
+                menu.p.player.p.noAction = true;
+                menu.p.player.endTurn();
             }
         } 
     });
@@ -621,7 +541,7 @@ Quintus.HUD = function(Q){
                 textNum:0,
                 type:Q.SPRITE_NONE,
                 canInteract:true,
-                fill:'white',
+                fill:'#009933',
                 spacing:10,
                 textH:40,
                 
@@ -633,17 +553,104 @@ Quintus.HUD = function(Q){
                 //Fill this with the path the user has taken in the menu
                 path:[["setUpMenu",false,[]]],
                 
-                disabled:false
+                disabled:false,
+                cy:0
             });
-            this.p.y=10+this.p.h/2;
+            this.add("playerMenu");
+            this.p.y=10;
             var pos = Q.state.get("playerMenuPos");
             if(pos==="right"){this.p.x=Q.width-this.p.w/2-this.p.spacing;}
-            
         },
-        
         exitMenu:function(){
             Q.clearStage(3);
-            this.stage.options.player.createFreePointer();
+            this.stage.options.player.createPointer();
+        },
+        setUpMenu:function(){
+            //The options defined in the playerMenu scene
+            var opts = this.p.menuOpts;
+            //Get all of the menu options
+            var keys = Object.keys(opts);
+            //Set the curText to 0.
+            //This tracks which option is selected
+            this.p.curText = 0;
+            //Size the menu to look nice
+            this.p.h = keys.length*this.p.textH+this.p.spacing;
+            //Loop through and place the menu texts
+            for(i=0;i<keys.length;i++){
+                var textColor = 'white';
+                this.p.texts.push(this.insert(new Q.MenuText({x:0,y:this.p.spacing+(this.p.textH*i),label:opts[keys[i]].text,func:opts[keys[i]].func,color:textColor})));
+            }
+            //Create the selector box
+            this.p.selectorBox = this.createSel();
+            //Set the number of menu items
+            this.p.maxText = keys.length-1;
+        },
+        createSel:function(){
+            return this.insert(new Q.MenuSelector({x:0,y:this.p.textH/2+this.p.spacing/2,w:this.p.w-this.p.spacing,h:this.p.textH,spacing:this.p.spacing}));
+        },
+        executeFunc:function(func){
+            this[func](this);
+        },
+        destroyTexts:function(){
+            if(this.p.texts.length>0){
+                for(i=0;i<this.p.texts.length;i++){
+                    this.p.texts[i].destroy();
+                }
+                this.p.texts=[];
+            }
+            if(this.p.otherTexts.length>0){
+                for(i=0;i<this.p.otherTexts.length;i++){
+                    this.p.otherTexts[i].destroy();
+                }
+                this.p.otherTexts=[];
+            }
+            this.p.selectorBox.destroy();
+        },
+        goBack:function(p){
+            if(this.p.hidden){
+                this.p.disabled=false;
+                this.show();
+            } else {
+                this.destroyTexts();
+                this.p.path.splice(this.p.path.length-1,1);
+                if(this.p.path.length===0){
+                    this.exitMenu();
+                    return;
+                };
+                var func = this.p.path[this.p.path.length-1][0];
+                this[func](this);
+            }
+        },
+        step:function(dt){
+            if(!this.p.disabled){
+                if(Q.inputs['up']){
+                    this.p.curText = this.p.selectorBox.move(this.p.curText,this.p.maxText,-1,this);
+                    Q.inputs['up']=false;
+                } else if(Q.inputs['down']){
+                    this.p.curText = this.p.selectorBox.move(this.p.curText,this.p.maxText,1,this);
+                    Q.inputs['down']=false;
+                }
+                if(Q.inputs['interact']){
+                    if(this.p.cyclingItems){this.p.cyclingItems=false;};
+                    this.executeFunc(this.p.texts[this.p.curText].p.func);
+                    Q.inputs['interact']=false;
+                }
+                if(Q.inputs['back']){
+                    if(this.p.cyclingItems){this.p.cyclingItems=false;};
+                    this.goBack();
+                    Q.inputs['back']=false;
+                }
+                if(Q.inputs['esc']){
+                    this.exitMenu();
+                    Q.inputs['esc']=false;
+                }
+            }
+        }
+        
+        /*
+        exitMenu:function(){
+            Q.clearStage(3);
+            this.stage.options.player.createPointer();
         },
         
         executeFunc:function(func,params){
@@ -703,10 +710,11 @@ Quintus.HUD = function(Q){
                 return;
             };
             var func = this.p.path[this.p.path.length-1][0];
+            var params;
             if(!Q._isObject(p)){
-                var params = this.getParams(p);
+                params = this.getParams(p);
             } else {
-                var params = p;
+                params = p;
             }
             this[func](params);
         },
@@ -783,7 +791,7 @@ Quintus.HUD = function(Q){
                     Q.inputs['esc']=false;
                 }
             }
-        }
+        }*/
     });
     
     Q.UI.Text.extend("MenuText",{
@@ -814,8 +822,8 @@ Quintus.HUD = function(Q){
         },
         draw:function(ctx){
             ctx.beginPath();
-            ctx.lineWidth="6";
-            ctx.strokeStyle="red";
+            ctx.lineWidth="8";
+            ctx.strokeStyle="#660033";
             ctx.rect(-this.p.w/2,-this.p.h/2,this.p.w,this.p.h);
             ctx.stroke();
         }
@@ -1080,6 +1088,8 @@ Quintus.HUD = function(Q){
             var data = this.p.data;
             var maxItems=12;
             for(i=0;i<data.items.length;i++){
+                var item = RP.items[data.items[i][0]];
+                var amount = data.items[i][1];
                 if(maxItems-i>0){
                     itemsCont.insert(new Q.UI.Container({
                         fill:"#FFF",
@@ -1089,14 +1099,14 @@ Quintus.HUD = function(Q){
                         cx:0,cy:0
                     }));
                     itemsCont.insert(new Q.UI.Text({
-                        label:data.items[i+startNum].p.name,
+                        label:item.name,
                         align:'left',
                         x:10,y:3+i*20,
                         size:14,
                         cx:0,cy:0
                     }));
                     itemsCont.insert(new Q.UI.Text({
-                        label:""+data.items[i+startNum].amount,
+                        label:""+amount,
                         align:'right',
                         x:itemsCont.p.w-10,y:3+i*20,
                         size:14,
@@ -1204,270 +1214,6 @@ Quintus.HUD = function(Q){
     });
     
     
-    Q.getNextLevelEXP=function(level){
-        if(RP.expNeeded[level]!==undefined){
-            return RP.expNeeded[level];
-        } else {
-            return "-";
-        }
-    };
-
     
-
-    Q.getAttack=function(atk){
-        var attack = RP.moves[atk[0]];
-        return attack;
-    };
     
-    Q.chopText=function(txt,cont){
-        var text = "";
-        var tNum = 0;
-        var charW = 8.8;
-        var maxChars = cont.p.w/charW;
-        var line = 0;
-        for(i=0;i<txt.length;i++){
-            if(tNum<maxChars){
-                text+=txt[i];
-            } else {
-                line++;
-                tNum=0;
-                text+=txt[i];
-                text+="\n";
-            }
-            tNum++;
-        }
-        return text;
-    };
-    Q.sceneAnimations = {
-        doneBattle:function(stage){
-            var box = stage.insert(new Q.Sprite({
-                x:200,y:200,
-                w:200,h:150,
-                asset:"/images/battle_complete.png",
-                type:Q.SPRITE_NONE,
-                scale:0.1
-            }));
-            box.add('tween');
-            box.animate({ x: 500, y:  400, scale:1 }, 1, Q.Easing.Quadratic.InOut)
-                .chain({ angle: 360 },0.25)
-                .chain({ angle: 720 },0.25) 
-                .chain({ angle: 0 },0.25) 
-                .chain({  x: 800, y:  200, scale:0.1  }, 1, Q.Easing.Quadratic.InOut,{callback:function(){Q.clearStage(4);}});
-        },
-        waitingBattle:function(stage){
-            var box = stage.insert(new Q.Sprite({
-                x:200,y:200,
-                w:200,h:150,
-                asset:"/images/battle_waiting.png",
-                type:Q.SPRITE_NONE,
-                scale:0.1
-            }));
-            box.add('tween');
-            function animateBox(b){
-                b.animate({ x: 500, y:  400, scale:1 }, 1, Q.Easing.Quadratic.InOut)
-                    .chain({ angle: 360 },0.25)
-                    .chain({ angle: 720 },0.25) 
-                    .chain({ angle: 0 },0.25) 
-                    .chain({  x: 800, y:  200, scale:0.1  }, 1, Q.Easing.Quadratic.InOut,{callback:function(){animateBox(b);}});
-            }
-            animateBox(box);
-        },
-        fadeIn:function(stage){
-            var fader = stage.insert(new Q.UI.Container({
-                x:0,y:0,
-                cx:0,cy:0,
-                w:Q.width,h:Q.height,
-                fill:"black",
-                type:Q.SPRITE_NONE
-            }));
-            fader.add("tween");
-            //speed is a number in seconds for how long the fade in lasts
-            fader.animate({opacity:0},stage.options.speed||1,Q.Easing.Out,{callback:function(){Q.clearStage(4);}});
-        },
-        fadeOut:function(stage){
-            var fader = stage.insert(new Q.UI.Container({
-                x:0,y:0,
-                cx:0,cy:0,
-                w:Q.width,h:Q.height,
-                fill:"black",
-                type:Q.SPRITE_NONE,
-                opacity:0
-            }));
-            fader.add("tween");
-            //speed is a number in seconds for how long the fade in lasts
-            fader.animate({opacity:0},stage.options.speed||1,Q.Easing.Out);
-        },
-        dimToNight:function(stage){
-            var fader = stage.insert(new Q.UI.Container({
-                x:0,y:0,
-                cx:0,cy:0,
-                w:Q.width,h:Q.height,
-                fill:"black",
-                type:Q.SPRITE_NONE,
-                opacity:0
-            }));
-            fader.add("tween");
-            //speed is a number in seconds for how long the fade in lasts
-            fader.animate({opacity:0.3},stage.options.speed||1,Q.Easing.Out);
-        },
-        getItem:function(stage){
-            var box = stage.insert(new Q.UI.Container({
-                x:Q.width/2,y:Q.height/2,
-                w:200,h:150,
-                fill:"#234073",
-                type:Q.SPRITE_NONE,
-                scale:0.1
-            }));
-            box.insert(new Q.UI.Text({
-                x:0,
-                y:0,
-                type:Q.SPRITE_NONE,
-                color:"white",
-                size:30,
-                outlineWidth:3,
-                label:stage.options.item.item+" x"+stage.options.item.amount
-            }));
-            box.add('tween');
-            box.fit(10,10);
-            box.animate({scale:1 }, 1, Q.Easing.Quadratic.InOut)
-                .chain({ angle: 360 },1)
-                .chain({opacity:0.1}, 0.5, Q.Easing.Quadratic.InOut,{callback:function(){Q.clearStage(4);}});
-        },
-        battleStart:function(stage){
-            //Flasher
-            var fader = stage.insert(new Q.UI.Container({
-                x:0,y:0,
-                cx:0,cy:0,
-                w:Q.width,h:Q.height,
-                fill:"yellow",
-                type:Q.SPRITE_NONE
-            }));
-            fader.add("tween");
-            
-            var box = stage.insert(new Q.Sprite({
-                x:Q.width/2,y:Q.height/2,
-                asset:"/images/battle_start.png",
-                type:Q.SPRITE_NONE
-            }));
-            box.add("tween")
-            var gradient = fader.insert(new Q.UI.Container({
-                col1:"yellow",
-                col2:"orange",
-                x:0,y:0,
-                w:0, h:0,
-                cx:0, cy:0, radius:10
-            }));
-            gradient.draw=function(ctx) {
-                var grd=ctx.createLinearGradient(0,0,fader.p.w/2,fader.p.h/2);
-                grd.addColorStop(0,this.p.col1);
-                grd.addColorStop(1,this.p.col2);
-                ctx.fillStyle=grd;
-                ctx.fill();
-            };
-            gradient.add("tween");
-            setTimeout(function(){
-                fader.animate({opacity:0},1,Q.Easing.Out,{callback:function(){Q.clearStage(4);}});
-                box.animate({opacity:0},1,Q.Easing.Out,{callback:function(){Q.clearStage(4);}});
-                gradient.animate({opacity:0},1,Q.Easing.Out,{callback:function(){Q.clearStage(4);}});
-            },500);
-        }
-    };
-    Q.scene('customAnimate',function(stage){
-        var anims = Q.sceneAnimations;
-        switch(stage.options.anim){
-            case "doneBattle":
-                anims.doneBattle(stage);
-                break;
-            case "waitingBattle":
-                anims.waitingBattle(stage);
-                break;
-            case "getItem":
-                anims.getItem(stage);
-                break;
-            case "fadeIn":
-                anims.fadeIn(stage);
-                break;
-            //Goes completely black
-            case "fadeOut":
-                anims.fadeOut(stage);
-                break;
-            case "dimToNight":
-                anims.dimToNight(stage);
-                break;
-            case "battleStart":
-                anims.battleStart(stage);
-                break;
-        }
-    });
-    Q.scene("lobby",function(stage){
-        var box = stage.insert(new Q.UI.Container({
-            x:Q.width/2,y:Q.height/4,
-            w:200,h:0,
-            fill:"#234073",
-            type:Q.SPRITE_NONE
-        }));
-        box.insertPlayerText = function(name){
-            box.insert(new Q.UI.Text({
-                x:0,
-                y:30+(box.children.length*28),
-                cy:0,
-                type:Q.SPRITE_NONE,
-                color:"white",
-                size:22,
-                outlineWidth:3,
-                label:name
-            }));
-            box.p.h=50+(box.children.length*28);
-        };
-        box.insert(new Q.UI.Text({
-            x:0,
-            y:box.p.h/2+10,
-            type:Q.SPRITE_NONE,
-            color:"white",
-            size:30,
-            outlineWidth:3,
-            label:"Player List"
-        }));
-        var players = Q.state.get("players");
-        for(i=0;i<players.length;i++){
-            box.insertPlayerText(players[i].name,i);
-        }
-        if(stage.options.host){
-            var startButton = stage.insert(new Q.UI.Button({
-                x:Q.width/2,y:Q.height/4-60,
-                w:120,h:50,
-                fill:"#234073"
-            },function(){
-                Q.state.get("playerConnection").socket.emit("startGame");
-            }));
-            startButton.insert(new Q.UI.Text({
-                x:0,
-                y:-startButton.p.h/2+11,
-                type:Q.SPRITE_NONE,
-                color:"white",
-                size:22,
-                outlineWidth:3,
-                label:"Start!"
-            }));
-        } else {
-            var waitingCont = stage.insert(new Q.UI.Container({
-                x:Q.width/2,y:Q.height/4-60,
-                w:120,h:50,
-                fill:"#234073",
-                type:Q.SPRITE_NONE
-            }));
-            waitingCont.insert(new Q.UI.Text({
-                x:0,
-                y:-waitingCont.p.h/2+11,
-                type:Q.SPRITE_NONE,
-                color:"white",
-                size:22,
-                outlineWidth:3,
-                label:"Waiting"
-            }));
-        }
-        Q.state.on("change.players",function(){
-            box.insertPlayerText(Q.state.get("players")[Q.state.get("players").length-1].name);
-        });
-    })
 };

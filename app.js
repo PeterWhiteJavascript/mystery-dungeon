@@ -2,7 +2,29 @@ var express = require('express');
 var app = express();
 var server = require('http').Server(app);
 var io = require('socket.io')(server);
+/*
+var Quintus = require("./public/lib/quintus.js");
 
+require("./public/lib/quintus_sprites.js")(Quintus);
+require("./public/lib/quintus_scenes.js")(Quintus);
+
+var Q = Quintus().include("Sprites, Scenes");
+
+Q.Sprite.extend("Box", {
+    init:function(p){
+        this._super(p,{
+            
+        });
+      console.log("p");
+    }
+
+});
+Q.scene("level1",function(stage) {
+  stage.insert(new Q.Box({ x: 10, y: 50 }));
+});
+Q.gameLoop(Q.stageStepLoop);
+
+Q.stageScene("level1");*/
 //My modules
 var Player = require("./server/player.js");
 var SaveData = require("./server/save_file.js");
@@ -145,6 +167,7 @@ io.on('connection', function (socket) {
         })[0];
         //This will be false when all players are ready
         if(!waiting){
+            saveData.allNotReady();
             //Start the battle now that all players are placed
             io.sockets.in(saveData.file).emit("confirmedPlayerPlacement",{playerId:data['playerId'],loc:data['loc'],dir:data['dir'],startBattle:true});
             //We need to see who has the fastest computer
@@ -170,7 +193,9 @@ io.on('connection', function (socket) {
         var turnOrder = data['turnOrder'];
         turnOrder.push(lastTurn);
         saveData.turnOrder = turnOrder;
-        io.sockets.in(saveData.file).emit("startedTurn",{host:saveData.fastestClients[0],turnOrder:turnOrder});
+        if(saveData.readyForNextTurn(data['playerId'])){
+            io.sockets.in(saveData.file).emit("startedTurn",{host:saveData.fastestClients[0],turnOrder:saveData.turnOrder});
+        };
     });
     socket.on("removePlayerPlacement",function(data){
         var player = saveData.players.filter(function(obj){
@@ -192,9 +217,21 @@ io.on('connection', function (socket) {
         saveData.turnOrder = saveData.generateTurnOrder(saveData.scene,saveData.players);
         socket.emit("startedBattle",{turnOrder:saveData.turnOrder,placed:saveData.levelData[saveData.scene].battle.playersStartAt});
     });
-    
+    socket.on("setDirection",function(data){
+        socket.broadcast.to(saveData.file).emit('setDirection',data);
+    });
+    socket.on("readyForNextTurn",function(data){
+        if(saveData.readyForNextTurn(data['playerId'])){
+            io.sockets.in(saveData.file).emit("startedTurn",{host:saveData.fastestClients[0],turnOrder:saveData.turnOrder});
+        };
+    });
+    //When an AI or player moves
     socket.on("battleMove",function(data){
         socket.broadcast.to(saveData.file).emit('battleMoved',data);
+    });
+    //When a player selects 'redo'
+    socket.on("resetMovement",function(data){
+        socket.broadcast.to(saveData.file).emit('resetMove',data);
     });
     
     socket.on('endBattle',function(){
@@ -210,6 +247,7 @@ io.on('connection', function (socket) {
         })[0];
         //This will be false when all players are ready
         if(!waiting){
+            saveData.allNotReady();
             saveData.scene = data['nextScene'];
             io.sockets.in(saveData.file).emit('startedScene',{players:saveData.players,levelData:saveData.getLevelData(saveData.scene)});
         }
@@ -221,6 +259,12 @@ io.on('connection', function (socket) {
        //  console.log(data['text'])
         socket.broadcast.to(saveData.file).emit('attacked',data);
     });
+    socket.on("levelUp",function(data){
+        var player = saveData.players.filter(function(obj){
+            return obj.playerId===data['playerId'];
+        })[0];
+        player.levelUp(data['levelsGained']);
+    })
 });
 
 server.listen(process.env.PORT || 5000);

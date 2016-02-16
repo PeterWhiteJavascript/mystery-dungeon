@@ -38,11 +38,16 @@ Q.afterDir=function(){
         } 
         //If we're still battling
         else {
-            setTimeout(function(){
-                Q.state.get("playerConnection").socket.emit('endTurn',{
-                    turnOrder:turnOrder
-                });
-            },200);
+            if(Q.state.get("playerConnection").id===Q.state.get("battleHost")||Q.state.get("playerConnection").id===turnOrder[0]){
+                setTimeout(function(){
+                    Q.state.get("playerConnection").socket.emit('endTurn',{
+                        playerId:Q.state.get("playerConnection").id,
+                        turnOrder:turnOrder
+                    });
+                },200);
+            } else {
+                Q.state.get("playerConnection").socket.emit("readyForNextTurn",{playerId:Q.state.get("playerConnection").id});
+            }
         }
     },100);
 };
@@ -61,6 +66,11 @@ Q.addViewport=function(obj){
                 return o.p.playerId===obj;
             })[0];
         }
+    }
+    if(Q._isNumber(obj)){
+        obj = Q("Player",1).items.filter(function(o){
+            return o.p.playerId===obj;
+        })[0];
     }
     if(obj){/*
         if(Q.stage(1).viewport.following&&Q.stage(1).viewport.following.p.x===obj.p.x&&Q.stage(1).viewport.following.p.y===obj.p.y){

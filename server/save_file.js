@@ -48,7 +48,6 @@ var saveFile = function(file,levelData){
                 "battle": {
                     "music":"battle3",
                     "status": 0,
-                    "playerMax": 2,
                     "playerLocs":[
                         [13,17],[14,17],
                         [13,18],[14,18],
@@ -64,9 +63,9 @@ var saveFile = function(file,levelData){
                         [
                             {"className": "Professor","loc": [9,10],"level": 1,"dir": "right"},
                             {"className": "Professor","loc": [9,11],"level": 1,"dir": "right","drop": {"item": "OranBerry","amount": 1}},
-                            {"className": "Professor","loc": [12,9],"level": 1,"dir": "down"},
-                            {"className": "Professor","loc": [14,9],"level": 1,"dir": "down"},
-                            {"className": "Professor","loc": [16,10],"level": 1,"dir": "left"}
+                           //{"className": "Professor","loc": [12,9],"level": 1,"dir": "down"},
+                            //{"className": "Professor","loc": [14,9],"level": 1,"dir": "down"},
+                            //{"className": "Professor","loc": [16,10],"level": 1,"dir": "left"}
                         ]
                     ],
                     "pickups": [
@@ -81,11 +80,10 @@ var saveFile = function(file,levelData){
                 "battle": {
                     "music":"battle4",
                     "status": 0,
-                    "playerMax": 2,
                     "playerLocs":[
-                        [13,17],[14,17],
-                        [13,18],[14,18],
-                        [13,19],[14,19]
+                        [7,14],[8,14],
+                        [7,15],[8,15],
+                        [7,16],[8,16]
                     ],
                     "allies":[
                         [
@@ -124,7 +122,6 @@ var saveFile = function(file,levelData){
                 "battle": {
                     "music":"battle1",
                     "status": 0,
-                    "playerMax": 2,
                     "playerLocs":[
                         [13,17],[14,17],
                         [13,18],[14,18],
@@ -132,8 +129,8 @@ var saveFile = function(file,levelData){
                     ],
                     "allies":[
                         [
-                            {"className":"Professor","loc": [13,19],"level": 1000,"dir": "left",traits:["aggressive"]},
-                            {"className":"Professor","sheet":"Dratini","loc": [14,19],"level": 200,"dir": "down"},
+                            {"className":"Professor","loc": [13,14],"level": 1000,"dir": "left",traits:["aggressive"]},
+                            //{"className":"Professor","sheet":"Dratini","loc": [13,15],"level": 200,"dir": "down"},
                         ]
                     ],
                     "enemies": [
@@ -143,7 +140,7 @@ var saveFile = function(file,levelData){
                             {"className": "Professor","loc": [14,11],"level": 1,"dir": "up"},
                             {"className": "Professor","loc": [14,9],"level": 1,"dir": "up"},
                             {"className": "Professor","loc": [16,10],"level": 1,"dir": "left"},
-                            
+                            /*
                             {"className": "Professor","loc": [13,11],"level": 1,"dir": "right"},
                             {"className": "Professor","loc": [14,10],"level": 1,"dir": "right","drop": {"item": "OranBerry","amount": 1}},
                             {"className": "Professor","loc": [20,12],"level": 1,"dir": "up"},
@@ -154,7 +151,7 @@ var saveFile = function(file,levelData){
                             {"className": "Professor","loc": [17,10],"level": 1,"dir": "right","drop": {"item": "OranBerry","amount": 1}},
                             {"className": "Professor","loc": [20,11],"level": 1,"dir": "up"},
                             {"className": "Professor","loc": [15,9],"level": 1,"dir": "up"},
-                            {"className": "Professor","loc": [14,12],"level": 1,"dir": "left"}
+                            {"className": "Professor","loc": [14,12],"level": 1,"dir": "left"}*/
                             
                         ]
                     ],
@@ -256,12 +253,11 @@ var saveFile = function(file,levelData){
         //Create the turn order
         var lev =  ld[stageName];
         var turnOrder = [];
-        //var players = players;
-        
+        var players = players;
         var enemies = lev.allEnemies;
         var allies = lev.allAllies;
-        //var objects = players.concat(allies).concat(enemies);
-        var objects = allies.concat(enemies);
+        var objects = players.concat(allies).concat(enemies);
+        //var objects = allies.concat(enemies);
         var sortForSpeed = function(){
             var topSpeed = objects[0];
             var idx = 0;
@@ -289,7 +285,28 @@ var saveFile = function(file,levelData){
         })[0];
         return objInWay;
     };
-    var scene = "Prologue_00";
+    var allNotReady = function(){
+        this.players.forEach(function(item){
+            item.ready=false;
+        });
+    };
+    var readyForNextTurn = function(playerId){
+        console.log(playerId)
+        var player = this.players.filter(function(obj){
+            return obj.playerId===playerId;
+        })[0];
+        player.ready=true;
+        var waiting = this.players.filter(function(obj){
+            return !obj.ready;
+        })[0];
+        if(!waiting){
+            this.allNotReady();
+            return true;
+        }
+        console.log("Not Ready!")
+        return false;
+    };
+    var scene = "Prologue_02";
     //Return the saveFile object
     return {
         //functions
@@ -297,6 +314,8 @@ var saveFile = function(file,levelData){
         setUpAI:setUpAI,
         generateTurnOrder:generateTurnOrder,
         checkObjInWay:checkObjInWay,
+        readyForNextTurn:readyForNextTurn,
+        allNotReady:allNotReady,
         //props
         //Object containing events, npcs, and pickups
         levelData:ld,
