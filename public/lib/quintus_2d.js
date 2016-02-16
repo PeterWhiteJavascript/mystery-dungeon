@@ -151,7 +151,7 @@ Quintus["2D"] = function(Q) {
         renderAlways: true,
         z:0
       });
-      this.p.z=this.p.id;
+      this.p.z=Q("TileLayer",1).items.length;
       if(this.p.dataAsset) {
         this.load(this.p.dataAsset);
       }

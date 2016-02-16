@@ -151,6 +151,7 @@ Quintus.HUD = function(Q){
             var pos = Q.setXY(this.p.loc[0],this.p.loc[1]);
             this.p.x = pos[0];
             this.p.y = pos[1];
+            this.p.z=this.p.y+Q.tileH/2;
             Q.addViewport(this);
             var target = Q.getTargetAt(this.p.loc[0],this.p.loc[1]);
             if(target){
@@ -213,6 +214,7 @@ Quintus.HUD = function(Q){
         },
         
         step:function(dt){
+            this.p.z=this.p.y+Q.tileH/2;
             if(Q.inputs['back']||Q.inputs['esc']){
                 this.trigger("back");
                 Q.inputs['back']=false;
@@ -246,6 +248,7 @@ Quintus.HUD = function(Q){
                 this.p.x = pos[0];
                 this.p.y = pos[1];
             }
+            this.p.z=this.p.y-Q.tileH/2;
             if(!this.p.loc){
                 this.p.loc = Q.getLoc(this.p.x,this.p.y);
             }
