@@ -151,6 +151,7 @@ Quintus["2D"] = function(Q) {
         renderAlways: true,
         z:0
       });
+      this.p.z=this.p.id;
       if(this.p.dataAsset) {
         this.load(this.p.dataAsset);
       }
