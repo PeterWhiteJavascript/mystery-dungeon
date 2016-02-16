@@ -283,6 +283,7 @@ Q.Sprite.extend("dirTri",{
         this.p.p1=[-this.p.w/2,this.p.h/2];
         this.p.p2=[0,-this.p.h/2];
         this.p.p3=[this.p.w/2,this.p.h/2];
+        this.p.z = this.p.y+Q.tileH*2;
     },
     changePos:function(dir,char){
         switch(dir){
@@ -309,6 +310,7 @@ Q.Sprite.extend("dirTri",{
         }
         char.p.canMove=true;
         char.p.stepping=false;
+        this.p.z = this.p.y+Q.tileH*2;
     },
     draw:function(ctx){
         ctx.beginPath();
