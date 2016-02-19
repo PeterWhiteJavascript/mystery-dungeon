@@ -1336,18 +1336,9 @@ Q.Sprite.extend("Ally",{
         this.add("commonPlayer,animations,attacker,mover");
     },
     initialize:function(){
-        var pos = Q.setXY(this.p.loc[0],this.p.loc[1]);
-        this.p.x=pos[0];
-        this.p.y=pos[1];
-        //These properties are use in the damage calculation and are changed by stat modifiers (leer, etc...)
-        this.p.mod_ofn = this.p.ofn;
-        this.p.mod_dfn = this.p.dfn;
-        this.p.mod_spd = this.p.spd;
-        
-        this.p.expGiven = this.p.level*this.p.exp;
+        this.p.expGiven = this.p.level*10;
         this.p.sheet = this.p.sheet ? this.p.sheet : this.p.className;
         this.p.name = this.p.name ? this.p.name : this.p.className+" "+this.p.playerId;
-        this.p.graphWithWeight = new Graph(this.getWalkMatrix());
         
         this.playStand(this.p.dir);
         this.p.initialize = false;
@@ -1402,19 +1393,9 @@ Q.Sprite.extend("Enemy",{
         this.add("commonPlayer,animations,attacker,mover");
     },
     initialize:function(){
-        var pos = Q.setXY(this.p.loc[0],this.p.loc[1]);
-        this.p.x=pos[0];
-        this.p.y=pos[1];
-        //These properties are use in the damage calculation and are changed by stat modifiers (leer, etc...)
-        this.p.mod_ofn = this.p.ofn;
-        this.p.mod_dfn = this.p.dfn;
-        this.p.mod_spd = this.p.spd;
-        
-        this.p.expGiven = this.p.level*this.p.exp;
+        this.p.expGiven = this.p.level*10;
         this.p.sheet = this.p.sheet ? this.p.sheet : this.p.className;
         this.p.name = this.p.name ? this.p.name :  this.p.className+" "+this.p.playerId;
-        
-        this.p.graphWithWeight = new Graph(this.getWalkMatrix());
         this.playStand(this.p.dir);
         this.p.initialize = false;
     },
@@ -1469,21 +1450,15 @@ Q.Sprite.extend("Player",{
         //My components
         this.add("commonPlayer,animations,attacker,mover");
         this.on("step",this,"checkMenu");
-        this.p.num=0;
-        this.p.dir ? this.p.dir : "down";
-        this.p.sheet ? this.p.sheet : this.p.className;
+        
+    },
+    placePlayer:function(){
         var pos = Q.setXY(this.p.loc[0],this.p.loc[1]);
         this.p.x = pos[0];
         this.p.y = pos[1];
     },
     initialize:function(){
-        //These properties are use in the damage calculation and are changed by stat modifiers (leer, etc...)
-        this.p.mod_ofn = this.p.ofn;
-        this.p.mod_dfn = this.p.dfn;
-        this.p.mod_spd = this.p.spd;
-        
         this.p.graphWithWeight = new Graph(this.getWalkMatrix());
-        
         this.playStand(this.p.dir);
         this.p.initialize = false;
     },
@@ -1688,7 +1663,7 @@ Q.Sprite.extend("NPC",{
         this.p.frame = this.getFrame(this.p.npcType);
         this.setXY(this.p.loc);
         this.getText(this.p.text,this.p.textNum);
-        this.p.sheet="Deino";
+        //this.p.sheet="Deino";
         this.p.sprite="player";
         this.playStand(this.p.dir);
         this.on("runAfterFuncs");
@@ -1711,7 +1686,7 @@ Q.Sprite.extend("NPC",{
                 frame = 1;
                 break;
             case "Professor":
-                this.p.sheet="Deino";
+                //this.p.sheet="Deino";
                 frame=1;
         }
         return frame;

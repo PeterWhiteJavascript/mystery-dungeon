@@ -1,0 +1,17 @@
+{
+  "name": "attack-generator",
+  "version": "1.0.0",
+  "description": "A form for generating and viewing attacks",
+  "main": "main.js",
+  "scripts": {
+    "test": "node main.js"
+  },
+  "author": "Peter White",
+  "license": "ISC",
+  "dependencies": {
+    "ejs": "^2.4.1",
+    "formidable": "^1.0.17",
+    "replaceall": "^0.1.6",
+    "util": "^0.10.3"
+  }
+}

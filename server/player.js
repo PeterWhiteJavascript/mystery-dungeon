@@ -1,178 +1,102 @@
+var quintusServerPlayer = function(Quintus) {
+"use strict";
+Quintus.ServerPlayer = function(Q) {
+//This will be taken from the database
 var users = {
-    "Saito": {
-        "name": "Saito",
-        "className":"Professor",
-        "sheet":"Professor",
-        "level": 1,
-        "exp": 0,
-        "curHp": 25,
-        "gender": "M",
-        
-        "iv": {
-            "hp": 8,
-            "ofn": 9,
-            "dfn": 7,
-            "spd":9
+    Saito:{
+        name:"Saito",
+        className:"Fighter",
+        sheet:"Professor",
+        level:1,
+        exp:0,
+        curHp:20,
+        gender:"M",
+        stats:{
+            max_hp:5,
+            phys_ofn:4,
+            phys_dfn:4,
+            spec_ofn:1,
+            spec_dfn:2,
+            agility:2,
+
+            strength:4,
+            intellect:1,
+            awareness:3,
+            willpower:2,
+            persuasion:1,
+            fate:1
         },
-        "sp": {
-            "mind": 3,
-            "dexterity": 3,
-            "strength": 4,
-            "stamina": 9
+        abilities:{
+            swimmer:1
         },
-        "abilities":["RunAway"],
-        "attacks": [
-            ["Scratch",1],
-            ["Leer",1]
-        ],
-        "items": [
-            [
-                "OranBerry",
-                1
-            ]
-        ],
-        "text": [
-            "Hello, I'm Saito!"
-        ],
-        "file":"BigGame"
-    },
-    "Estevan": {
-        "name": "Estevan",
-        "className":"Professor",
-        "sheet":"Professor",
-        "level": 1,
-        "exp": 0,
-        "curHp": 17,
-        "gender": "M",
-        
-        "iv": {
-            "hp": 6,
-            "ofn": 7,
-            "dfn": 5,
-            "spd": 8
-        },
-        "sp": {
-            "mind": 5,
-            "dexterity": 3,
-            "strength": 4,
-            "stamina": 9
-        },
-        "abilities":["Torrent"],
-        "attacks": [
+        attacks:[
             ["Scratch",1],
             ["Leer",1],
             ["DumpsterDunk",1]
         ],
-        "items": [
-            [
-                "OranBerry",
-                1
-            ]
+        items:[
+            ["Potion",1]
         ],
-        "text": [
+        text:[
+            "Hello, I'm Saito!"
+        ],
+        file:"BigGame"
+    },
+    Estevan:{
+        name:"Estevan",
+        className:"Fighter",
+        sheet:"Professor",
+        level:1,
+        exp:0,
+        curHp:20,
+        gender:"M",
+        stats:{
+            max_hp:5,
+            phys_ofn:4,
+            phys_dfn:4,
+            spec_ofn:1,
+            spec_dfn:2,
+            agility:2,
+
+            strength:4,
+            intellect:1,
+            awareness:3,
+            willpower:2,
+            persuasion:1,
+            fate:1
+        },
+        abilities:{
+            swimmer:1
+        },
+        attacks:[
+            ["Scratch",1],
+            ["Leer",1],
+            ["DumpsterDunk",1]
+        ],
+        items:[
+            ["Potion",1]
+        ],
+        text:[
             "Hello, I'm Estevan!"
         ],
-        "file":"BigGame"
-    },
-    "Lan": {
-        "name": "Lan",
-        "className":"Professor",
-        "sheet":"Professor",
-        "level": 1,
-        "exp": 0,
-        "curHp": 20,
-        "gender": "M",
-        "iv": {
-            "hp": 5,
-            "ofn": 10,
-            "dfn": 5,
-            "spd": 7
-        },
-        "sp": {
-            "mind": 3,
-            "dexterity": 4,
-            "strength": 4,
-            "stamina": 7
-        },
-        "abilities":["IronFist"],
-        "attacks": [
-            ["Scratch",1],
-            ["Leer",1]
-        ],
-        "items": [
-            [
-                "OranBerry",
-                1
-            ]
-        ],
-        "text": [
-            "Hello, I'm Lan!"
-        ],
-        "file":"BigGame"
+        file:"BigGame"
     }
 };
+//Create this only once; when the user logs in and the data is taken from the database
+Q.Sprite.extend("ServerPlayer",{
+    init:function(p){
+        this._super(p,{});
+        var data = users[this.p.name];
+        var player = this;
+        var keys = Object.keys(data);
+        //Populate the p property with the data from the database
+        for(var i=0;i<keys.length;i++){
+            player.p[keys[i]]=data[keys[i]];
+        }
+    },
+});
 
-var Player = function(data){
-    var playerId = data['playerId'];
-    var p = users[data['character']];
-    var name  = p.name;
-    var className = p.className;
-    var sheet = p.sheet;
-    var level = p.level;
-    var exp = p.exp;
-    var curHp = p.curHp;
-    var gender = p.gender;
-    var stats = {};
-    stats.base = {
-        "hp":5.5,
-        "ofn":6,
-        "dfn":5.5,
-        "spd":8.5
-    };
-    stats.iv = p.iv;
-    stats.sp = p.sp;
-    
-    var abilities = p.abilities;
-    var attacks = p.attacks;
-    var items = p.items;
-    var text = p.text;
-    var file = p.file;
-    
-    var maxHp = Math.round(Math.sqrt((stats.base.hp*level*50)+stats.iv.hp));
-    var ofn = Math.round(Math.sqrt(((stats.base.ofn)/2)*level*stats.iv.ofn*2));
-    var dfn = Math.round(Math.sqrt(((stats.base.dfn)/2)*level*stats.iv.dfn*2));
-    var spd = Math.round(Math.sqrt(stats.base.spd*level*stats.iv.spd));
-    
-    
-    var levelUp = function(levelsGained){
-        console.log(levelsGained)
-        
-    };
-    
-    
-    
-    return  {
-        playerId:playerId,
-        
-        name:name,
-        className:className,
-        sheet:sheet,
-        level:level,
-        exp:exp,
-        curHp:curHp,
-        gender:gender,
-        stats:stats,
-        abilities:abilities,
-        attacks:attacks,
-        items:items,
-        text:text,
-        file:file,
-        
-        maxHp:maxHp,
-        ofn:ofn,
-        dfn:dfn,
-        spd:spd
-    };
+return Q;
 };
-
-module.exports = Player;
+};
+module.exports = quintusServerPlayer;

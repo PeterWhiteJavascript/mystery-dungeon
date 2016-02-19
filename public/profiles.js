@@ -156,9 +156,10 @@ RP.expNeeded = [
 //    o o o o o
 
 RP.moves = {
-    "Scratch": {
-        "id": "Scratch",
-        "name": "Scratch",
+    //Fighter
+    "Regular": {
+        "id": "Regular",
+        "name": "Regular",
         "power": 35,
         "effect":[],
         "pp": 35,

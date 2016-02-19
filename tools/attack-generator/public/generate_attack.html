@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Generate Attack</title>
+        <meta charset="UTF-8">
+        <style>
+            input{
+                width:400px;
+            }
+            textarea{
+                width:400px;
+                height:100px;
+            }
+            .effects_div{
+                display: none;
+            }
+        </style>
+    </head>
+   <body>
+       <script>
+           function hideEffects(){
+                var effects = ["effect_targets","effect_accuracy","effect_status_change","effect_stat_change","effect_move","effect_change_tile","effect_unique","effect_description"];
+                for(var i = 0 ; i<effects.length;i++){
+                    hideEffect(effects[i]);
+                }
+           };
+           function hideEffect(effect){
+                document.getElementById(effect).style.display="none";
+           };
+           function showEffects(effects){
+               for(var i = 0 ; i<effects.length;i++){
+                    showEffect(effects[i]);
+                }
+           };
+           function showEffect(effect){
+                document.getElementById(effect).style.display="block";
+           };
+            function checkEffect(value){
+                //Hide all effects
+                hideEffects();
+                switch(value){
+                    case "none":
+                        return;
+                        break;
+                    case "status":
+                        showEffect("effect_status_change");
+                        break;
+                    case "buff":
+                        showEffect("effect_stat_change");
+                        break;
+                    case "move":
+                        showEffect("effect_move");
+                        break;
+                    case "changetile":
+                        showEffect("effect_change_tile");
+                        break;
+                    case "unique":
+                        showEffect("effect_unique");
+                        break;
+                }
+                
+                //These three are required for all effects
+                showEffects(["effect_targets","effect_accuracy","effect_description"]);
+            }
+           
+       </script>
+       
+       <h1>Create an attack</h1>
+      <form action="" method="post" enctype="multipart/form-data">
+         <fieldset>
+            <h2>Name</h2>
+            <input type="text" id="name" name="name" placeholder="Enter the name of the attack" />
+            <br />
+            <h2>Description</h2>
+            <textarea id="description" name="description" placeholder="Give a description of the attack."></textarea>
+            <br />
+            <h2>Power</h2>
+            <input type="text" id="power" name="power" placeholder="Enter the power of the attack" />
+            <br />
+            <h2>Accuracy</h2>
+            <input type="text" id="accuracy" name="accuracy" placeholder="Enter the accuracy of the attack" />
+            <br />
+            <h2>Range</h2>
+            <input type="text" id="range" name="range" placeholder="Enter the range of the attack" />
+            <br />
+            <h2>Area</h2>
+            <input type="text" id="area" name="area" placeholder="Enter the area of effect of the attack" />
+            <br />
+            <h2>Category</h2>
+            <select id="category" name="category">
+                <option value="phys">Physical</option>
+                <option value="spec">Special</option>
+                <option value="stat">Status</option>
+            </select>
+            <br />
+            <h2>Targets</h2>
+            <select id="targets" name="targets">
+                <option value="enemy">Enemy</option>
+                <option value="ally">Ally</option>
+                <option value="self">Self</option>
+                <option value="both">Both</option>
+            </select>
+            <br />
+            
+            <h2>Effect</h2>
+            
+            <h3>Type</h3>
+            <select id="effect_type" name="effect_type" onChange="checkEffect(this.value);">
+                <option value="none">None</option>
+                <option value="status">Status</option>
+                <option value="buff">Stat Change</option>
+                <option value="move">Move Target</option>
+                <option value="changetile">Change Tile</option>
+                <option value="unique">Unique</option>
+            </select>
+            <br />
+            <div class="effects_div" id="effect_targets">
+                <h3>Targets</h3>
+                <select name="effect_targets">
+                    <option value="enemy">Enemy</option>
+                    <option value="ally">Ally</option>
+                    <option value="both">Both</option>
+                    <option value="self">Self</option>
+                </select>
+            </div>
+            <div class="effects_div" id="effect_accuracy">
+                <h3>Accuracy</h3>
+                <input type="text" name="effect_accuracy" placeholder="Enter the accuracy of the effect" />
+            </div>
+            <div class="effects_div" id="effect_status_change">
+                <h3>Status Change</h3>
+                <select name="effect_status_change">
+                    <option value="poison">Poison</option>
+                    <option value="no_move">No Move</option>
+                    <option value="no_attack">No Attack</option>
+                    <option value="boost_phys">Boost Physical</option>
+                    <option value="boost_spec">Boost Special</option>
+                </select>
+                <input type="text" name="effect_status_change_turns" placeholder="Number of turns for status change" />
+            </div>
+            <div class="effects_div" id="effect_stat_change">
+                <h3>Stat Change</h3>
+                <select name="effect_stat_change">
+                    <option value="phys_ofn">Physical Offense</option>
+                    <option value="phys_dfn">Physical Defense</option>
+                    <option value="spec_ofn">Special Offense</option>
+                    <option value="spec_dfn">Special Defense</option>
+                    <option value="agility">Agility</option>
+                    <option value="strength">Strength</option>
+                    <option value="intellect">Intellect</option>
+                    <option value="awareness">Awareness</option>
+                    <option value="willpower">Willpower</option>
+                    <option value="persuasion">Persuasion</option>
+                    <option value="fate">Fate</option>
+                </select>
+                <input type="text" id="effect_stat_change_amount" name="effect_stat_change_amount" placeholder="Amount changed" />
+                <input type="text" id="effect_stat_change_turns" name="effect_stat_change_turns" placeholder="Number of turns for stat change" />
+            </div>
+            <div class="effects_div" id="effect_move">
+                <h3>Move</h3>
+                <input type="text" name="effect_move" placeholder="Distance to move target (Negative numbers for backwards)" />
+            </div>
+            <div class="effects_div" id="effect_change_tile">
+                <h3>Change Tile</h3>
+                <select name="effect_change_tile">
+                    <option value="fire">Fire</option>
+                    <option value="water">Water</option>
+                    <option value="ice">Ice</option>
+                </select>
+            </div>
+            <div class="effects_div" id="effect_unique">
+                <h3>Unique</h3>
+                <textarea name="effect_unique" placeholder="Better let Peter handle this one. Please leave a desription of what should happen with this attack."></textarea>
+            </div>
+            <div class="effects_div" id="effect_description">
+                <h3>Effect Description</h3>
+                <textarea name="effect_description" placeholder="Give a description of the effect of this attack."></textarea>
+             </div>
+            
+            
+            <input type="submit" value="Generate Attack" />
+         </fieldset>
+      </form>
+   </body>
+</html>

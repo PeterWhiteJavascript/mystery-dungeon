@@ -6,43 +6,28 @@ Q.goToNextScene = function(){
     var socket = Q.state.get("playerConnection").socket;
     socket.emit('readyForNextScene',{playerId:Q.state.get("playerConnection").id,nextScene:nextScene});
 };
-//createEnemies accepts an array of enemies taken from the server
-Q.createEnemies = function(enemies,stage){
-    var ens = [];
-    for(i=0;i<enemies.length;i++){
-        var en = enemies[i];
-        var keys = Object.keys(en);
-        var enemy = stage.insert(new Q.Enemy());
-        for(j=0;j<keys.length;j++){
-            enemy.p[keys[j]]= en[keys[j]];
-        };
-        ens.push(enemy);
-    }
-    return ens;
+//Shows the object and also sets its loc
+Q.showStoryObj=function(obj){
+    obj.show();
 };
-Q.createAllies=function(allies,stage){
-    var als = [];
-    for(i=0;i<allies.length;i++){
-        var al = allies[i];
-        var keys = Object.keys(al);
-        var ally = stage.insert(new Q.Ally());
-        for(j=0;j<keys.length;j++){
-            ally.p[keys[j]]= al[keys[j]];
-        };
-        als.push(ally);
-    }
-    return als;
+Q.showAllStoryObjs=function(){
+    var allies = Q("Ally",1);
+    allies.each(function(){
+        Q.showStoryObj(this);
+    });
+    var enemies = Q("Enemy",1);
+    enemies.each(function(){
+        Q.showStoryObj(this);
+    });
 };
-
 Q.component("storySprite",{
     added:function(){
         this.entity.on("doneAutoMove");
+        Q.showStoryObj(this.entity);
         var p = this.entity.p;
         p.myTurnTiles=100000;
         p.stepDelay=0.4;
         p.stepDistance=64;
-        p.type=Q.SPRITE_NONE;
-        p.z = p.y;
     },
     extend:{
         disappear:function(){
@@ -95,7 +80,7 @@ Q.component("storySprite",{
         },
         setProp:function(props){
             this.p[props[0]]=props[1];
-        }
+        },
     }
 });
 };

@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Viewing Attacks</title>
+</head>
+<body>
+    <div>
+        <script>
+             var attacks = <%- JSON.stringify(attacks) %>
+        </script>
+        <table>
+            <tr>
+                <th>Name</th> <th>Power</th> <th>Accuracy</th><th>Range</th><th>Area</th><th>Category</th><th>Targets</th><th>Effect</th><th>Description</th><th>Edit</th>
+            </tr>
+            <% for(var i=0;i<attacks.length;i++){ %>
+                <tr>
+                    <td><%= attacks[i].name %></td>
+                    <td><%= attacks[i].power %></td>
+                    <td><%= attacks[i].accuracy %></td>
+                    <td><%= attacks[i].range %></td>
+                    <td><%= attacks[i].area %></td>
+                    <td><%= attacks[i].category %></td>
+                    <td><%= attacks[i].targets %></td>
+                    <td><%= attacks[i].effect.description %></td>
+                    <td><%= attacks[i].description %></td>
+                    <td><button>Edit</button></td>
+                </tr>
+            <% } %>
+        </table>
+    </div>
+</body>
+</html>

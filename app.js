@@ -2,34 +2,17 @@ var express = require('express');
 var app = express();
 var server = require('http').Server(app);
 var io = require('socket.io')(server);
-/*
+
 var Quintus = require("./public/lib/quintus.js");
 
 require("./public/lib/quintus_sprites.js")(Quintus);
 require("./public/lib/quintus_scenes.js")(Quintus);
+require("./server/player.js")(Quintus);
+require("./server/level_data.js")(Quintus);
+require("./server/save_state.js")(Quintus);
 
-var Q = Quintus().include("Sprites, Scenes");
-
-Q.Sprite.extend("Box", {
-    init:function(p){
-        this._super(p,{
-            
-        });
-      console.log("p");
-    }
-
-});
-Q.scene("level1",function(stage) {
-  stage.insert(new Q.Box({ x: 10, y: 50 }));
-});
+var Q = Quintus().include("Sprites, Scenes, ServerLevelData, ServerSaveState, ServerPlayer");
 Q.gameLoop(Q.stageStepLoop);
-
-Q.stageScene("level1");*/
-//My modules
-var Player = require("./server/player.js");
-var SaveData = require("./server/save_file.js");
-//var levelData = require("./server/level_data.js");
-//var UpdateLoop = require("./server/game_loop.js");
 
 app.use(express.static(__dirname + '/public'));
 
@@ -45,7 +28,8 @@ var _users = [];
 var _activeFiles = [];
 //The variable that gives a unique id to a player when the join
 var id = 0;
-
+//The level data that all files reference. Nothing should be changed in it
+var levelData = new Q.LevelData();
 io.on('connection', function (socket) {
     id++;
     //The current user's id
@@ -64,7 +48,7 @@ io.on('connection', function (socket) {
             socket.emit('connected', { playerId: userId});
         },1000);
         io.emit('count', { playerCount: io.engine.clientsCount});
-    }, 1000);
+    }, 100);
     //This is recieved when the client confirms that it has connected
     socket.on('confirmConnect',function(){
         clearInterval(loginInterval);
@@ -86,12 +70,12 @@ io.on('connection', function (socket) {
     socket.on('toLobby', function (data) {
         function setPlayer(id,pl){
             //Check if the player is already in the array
-            for(j=0;j<saveData.players.length;j++){
-                if(saveData.players[j].playerId===id){
+            for(var j=0;j<saveData.players.length;j++){
+                if(saveData.players[j].p.playerId===id){
                     return;
                 }
             }
-            for(i=0;i<_users.length;i++){
+            for(var i=0;i<_users.length;i++){
                 if(_users[i].playerId===id){
                     saveData.players.push(pl);
                     return;
@@ -101,45 +85,45 @@ io.on('connection', function (socket) {
         //Get the saveData
         var file = data['file'];
         saveData = _activeFiles.filter(function(obj){
-            return obj.file===file;
+            return obj.file.name===file.name;
         })[0];
         //If there is no save data, we need to pull it from the database
         //For now, just create a new save file (just like starting a new game)
         if(!saveData){
-            saveData = new SaveData(file);
+            saveData = new Q.SaveState({file:file});
             //Push the saveData into the active files
             _activeFiles.push(saveData);
         }
-        
         //Create a new server player
         //the passed 'data' should be gotten from the database here
         //That data will fill the 'p' property in player
-        var player = new Player(data);
+        var player = new Q.ServerPlayer({name:data['name'],playerId:data['playerId']});
         //Set the socket id
-        player.socketId=socket.id;
-        
-        //TEPMPEMTP
-        saveData.fastestClients=[data['playerId']];
-        
+        //player.p.socketId=socket.id;
         //Add the player to the saveData
         setPlayer(data['playerId'],player);
         //Leave the lobby as we are going to the main game now
         socket.leave('login');
         //Join the file
-        socket.join(saveData.file);
+        socket.join(saveData.file.name);
         //Join the lobby
         socket.join('lobby');
-        //Join the file area
-        //socket.join(saveData.file+player.p.area);
-        //Tell all connected clients in this file that I have connected
-        io.sockets.in(saveData.file).emit('goToLobby',{player:player,players:saveData.players,levelData:saveData.getLevelData(saveData.scene)});
+        //This socket should send the user to the lobby
+        //It also sends all players in this file
+        socket.emit(saveData.file.name).emit("goToLobby",{player:player,players:saveData.players});
+        //Tell all other connected clients in this file that I have joined the lobby
+        socket.broadcast.to(saveData.file.name).emit('playerJoinedLobby',{player:player});
     });
     
+    //This runs after the first player in the lobby presses start
     socket.on("startGame",function(){
-        io.sockets.in(saveData.file).emit('startedScene',{players:saveData.players,levelData:saveData.getLevelData(saveData.scene)});
+        //Get and set up all of this scene's data
+        saveData.sceneData =  saveData.setScene(levelData.getSceneData(saveData.file.scene),levelData.getClasses());
+        //Create the scene on the server
+        io.sockets.in(saveData.file.name).emit('startedScene',{saveData:saveData});
     });
     socket.on("checkPlayerPlacement",function(data){
-        var playersPlacedAt = saveData.levelData[saveData.scene].battle.playersStartAt ? saveData.levelData[saveData.scene].battle.playersStartAt : [];
+        var playersPlacedAt = saveData.playersPlacedAt;
         if(!playersPlacedAt.length){saveData.levelData[saveData.scene].battle.playersStartAt=playersPlacedAt;};
         var found = false;
         for(i=0;i<playersPlacedAt.length;i++){
@@ -170,22 +154,8 @@ io.on('connection', function (socket) {
             saveData.allNotReady();
             //Start the battle now that all players are placed
             io.sockets.in(saveData.file).emit("confirmedPlayerPlacement",{playerId:data['playerId'],loc:data['loc'],dir:data['dir'],startBattle:true});
-            //We need to see who has the fastest computer
-            //Make an array and put the clients in order of who resonds fastest.
-            saveData.fastestClients = [];
-            io.sockets.in(saveData.file).emit("getFastestClient");
         } else {
             io.sockets.in(saveData.file).emit("confirmedPlayerPlacement",{playerId:data['playerId'],loc:data['loc'],dir:data['dir']});
-        }
-    });
-    socket.on("reciveFastestClients",function(data){
-        saveData.fastestClients.push(data['playerId']);
-        //If all players have responded
-        if(saveData.fastestClients.length===saveData.players.length){
-            //Send the turn order and the fastest client
-            //If the turnOrder[0] is the a string, the AI gets generated on the fastest client
-            io.sockets.in(saveData.file).emit("startedTurn",{host:saveData.fastestClients[0],turnOrder:saveData.turnOrder});
-            
         }
     });
     socket.on("endTurn",function(data){
@@ -194,7 +164,7 @@ io.on('connection', function (socket) {
         turnOrder.push(lastTurn);
         saveData.turnOrder = turnOrder;
         if(saveData.readyForNextTurn(data['playerId'])){
-            io.sockets.in(saveData.file).emit("startedTurn",{host:saveData.fastestClients[0],turnOrder:saveData.turnOrder});
+            io.sockets.in(saveData.file).emit("startedTurn",{turnOrder:saveData.turnOrder});
         };
     });
     socket.on("removePlayerPlacement",function(data){
@@ -202,7 +172,7 @@ io.on('connection', function (socket) {
             return obj.playerId===data['playerId'];
         })[0];
         player.ready=false;
-        var playersPlacedAt = saveData.levelData[saveData.scene].battle.playersStartAt ? saveData.levelData[saveData.scene].battle.playersStartAt : [];
+        var playersPlacedAt = saveData.playersPlacedAt;
         for(i=0;i<playersPlacedAt.length;i++){
             if(data['loc'][0]===playersPlacedAt[i][0]&&data['loc'][1]===playersPlacedAt[i][1]){
                 playersPlacedAt.splice(i,1);
@@ -211,18 +181,15 @@ io.on('connection', function (socket) {
         io.sockets.in(saveData.file).emit("removedPlayerPlacement",{playerId:data['playerId'],loc:data['loc']});
     });
     socket.on("readyForBattle",function(data){
-        var player = saveData.players.filter(function(obj){
-            return obj.playerId===data['playerId'];
-        })[0];
-        saveData.turnOrder = saveData.generateTurnOrder(saveData.scene,saveData.players);
-        socket.emit("startedBattle",{turnOrder:saveData.turnOrder,placed:saveData.levelData[saveData.scene].battle.playersStartAt});
+        saveData.turnOrder = saveData.generateTurnOrder(saveData.players.concat(saveData.allies).concat(saveData.enemies));
+        socket.emit("startedBattle",{turnOrder:saveData.turnOrder,placed:saveData.playersStartAt,playerLocs:levelData.getSceneData(saveData.file.scene).battle.playerLocs});
     });
     socket.on("setDirection",function(data){
         socket.broadcast.to(saveData.file).emit('setDirection',data);
     });
     socket.on("readyForNextTurn",function(data){
         if(saveData.readyForNextTurn(data['playerId'])){
-            io.sockets.in(saveData.file).emit("startedTurn",{host:saveData.fastestClients[0],turnOrder:saveData.turnOrder});
+            io.sockets.in(saveData.file).emit("startedTurn",{turnOrder:saveData.turnOrder});
         };
     });
     //When an AI or player moves

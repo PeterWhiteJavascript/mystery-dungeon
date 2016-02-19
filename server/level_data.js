@@ -1,456 +1,192 @@
- var LevelData=function(){
-    this.updateEvent=function(event){
-        var ev = this.levelData[event.stageName].events[event.eventId].p;
-        //Need to loop though and update the event
-        var keys = Object.keys(event);
-        for(i=0;i<keys.length;i++){
-            ev[keys[i]]=event[keys[i]];
-        }
-        return this.levelData[event.stageName].events[event.eventId];
-    };
-    //When updating more than one event at a time, for example: two battles going on at one time in the same level.
-    this.updateEvents=function(event){
-        var evs = [];
-        for(i=0;i<event.eventIds.length;i++){
-            var ev = this.levelData[event.stageName].events[event.eventIds[i]].p;
-            //Need to loop though and update the event
-            var keys = Object.keys(event);
-            for(i=0;i<keys.length;i++){
-                ev[keys[i]]=event[keys[i]];
-            }
-            evs.push(ev);
-        }
-        
-        return evs;
-    };
-    this.setEvent=function(event){
-        var ev = this.levelData[event.stageName].events[event.eventId];
-        if(ev.p.status===0){
-            ev.p.status=1;
-            ev.p.host=event.host;
-            ev.eventId=event.eventId;
-            return ev;
-        }
-    };
-    this.completeEvent=function(eventId,stageName){
-        this.levelData[stageName].events[eventId].p.status=2;
-        return this.levelData[stageName].events[eventId];
-    };
-    
-    this.pickUpItem=function(stageName,id){
-        this.levelData[stageName].pickups[id].p.status=1;
-    };
-    
-    this.getTextNum=function(data){
-        return this.levelData[data['stageName']].npcs[data['npcId']].p.textNum;
-    };
-    
-    this.setTextNum=function(data){
-        this.levelData[data['stageName']].npcs[data['npcId']].p.textNum=data['textNum'];
-    };
-    this.moveNPC=function(data){
-        this.levelData[data['stageName']].npcs[data['npcId']].p.loc=[data['moveTo'][0],data['moveTo'][1]];
-        this.levelData[data['stageName']].npcs[data['npcId']].p.dir=data['moveTo'][2];
-    };
-    
-     //status
-     //0 waiting to be triggered
-     //1 in progress
-     //2 complete
-    this.levelData={
-        //Template
-        /*first_demo:{
-            events:[
-        
-            ],
-            npcs:[
-            ],
-            pickups:[
-            ]
-        }
-        */
-        //first_demo start
-        //Anything not in p is a constant
-        first_demo1_0:{
-            events:[
-                {
-                    trigger:{type:"onLocation"},
-                    locations:[[11,1],[11,2],[11,3]],
-                    eventType:"spawnEnemies",
-                    onCompleted:"doneBattle",
-                    p:{
-                        status:0,
-                        enemies:[
-                            {className:"Professor",p:{loc:[9,1],level:1,dir:"Right"}},
-                            {className:"Professor",p:{loc:[9,2],level:1,dir:"Right"}},
-                            {className:"Professor",p:{loc:[9,3],level:1,dir:"Right",drop:{p:{item:"OranBerry",amount:1}}}}
-                        ],
-                        turnOrder:[]
-                    }
+var quintusServerLevelData = function(Quintus) {
+"use strict";
+Quintus.ServerLevelData = function(Q) {
+    //This is the global leveldata object that all files will reference when getting game data
+    //Nothing here should be altered
+    Q.Evented.extend("LevelData",{
+        init:function(){
+            //Get all of the classes
+            this.classes=this.setClasses();
+            //Get all of the level data
+            this.levelData=this.setAllLevelData();
+        },
+        //Gets a specific scene's data
+        //Called every time the scene changes
+        getSceneData:function(scene){
+            return this.levelData[scene];
+        },
+        //Returns all of the classes
+        getClasses:function(){
+            return this.classes;
+        },
+        setClasses:function(){
+            return {
+                Fighter:{
+                    className:"Fighter",
+                    base:{
+                        max_hp:5,
+                        phys_ofn:4,
+                        phys_dfn:4,
+                        spec_ofn:1,
+                        spec_dfn:2,
+                        agility:2,
+
+                        strength:4,
+                        intellect:1,
+                        awareness:3,
+                        willpower:2,
+                        persuasion:1,
+                        fate:1
+                    },
+                    attacks:[
+                        {name:"Regular",level:1},
+                        {name:"Push",level:1},
+                        {name:"Pull",level:1},
+                        {name:"HighDMG",level:1},
+                        {name:"AOE",level:1}
+                    ]
+                },
+                Pyromancer:{
+                    className:"Pyromancer",
+                    base:{
+                        max_hp:2,
+                        phys_ofn:4,
+                        phys_dfn:2,
+                        spec_ofn:4,
+                        spec_dfn:2,
+                        agility:1,
+
+                        strength:2,
+                        intellect:1,
+                        awareness:3,
+                        willpower:2,
+                        persuasion:4,
+                        fate:3
+                    },
+                    attacks:[
+                        {name:"Fire",level:1},
+                        {name:"Fireball",level:1},
+                        {name:"CHNGTileToFire",level:1},
+                        {name:"AOEFire",level:1},
+                        {name:"Firebreath",level:1}
+                    ]
                 }
-            ],
-            npcs:[
-                {
-                    npcType:"Professor",
-                    text:[
-                        ["Get me a cool Diamond!",{changeText:1}],
-                        [{checkItem:{item:"OranBerry",amount:1,trigger:{moveNPC:[3,6,"Down"],changeText:3},incomplete:{changeText:2}}}],
-                        ["I'll let you through if you bring me a diamond!",{changeText:1}],
-                        ["Thanks for the diamond!"]
+            };
+        },
+        setAllLevelData:function(){
+            var levelData = {
+                Prologue_00:{
+                    levelMap:{name:"first_demo1_2"},
+                    onStart:{name:"Prologue_00",music:"talking1"},
+                    onCompleted:{scene:"Prologue_00_end",music:"talking1",nextScene:"Prologue_01"},
+                    battle:{
+                        music:"battle3",
+                        playerLocs:[
+                            [13,17],[14,17],
+                            [13,18],[14,18],
+                            [13,19],[14,19]
+                        ]
+                    },
+                    allies:[
+                        [
+                            {name:"Old Wizard",className:"Pyromancer",loc: [14,13],level: 100,dir: "left",traits:["aggressive","genius"]},
+                            {name:"Young Wizard",className:"Pyromancer",loc: [13,13],level: 100,dir: "right",traits:["aggressive","genius"]},
+                        ]
                     ],
-                    p:{
-                        textNum:0,
-                        loc:[4,7],
-                        dir:"Right"
-                    }
-                }
-            ],
-            pickups:[
-                {item:"OranBerry",amount:3,loc:[10,2],p:{status:0}}
-            ]
-        },
-        
-        first_demo1_1:{
-            events:[
-                {
-                    trigger:{type:"onLocation"},
-                    locations:[[14,1]],
-                    eventType:"spawnEnemies",
-                    onCompleted:"doneBattle",
-                    p:{
-                        status:0,
-                        enemies:[
-                            {className:"Professor",p:{loc:[4,6],level:1,dir:'Left'}},
-                            {className:"Professor",p:{loc:[4,5],level:2,dir:'Right',drop:{p:{item:"OranBerry",amount:1}}}},
-                            {className:"Professor",p:{loc:[5,5],level:1}}
-                        ],
-                        turnOrder:[]
-                    }
-                },
-                {
-                    trigger:{type:"onLocation"},
-                    locations:[[16,10],[16,11],[18,6],[18,5],[18,4]],
-                    eventType:"spawnEnemies",
-                    onCompleted:"doneBattle",
-                    p:{
-                        status:0,
-                        enemies:[
-                            {className:"Professor",p:{loc:[20,10],level:1,dir:"Left"}},
-                            {className:"Professor",p:{loc:[18,11],level:1,dir:"Left"}},
-                            {className:"Professor",p:{loc:[21,9],level:1,drop:{p:{item:"OranBerry",amount:1}}}}
-                        ],
-                        turnOrder:[]
-                    }
-                }
-            ],
-            npcs:[
-                {
-                    npcType:"Professor",
-                    text:[
-                        ["You're gonna need to be at least level 5 to make me move!",{changeText:1}],
-                        [{checkLevel:{amount:5,trigger:{moveNPC:[23,9,"Down"],changeText:3},incomplete:{changeText:2}}}],
-                        ["I'll let you through once you're level 5!",{changeText:1}],
-                        ["Don't get too rekt out there!"]
+                    enemies:[
+                        [
+                            {className: "Fighter",loc: [9,10],level: 1,dir: "right"},
+                            {className: "Fighter",loc: [9,11],level: 1,dir: "right"},
+                            {className: "Fighter",loc: [12,9],level: 1,dir: "down"},
+                            {className: "Fighter",loc: [14,9],level: 1,dir: "down"},
+                            {className: "Fighter",loc: [16,10],level: 1,dir: "left"}
+                        ]
                     ],
-                    p:{
-                        textNum:0,
-                        loc:[22,10],
-                        dir:"Left"
-                    }
-                }
-            ],
-            pickups:[
-            ]
-        },
-        first_demo1_2:{
-            events:[
-            ],
-            npcs:[
-                {
-                    items:[[0,{amount:1,item:"Potion"}]],
-                    npcType:"Professor",
-                    text:[
-                        ["Hello!","You look like you could use this!",{changeText:1}],
-                        ["I've given away my potion already!"]
+                    pickups:[
+                        {item: "Potion",amount: 1,loc: [20,11]}
+                    ]
+                },
+                Prologue_01:{
+                    levelMap:{name:"first_demo0_0"},
+                    onStart:{name:"Prologue_01",music:"talking1"},
+                    onCompleted:{scene:"Prologue_01_end",music:"talking1",nextScene:"Prologue_02"},
+                    battle:{
+                        music:"battle4",
+                        playerLocs:[
+                            [7,14],[8,14],
+                            [7,15],[8,15],
+                            [7,16],[8,16]
+                        ]
+                    },
+                    allies:[
+                        [
+                            {name:"Old Wizard",className:"Pyromancer",loc: [36,6],level: 100,dir: "left",traits:["aggressive","genius"]},
+                            {name:"Young Wizard",className:"Pyromancer",loc: [36,7],level: 100,dir: "left",traits:["aggressive","genius"]},
+                        ]
                     ],
-                    p:{
-                        textNum:0,
-                        loc:[12,7],
-                        dir:"Right"
-                    }
-                }
-            ],
-            pickups:[
-                {item:"OranBerry",amount:1,loc:[9,4],p:{status:0}},
-                {item:"OranBerry",amount:1,loc:[20,11],p:{status:0}},
-                {item:"OranBerry",amount:1,loc:[21,2],p:{status:0}}
-            ]
-        },
-        first_demo2_0:{
-            events:[
-                {
-                    trigger:{type:"onLocation"},
-                    locations:[[5,10],[1,13]],
-                    eventType:"spawnEnemies",
-                    onCompleted:"doneBattle",
-                    p:{
-                        status:0,
-                        enemies:[
-                            {className:"Professor",p:{loc:[3,12],level:2,dir:"Left"}},
-                            {className:"Professor",p:{loc:[4,13],level:2,dir:"Left"}}
-                        ],
-                        turnOrder:[]
-                    }
-                },
-                {
-                    trigger:{type:"onLocation"},
-                    locations:[[13,10],[13,9],[13,6],[14,4],[15,4],[16,4]],
-                    eventType:"spawnEnemies",
-                    onCompleted:"doneBattle",
-                    p:{
-                        status:0,
-                        enemies:[
-                            {className:"Professor",p:{loc:[19,11],level:2,dir:"Left"}},
-                            {className:"Professor",p:{loc:[17,9],level:4,dir:"Left",drop:{p:{item:"Potion",amount:1}}}},
-                            {className:"Professor",p:{loc:[20,5],level:4,dir:"Left"}}
-                        ],
-                        turnOrder:[]
-                    }
-                }
-            ],
-            npcs:[
-            ],
-            pickups:[
-                {item:"OranBerry",amount:1,loc:[4,12],p:{status:0}},
-                {item:"OranBerry",amount:1,loc:[13,13],p:{status:0}}
-            ]
-        },
-        first_demo2_1:{
-            events:[
-                {
-                    trigger:{type:"onLocation"},
-                    locations:[[7,7],[7,8]],
-                    eventType:"spawnEnemies",
-                    onCompleted:"doneBattle",
-                    p:{
-                        status:0,
-                        enemies:[
-                            {className:"Professor",p:{loc:[10,5],level:7,dir:"Left"}},
-                            {className:"Professor",p:{loc:[11,6],level:7,dir:"Left"}},
-                            {className:"Professor",p:{loc:[12,4],level:7,dir:"Down"}}
-                        ],
-                        turnOrder:[]
-                    }
-                }
-            ],
-            npcs:[
-            ],
-            pickups:[
-            ]
-        },
-        first_demo2_2:{
-            events:[
-                {
-                    trigger:{type:"onLocation"},
-                    locations:[[7,7]],
-                    eventType:"enterBuilding",
-                    enter:{name:"firstDemo2_2a",loc:[3,10],dir:"Up"}
-                }
-            ],
-            npcs:[
-                {
-                    npcType:"Professor",
-                    text:[
-                        ["Welcome to this awesome town!"]
-                    ],
-                    p:{
-                        textNum:0,
-                        loc:[15,4],
-                        dir:"Down"
-                    }
-                },
-                {
-                    npcType:"Professor",
-                    text:[
-                        ["Take one of these!",{changeText:1}],
-                        ["I've given away my potion already!"]
-                    ],
-                    p:{
-                        textNum:0,
-                        loc:[11,4],
-                        dir:"Down"
-                    }
-                }
-            ],
-            pickups:[
-            ]
-        },
-        first_demo3_0:{
-            events:[
-                {
-                    trigger:{type:"onLocation"},
-                    locations:[[1,9],[2,9],[8,9],[10,12],[10,13]],
-                    eventType:"spawnEnemies",
-                    onCompleted:"doneBattle",
-                    p:{
-                        status:0,
-                        enemies:[
-                            {className:"Professor",p:{loc:[2,13],level:3,dir:"Up"}},
-                            {className:"Professor",p:{loc:[4,12],level:3,dir:"Left"}},
-                            {className:"Professor",p:{loc:[6,10],level:3,dir:"Up"}},
-                            {className:"Professor",p:{loc:[8,13],level:3,dir:"Right"}}
-                        ],
-                        turnOrder:[]
-                    }
-                },
-                {
-                    trigger:{type:"onLocation"},
-                    locations:[[4,1],[4,2],[11,1],[11,2]],
-                    eventType:"spawnEnemies",
-                    onCompleted:"doneBattle",
-                    p:{
-                        status:0,
-                        enemies:[
-                            {className:"Professor",p:{loc:[7,1],level:4,dir:"Left"}},
-                            {className:"Professor",p:{loc:[8,2],level:4,dir:"Left",drop:{p:{item:"Potion",amount:1}}}}
-                        ],
-                        turnOrder:[]
-                    }
-                },
-                {
-                    trigger:{type:"onLocation"},
-                    locations:[[15,3],[16,3],[15,7],[16,7]],
-                    eventType:"spawnEnemies",
-                    onCompleted:"doneBattle",
-                    p:{
-                        status:0,
-                        enemies:[
-                            {className:"Professor",p:{loc:[15,5],level:4,dir:"Up"}},
-                            {className:"Professor",p:{loc:[16,5],level:4,dir:"Down"}}
-                        ],
-                        turnOrder:[]
-                    }
-                },
-                {
-                    trigger:{type:"onLocation"},
-                    locations:[[22,3],[23,3],[18,8],[18,9],[18,12],[18,13]],
-                    eventType:"spawnEnemies",
-                    onCompleted:"doneBattle",
-                    p:{
-                        status:0,
-                        enemies:[
-                            {className:"Professor",p:{loc:[23,6],level:3,dir:"Up"}},
-                            {className:"Professor",p:{loc:[19,5],level:3,dir:"Down"}},
-                            {className:"Professor",p:{loc:[20,13],level:3,dir:"Right"}},
-                            {className:"Professor",p:{loc:[20,8],level:5,dir:"Right",drop:{p:{item:"Potion",amount:1}}}},
-                            {className:"Professor",p:{loc:[19,13],level:3,dir:"Right"}}
-                        ],
-                        turnOrder:[]
-                    }
-                }
-            ],
-            npcs:[
-            ],
-            pickups:[
-                {item:"OranBerry",amount:1,loc:[16,5],p:{status:0}}
-            ]
-        },
-        first_demo3_1:{
-            events:[
-                {
-                    trigger:{type:"onLocation"},
-                    locations:[[5,10],[1,13]],
-                    eventType:"spawnEnemies",
-                    onCompleted:"doneBattle",
-                    p:{
-                        status:0,
-                        enemies:[
-                            {className:"Professor",p:{loc:[3,12],level:2,dir:"Left"}},
-                            {className:"Professor",p:{loc:[4,13],level:2,dir:"Left"}}
-                        ],
-                        turnOrder:[]
-                    }
-                },
-                {
-                    trigger:{type:"onLocation"},
-                    locations:[[11,1],[12,1],[13,1]],
-                    eventType:"spawnEnemies",
-                    onCompleted:"doneBattle",
-                    p:{
-                        status:0,
-                        enemies:[
-                            {className:"Professor",p:{loc:[21,4],level:4,dir:"Left"}},
-                            {className:"Professor",p:{loc:[10,2],level:4,dir:"Right"}},
-                            {className:"Professor",p:{loc:[21,12],level:5,dir:"Up"}},
-                            {className:"Professor",p:{loc:[4,12],level:5,dir:"Up"}},
-                            {className:"Professor",p:{loc:[3,5],level:2,dir:"Right"}},
-                            {className:"Professor",p:{loc:[22,7],level:2,dir:"Left"}}
-                        ],
-                        turnOrder:[]
-                    }
-                }
-            ],
-            npcs:[
-            ],
-            pickups:[
-                {item:"OranBerry",amount:1,loc:[2,7],p:{status:0}},
-                {item:"OranBerry",amount:1,loc:[21,4],p:{status:0}},
-                {item:"OranBerry",amount:1,loc:[1,12],p:{status:0}}
-            ]
-        },
-        first_demo3_2:{
-            events:[
-                {
-                    trigger:{type:"onLocation"},
-                    locations:[[11,1],[12,1],[13,1]],
-                    eventType:"spawnEnemies",
-                    onCompleted:"doneBattle",
-                    p:{
-                        status:0,
-                        enemies:[
-                            {className:"Professor",p:{loc:[7,8],level:4,dir:"Up"}},
-                            {className:"Professor",p:{loc:[17,8],level:4,dir:"Up"}},
-                            {className:"Professor",p:{loc:[9,8],level:5,dir:"Up"}},
-                            {className:"Professor",p:{loc:[15,8],level:5,dir:"Up"}},
-                            {className:"Professor",p:{loc:[11,9],level:6,dir:"Up"}},
-                            {className:"Professor",p:{loc:[13,9],level:6,dir:"Up"}}
-                        ],
-                        turnOrder:[]
-                    }
-                },
-                {
-                    trigger:{type:"onLocation"},
-                    locations:[[11,17],[12,17],[13,17]],
-                    eventType:"spawnEnemies",
-                    onCompleted:"doneBattle",
-                    p:{
-                        status:0,
-                        enemies:[
-                            {className:"Professor",p:{loc:[4,22],level:8,dir:"Up",drop:{p:{item:"Diamond",amount:1}}}},
-                            {className:"Professor",p:{loc:[11,19],level:4,dir:"Up"}},
-                            {className:"Professor",p:{loc:[13,19],level:4,dir:"Up"}},
-                            {className:"Professor",p:{loc:[10,21],level:6,dir:"Up"}},
-                            {className:"Professor",p:{loc:[12,22],level:6,dir:"Up"}},
-                            {className:"Professor",p:{loc:[14,21],level:6,dir:"Up"}},
-                            {className:"Professor",p:{loc:[20,21],level:4,dir:"Left"}},
-                            {className:"Professor",p:{loc:[20,22],level:4,dir:"Left"}},
+                    enemies:[
+                        [
+                            {className: "Fighter",loc: [10,17],moveTo:[10,14],onArrival:[{func:"playStand",props:"right"}],level: 2,dir: "up"},
+                            {className: "Fighter",loc: [10,17],moveTo:[10,15],onArrival:[{func:"playStand",props:"right"}],level: 2,dir: "up"},
+                            {className: "Fighter",loc: [10,17],moveTo:[10,16],onArrival:[{func:"playStand",props:"right"}],level: 2,dir: "up"},
                             
-                            {className:"Professor",p:{loc:[2,15],level:5,dir:"Down"}},
-                            {className:"Professor",p:{loc:[3,15],level:5,dir:"Down"}},
-                            {className:"Professor",p:{loc:[4,15],level:5,dir:"Down"}},
+                            {className: "Fighter",loc: [19,17],moveTo:[19,15],onArrival:[{func:"playStand",props:"left"}],moveForward:[18,15],level: 2,dir: "up"},
+                            {className: "Fighter",loc: [19,17],moveTo:[19,16],onArrival:[{func:"playStand",props:"left"}],moveForward:[18,16],level: 2,dir: "up"},
+                            {className: "Fighter",loc: [19,13],moveTo:[19,14],onArrival:[{func:"playStand",props:"left"}],moveForward:[18,14],level: 2,dir: "down"},
+                            
+                            {className: "Fighter",loc: [14,11],moveTo:[17,11],onArrival:[{func:"playStand",props:"down"}],moveForward:[17,13],level: 2,dir: "right"},
+                            {className: "Fighter",loc: [14,11],moveTo:[16,11],onArrival:[{func:"playStand",props:"down"}],moveForward:[16,13],level: 2,dir: "right"},
+                            {className: "Fighter",loc: [14,11],moveTo:[15,11],onArrival:[{func:"playStand",props:"down"}],moveForward:[15,13],level: 2,dir: "right"}
                         ],
-                        turnOrder:[]
-                    }
+                        [
+                            {name:"Obama",className: "Fighter",loc: [15,6],moveTo:[16,13],onArrival:[{func:"playStand",props:"down"}],level: 20,dir:"right"}
+                        ]
+                    ],
+                    pickups:[
+                        {item: "Potion",amount: 1,loc: [20,11]}
+                    ]
+                },
+                Prologue_02:{
+                    levelMap:{name:"first_demo1_2"},
+                    onStart:{name:"Prologue_02",music:"talking1"},
+                    onCompleted:{scene:"Prologue_02_end",music:"talking1",nextScene:"Prologue_03"},
+                    battle:{
+                        music:"battle4",
+                        playerLocs:[
+                            [13,17],[14,17],
+                            [13,18],[14,18],
+                            [13,19],[14,19]
+                        ]
+                    },
+                    allies:[
+                        [
+                            {name:"Old Wizard",className:"Pyromancer",loc: [13,16],level: 100,dir: "left",traits:["aggressive","genius"]},
+                            {name:"Young Wizard",className:"Pyromancer",loc: [14,16],level: 100,dir: "left",traits:["aggressive","genius"]},
+                        ]
+                    ],
+                    enemies:[
+                        [
+                            {className: "Fighter",loc: [11,9],level: 2,dir: "up"},
+                            {className: "Fighter",loc: [12,9],level: 2,dir: "up"},
+                            {className: "Fighter",loc: [13,9],level: 2,dir: "up"}
+                            
+                        ],
+                        [
+                            {name:"Obama",className: "Fighter",loc: [15,6],level: 20,dir:"right"}
+                        ]
+                    ],
+                    pickups:[
+                        {item: "Potion",amount: 1,loc: [20,11]}
+                    ]
                 }
-            ],
-            npcs:[
-            ],
-            pickups:[
-                {item:"OranBerry",amount:1,loc:[8,23],p:{status:0}},
-                {item:"OranBerry",amount:1,loc:[21,27],p:{status:0}}
-            ]
+                        
+            };
+            return levelData;
         }
-    };
+    });
     
+    return Q;
 };
-module.exports = new LevelData();
+};
+
+module.exports = quintusServerLevelData;

@@ -67,8 +67,10 @@ Q.endScene = function(data){
         }
     });
 };
-Q.startScene = function(data){
-    Q.state.set("levelData",data);
+Q.startScene = function(saveData){
+    console.log(saveData)
+    var data = saveData.scene;
+    Q.state.set("saveData",data);
     //Get the path if we're staging a .tmx
     var currentPath = Q.getPath(data.levelMap.name);
     //Load the .tmx
@@ -76,11 +78,14 @@ Q.startScene = function(data){
         //Load the music
         Q.playMusic(data.onStart.music+".mp3",function(){ 
             //Create the scene
-            Q.makeScene(data.onStart.name,currentPath[0],data.levelMap.name);
+            Q.makeScene(data.onStart.name,currentPath[0],data.levelMap.name,saveData.players,saveData.allies,saveData.enemies);
             //Stage the TMX tilemap
             Q.stageScene(data.onStart.name,1,{path:currentPath[0],pathNum:currentPath[1],sort:true});
             var stage = Q.stage(1);
             Q.TL = stage.lists.TileLayer[stage.lists.TileLayer.length-1];
+            var players = Q("Player",1).items;
+            var allies = Q("Ally",1).items;
+            var enemies = Q("Enemy",1).items;
             //Play the correct scene
             switch(data.onStart.name){
                 //This is the first scene.
@@ -123,7 +128,7 @@ Q.startScene = function(data){
                     for(i=0;i<barrels.length;i++){
                         stage.insert(new Q.Barrel({loc:barrels[i]}));
                     }
-
+                    
                     //Create the "viewMover" which moves the camera
                     var viewMover = stage.insert(new Q.Sprite({
                         x:14*Q.tileH,y:5*Q.tileH
@@ -133,11 +138,10 @@ Q.startScene = function(data){
                     //Follow the viewMover
                     Q.viewFollow(viewMover,stage);
                     stage.viewport.scale=1.2;
-                    var allies = Q.createAllies(data.curAllies[0],stage);
-                    var prof = allies[0]; 
+                    var prof = allies[0];
+                    prof.add("storySprite");
                     prof.p.moveTo = [14,19];
                     prof.p.onArrival = [{func:"playStand",props:["down"]}];
-                    prof.add("storySprite");
                     prof.launchFireball=function(){
                         var fireballs = 9;
                         for(i=0;i<fireballs;i++){
@@ -160,10 +164,10 @@ Q.startScene = function(data){
                     };
                     prof.on("launchFireball");
                     var drat = allies[1];
+                    drat.add("storySprite");
                     drat.p.moveTo = [13,19];
                     drat.p.onArrival = [{func:"playStand",props:["down"]}];
 
-                    drat.add("storySprite");
                     drat.launchFireball=function(){
                         Q.playSound("attack.mp3");
                         //Launch the fireball
@@ -189,7 +193,9 @@ Q.startScene = function(data){
                                         };
 
                                         //Spawn the enemies
-                                        Q.createEnemies(data.curEnemies[0],stage);
+                                        for(i=0;i<enemies.length;i++){
+                                            Q.showStoryObj(enemies[i]);
+                                        }
                                         var interaction = [
                                             {asset:"Professor_Story_Idle.png",pos:"right",text:["You have done well enough to be called my aprentice!","It is getting dark, let us depart for home.",
                                                     {obj:prof,func:"setProp",props:["onArrival",[{func:"playStand",props:"up"}]]},
@@ -245,7 +251,7 @@ Q.startScene = function(data){
                     prof.add("storySprite");
                     var drat = allies[1];
                     drat.add("storySprite");
-                    var chief = Q.createEnemies(data.curEnemies[1],stage)[0];
+                    var chief = enemies[0];
                     chief.add("storySprite");
                     setTimeout(function(){
                         Q.viewFollow(allies[0],stage);
@@ -316,14 +322,13 @@ Q.startScene = function(data){
                         drat.p.onArrival = [{func:"playStand",props:"left"}];
                         setTimeout(function(){
                             var wave = 0;
-                            var enemies = Q.createEnemies(data.curEnemies[0],stage);
                             var inter = setInterval(function(){
                                 var en = enemies.filter(function(obj){
                                     return parseInt(obj.p.playerId[1])%3===wave;
                                 });
                                 for(ii=0;ii<en.length;ii++){
                                     en[ii].add("storySprite");
-                                    en[ii].show();
+                                    en[ii].showStoryObj();
                                     en[ii].startAutoMove();
                                 }
                                 wave++;
@@ -338,21 +343,46 @@ Q.startScene = function(data){
                 case "Prologue_02":
                     //alert("That's all folks!");
                     Q.stageScene("customAnimate",4,{anim:"fadeIn",speed:5});
-                    Q.createAllies(data.curAllies[0],stage);
-                    Q.createEnemies(data.curEnemies[0],stage);
                     Q.readyForBattle();
                     break;
             };
-
-
-
         });
     });    
 };
-Q.makeScene = function(sceneName,path,levelName){
+//Used to set up the objects that will be used in this scene
+Q.setUpPlayer=function(stage,objClass,data){
+    var obj = stage.insert(new Q[objClass]({
+        loc:data.loc?data.loc:[-1,-1],
+        className:data.className,
+        dir:data.dir?data.dir:"down",
+        name:data.name?data.name:data.className+" "+data.playerId,
+        level:data.level,
+        playerId:data.playerId,
+        
+        base:data.base,
+        stats:data.stats,
+        traits:data.traits
+        
+    }));
+    var pos = Q.setXY(obj.p.loc[0],obj.p.loc[1]);
+    obj.p.x = pos[0];
+    obj.p.y=pos[1];
+    obj.hide();
+};
+Q.makeScene = function(sceneName,path,levelName,players,allies,enemies){
     Q.scene(sceneName,function(stage){
         Q.stageTMX(path+"/"+levelName+".tmx",stage);
         stage.add("viewport");
+        //Create all of the enemies and players (default hidden)
+        for(var i=0;i<players.length;i++){
+            Q.setUpPlayer(stage,"Player",players[i].p);
+        }
+        for(var i=0;i<allies.length;i++){
+            Q.setUpPlayer(stage,"Ally",allies[i].p);
+        }
+        for(var i=0;i<enemies.length;i++){
+            Q.setUpPlayer(stage,"Enemy",enemies[i].p);
+        }
     });
 };
     

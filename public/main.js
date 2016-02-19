@@ -73,32 +73,34 @@ require(objectFiles, function () {
                 }
             }
         });
+        //Gets called when another user joins the lobby
+        socket.on("playerJoinedLobby",function(data){
+            //Push the connected player into the players
+            Q.state.get("players").push(data['player']);
+            //Make sure to update who is in the lobby
+            Q.state.trigger("change.players");
+        });
         //Gets called when the user logs in
         //This sends the user to the lobby
         socket.on('goToLobby', function (data) {
             Q.state.set("players",data['players']);
-            if(data['player'].playerId===selfId){
-                var host = false;
-                //This is the first one here
-                if(Q.state.get("players").length===1){
-                    host = true;
-                } 
-                //Waiting on "host" to start the game
-                else {
-                    
-                }
-                Q.stageScene("lobby",1,{host:host});
-            }
+            var host = false;
+            //This is the first one here
+            if(Q.state.get("players").length===1){
+                host = true;
+            } 
+            Q.stageScene("lobby",1,{host:host});
         });
         //At the start of the scene
         socket.on("startedScene",function(data){
             //Clear the first scene
             Q.clearStage(1);
             //Start the scene
-            Q.startScene(data.levelData);
+            Q.startScene(data.saveData);
         });
         //Called when all players must now place their units
         socket.on("startedBattle",function(data){
+            Q.showAllStoryObjs();
             Q.stage(1).viewport.scale=1;
             Q.state.set("turnOrder",data['turnOrder']);
             Q.state.set("battle",true);
@@ -125,7 +127,7 @@ require(objectFiles, function () {
                 return obj.playerId === Q.state.get("playerConnection").id;
             });
             //Place the playerLocs guide
-            var playerLocs = ld.battle.playerLocs;
+            var playerLocs = data['playerLocs'];
             
             //Create a pointer so the user can select a guide spot (and hover enemies to check their stats before the battle)
             var pointer = stage.insert(new Q.Pointer({loc:playerLocs[0]}));
@@ -298,10 +300,6 @@ require(objectFiles, function () {
                 player.showReady();
             }
         });
-        socket.on("getFastestClient",function(){
-            socket.emit("reciveFastestClients",{playerId:selfId});
-        });
-        
         socket.on("inputted",function(data){
             var player = Q("Player",1).items.filter(function (obj) {
                 return obj.p.playerId === data['playerId'];
@@ -379,7 +377,6 @@ require(objectFiles, function () {
         socket.on("startedTurn",function(data){
             var tO = data['turnOrder'];
             Q.state.set("turnOrder",tO);
-            Q.state.set("battleHost",data['host']);
             //If it's the current player turn
             if(tO[0]===selfId){
                 var playerTurn = Q("Player",1).items.filter(function(obj){
@@ -527,7 +524,7 @@ require(objectFiles, function () {
                 loading.destroy();
                 Q.state.get("playerConnection").socket.emit('toLobby', { 
                     playerId:Q.state.get("playerConnection").id, 
-                    character:name,
+                    name:name,
                     file:file
                 });
             });
@@ -536,20 +533,12 @@ require(objectFiles, function () {
     };
     
     
-    //Define the image files to be loaded
+    //Define the misc image files to be loaded
     var imageFiles = [
-        //Images
-        "Aipom60x60.png",
-        "Dratini.png",
-        "Deino60x60.png",
-        "Totodile60x60.png",
-        
         "bullets.png",
         
-        "sprites.png",
         "berries.png",
         "objects.png",
-        "fog.png",
         
         "battle_start.png",
         "battle_complete.png",
@@ -559,6 +548,7 @@ require(objectFiles, function () {
     for(i=0;i<imageFiles.length;i++){
         imageFiles[i]="/images/"+imageFiles[i];
     }
+    //The big images that show talking
     var storyImages = [
         "Dratini_Story_Idle.png",
         "Professor_Story_Idle.png",
@@ -571,6 +561,15 @@ require(objectFiles, function () {
     ];
     for(i=0;i<storyImages.length;i++){
         storyImages[i]="/images/story/"+storyImages[i];
+    }
+    //The sprites that move around the world
+    var battleImages = [
+        "Fighter.png",
+        "Pyromancer.png",
+        "Paladin.png"
+    ];
+    for(i=0;i<battleImages.length;i++){
+        battleImages[i]="/images/battle/"+battleImages[i];
     }
     var soundFiles = [
         "enter_door.mp3",
@@ -587,8 +586,7 @@ require(objectFiles, function () {
     for(i=0;i<soundFiles.length;i++){
         soundFiles[i]="sounds/"+soundFiles[i];
     }
-    Q.load(imageFiles.concat(soundFiles).concat(storyImages).join(','),function(){
-        
+    Q.load(soundFiles.concat(imageFiles).concat(storyImages).concat(battleImages).join(','),function(){
         Q.setUpAnimations();
         //Stage the title scene
         //Q.stageScene('title', 0);

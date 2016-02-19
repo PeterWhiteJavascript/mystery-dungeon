@@ -1,23 +1,31 @@
 Quintus.Animations = function(Q){
 Q.setUpAnimations=function(){
+    //Misc sprites
     var toSheet = [
-        ['sprites','sprites.png',96,96],
         ['berries','berries.png',83,101],
         ['objects','objects.png',64,64],
-        
-        ['Professor','Aipom60x60.png',60,60],
-        ['Totodile','Totodile60x60.png',60,60],
-        ['Chimchar','Aipom60x60.png',60,60],
-        ['Deino','Deino60x60.png',60,60],
-        ['Dratini','Dratini.png',70,70],
-        ['Spinarak','Aipom60x60.png',60,60],
-        ['Grimer','Aipom60x60.png',60,60],
         
         ["fireball","bullets.png",32,32]
     ];
     for(j=0;j<toSheet.length;j++){
         Q.sheet(toSheet[j][0],
         "/images/"+toSheet[j][1],
+        {
+           tilew:toSheet[j][2],
+           tileh:toSheet[j][3],
+           sx:0,
+           sy:0
+        });
+    };
+    //Battle sprites
+    var toSheet= [
+        ['Fighter','Fighter.png',60,60],
+        ['Pyromancer','Pyromancer.png',60,60],
+        ['Paladin','Paladin.png',70,70]
+    ];
+    for(j=0;j<toSheet.length;j++){
+        Q.sheet(toSheet[j][0],
+        "/images/battle/"+toSheet[j][1],
         {
            tilew:toSheet[j][2],
            tileh:toSheet[j][3],

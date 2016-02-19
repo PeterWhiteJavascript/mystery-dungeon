@@ -378,7 +378,7 @@ Q.scene("lobby",function(stage){
     }));
     var players = Q.state.get("players");
     for(i=0;i<players.length;i++){
-        box.insertPlayerText(players[i].name,i);
+        box.insertPlayerText(players[i].p.name,i);
     }
     if(stage.options.host){
         var startButton = stage.insert(new Q.UI.Button({
@@ -415,7 +415,7 @@ Q.scene("lobby",function(stage){
         }));
     }
     Q.state.on("change.players",function(){
-        box.insertPlayerText(Q.state.get("players")[Q.state.get("players").length-1].name);
+        box.insertPlayerText(Q.state.get("players")[Q.state.get("players").length-1].p.name);
     });
 });
 };
