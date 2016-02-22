@@ -1,1 +1,1 @@
-{"id":"Thrust","name":"Thrust","description":"The first spear attack in ROTK.","power":"80","accuracy":"90","range":"1","area":"1","category":"phys","targets":"enemy","effect":{"targets":"enemy","accuracy":"80","type":"move","statusChange":{"type":"poison","turns":""},"statChange":{"type":"phys_ofn","amount":"","turns":""},"move":"1","changeTile":"fire","unique":"","description":"Launches the target forward one square."}}
+{"id":"Thrust","name":"Thrust","description":"","power":"80","accuracy":"90","range":"1","area":"1","category":"phys","targets":"enemy","effect":""}

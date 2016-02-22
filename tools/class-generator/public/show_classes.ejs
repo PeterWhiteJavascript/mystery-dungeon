@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Viewing Attacks</title>
+    <title>Viewing Classes</title>
     <style>
         .effects_div{
             display: none;
@@ -106,49 +106,64 @@
     </style>
 </head>
 <body>
-    <div>To create another attack, click your address bar and hit 'enter'</div>
+    <div>To create another class, click your address bar and hit 'enter'</div>
     <div>
         <table>
             <tr>
                 <th>Name</th>
-                <th>Description</th> 
-                <!--<th>Power</th> 
-                <th>Accuracy</th>
-                <th>Range</th>
-                <th>Area</th>
-                <th>Category</th>
-                <th>Targets</th>-->
-                <th>Effect</th>
+                <th>Description</th>
+                <!--<th>Power</th>
+                <th>Attacks</th>
+                <th>Hit Points</th>
+                <th>Physical Offense</th>
+                <th>Physical Defense</th>
+                <th>Special Offense</th>
+                <th>Special Defense</th>
+                <th>Agility</th>
+                <th>Strength</th>
+                <th>Intellect</th>
+                <th>Awareness</th>
+                <th>Willpower</th>
+                <th>Persuasion</th>
+                <th>Fate</th-->
                 <th>Edit</th>
                 <th>Delete</th>
             </tr>
             
-                <% for(var i=0;i<attacks.length;i++){ %>
+                <% for(var i=0;i<classes.length;i++){ %>
                         <tr>
                             <form action="" method="post" enctype="multipart/form-data">
-                                <td><input readonly name="name" value=<%- JSON.stringify(attacks[i].name) %>></input></td>
-                                <td><textarea readonly name="description"><%- attacks[i].description; %></textarea></td>
-                                <!--<td><input readonly name="power" value=<%- attacks[i].power %>></input></td>
-                                <td><input readonly name="accuracy" value=<%- attacks[i].accuracy %>></input></td>
-                                <td><input readonly name="range" value=<%- attacks[i].range %>></input></td>
-                                <td><input readonly name="area" value=<%- attacks[i].area %>></input></td>
-                                <td><input readonly name="category" value=<%- attacks[i].category %>></input></td>
-                                <td><input readonly name="targets" value=<%- attacks[i].targets %>></input></td>-->
-                                <td><textarea readonly name="effect_description"><%- attacks[i].effect.description %></textarea></td>
+                                <td><input readonly name="name" value=<%= classes[i].name %>></input></td>
+                                <td><textarea readonly name="description"><%= classes[i].description %></textarea></td>
+                                <!--<td><input name="attacks" value=<%= classes[i].attacks %>></input></td>
+                                <td><input name="base_max_hp" value=<%= classes[i].base.max_hp %>></input></td>
+                                <td><input name="base_phys_ofn" value=<%= classes[i].base.phys_ofn %>></input></td>
+                                <td><input name="base_phys_dfn" value=<%= classes[i].base.phys_dfn %>></input></td>
+                                <td><input name="base_spec_ofn" value=<%= classes[i].base.spec_ofn %>></input></td>
+                                <td><input name="base_spec_dfn" value=<%= classes[i].base.spec_dfn %>></input></td>
+                                <td><input name="base_agility" value=<%= classes[i].base.agility %>></input></td>
+                                <td><input name="base_strength" value=<%= classes[i].base.strength %>></input></td>
+                                <td><input name="base_intellect" value=<%= classes[i].base.intellect %>></input></td>
+                                <td><input name="base_awareness" value=<%= classes[i].base.awareness %>></input></td>
+                                <td><input name="base_willpower" value=<%= classes[i].base.willpower %>></input></td>
+                                <td><input name="base_persuasion" value=<%= classes[i].base.persuasion %>></input></td>
+                                <td><input name="base_fate" value=<%= classes[i].base.fate %>></input></td>-->
                                 <td>
-                                    <input type="text" id="taskFunc" name="taskFunc" value="editAttack" hidden/>
-                                    <input type="submit" value="Edit"/>
+                                    <input type="text" id="taskFunc" name="taskFunc" value="editClass" hidden/>
+                                    <input type="submit" value="Edit Class"/>
                                 </td>
                             </form>
                             <td>
                                 <form action="" method="post" enctype="multipart/form-data">
-                                    <input name="name" hidden value=<%- JSON.stringify(attacks[i].name) %>></input>
-                                    <input type="text" id="taskFunc" name="taskFunc" value="deleteAttack" hidden/>
-                                    <input type="submit" value="Delete Attack"/>
+                                    <input name="name" hidden value=<%- JSON.stringify(classes[i].name) %>></input>
+                                    <input type="text" id="taskFunc" name="taskFunc" value="deleteClass" hidden/>
+                                    <input type="submit" value="Delete Class"/>
                                 </form>
                             </td>
                         </tr>
+                    
                 <% } %>
+                
         </table>
     </div>
 </body>

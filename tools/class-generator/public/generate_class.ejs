@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Generate Class</title>
+        <style>
+            input{
+                width:40px;
+            }
+            textarea{
+                width:400px;
+                height:100px;
+            }
+            .effects_div{
+                display: none;
+            }
+            table a:link {
+                    color: #666;
+                    font-weight: bold;
+                    text-decoration:none;
+            }
+            table a:visited {
+                    color: #999999;
+                    font-weight:bold;
+                    text-decoration:none;
+            }
+            table a:active,
+            table a:hover {
+                    color: #bd5a35;
+                    text-decoration:underline;
+            }
+            table {
+                    font-family:Arial, Helvetica, sans-serif;
+                    color:#666;
+                    font-size:12px;
+                    text-shadow: 1px 1px 0px #fff;
+                    background:#eaebec;
+                    margin:20px;
+                    border:#ccc 1px solid;
+
+                    -moz-border-radius:3px;
+                    -webkit-border-radius:3px;
+                    border-radius:3px;
+
+                    -moz-box-shadow: 0 1px 2px #d1d1d1;
+                    -webkit-box-shadow: 0 1px 2px #d1d1d1;
+                    box-shadow: 0 1px 2px #d1d1d1;
+            }
+            table th {
+                    padding:21px 25px 22px 25px;
+                    border-top:1px solid #fafafa;
+                    border-bottom:1px solid #e0e0e0;
+
+                    background: #ededed;
+                    background: -webkit-gradient(linear, left top, left bottom, from(#ededed), to(#ebebeb));
+                    background: -moz-linear-gradient(top,  #ededed,  #ebebeb);
+            }
+            table th:first-child {
+                    text-align: left;
+                    padding-left:20px;
+            }
+            table tr:first-child th:first-child {
+                    -moz-border-radius-topleft:3px;
+                    -webkit-border-top-left-radius:3px;
+                    border-top-left-radius:3px;
+            }
+            table tr:first-child th:last-child {
+                    -moz-border-radius-topright:3px;
+                    -webkit-border-top-right-radius:3px;
+                    border-top-right-radius:3px;
+            }
+            table tr {
+                    text-align: center;
+                    padding-left:20px;
+            }
+            table td:first-child {
+                    text-align: left;
+                    padding-left:20px;
+                    border-left: 0;
+            }
+            table td {
+                    padding:18px;
+                    border-top: 1px solid #ffffff;
+                    border-bottom:1px solid #e0e0e0;
+                    border-left: 1px solid #e0e0e0;
+
+                    background: #fafafa;
+                    background: -webkit-gradient(linear, left top, left bottom, from(#fbfbfb), to(#fafafa));
+                    background: -moz-linear-gradient(top,  #fbfbfb,  #fafafa);
+            }
+            table tr.even td {
+                    background: #f6f6f6;
+                    background: -webkit-gradient(linear, left top, left bottom, from(#f8f8f8), to(#f6f6f6));
+                    background: -moz-linear-gradient(top,  #f8f8f8,  #f6f6f6);
+            }
+            table tr:last-child td {
+                    border-bottom:0;
+            }
+            table tr:last-child td:first-child {
+                    -moz-border-radius-bottomleft:3px;
+                    -webkit-border-bottom-left-radius:3px;
+                    border-bottom-left-radius:3px;
+            }
+            table tr:last-child td:last-child {
+                    -moz-border-radius-bottomright:3px;
+                    -webkit-border-bottom-right-radius:3px;
+                    border-bottom-right-radius:3px;
+            }
+            table tr:hover td {
+                    background: #f2f2f2;
+                    background: -webkit-gradient(linear, left top, left bottom, from(#f2f2f2), to(#f0f0f0));
+                    background: -moz-linear-gradient(top,  #f2f2f2,  #f0f0f0);	
+            }
+        </style>
+    </head>
+   <body>
+       <div>To view all classes, either create a new class or leave the name field blank at hit 'generate class'</div>
+        <h1>Create an class</h1>
+        <form action="" method="post" enctype="multipart/form-data">
+         <fieldset>
+            <h2>Name</h2>
+            <input type="text" id="name" name="name" placeholder="Enter the name of the class" style='width:400px;' value=<%= pclass.name %>></input>
+            <br />
+            <h2>Description</h2>
+            <textarea id="description" name="description" placeholder="Give a description of the class." value=<%= JSON.stringify(pclass.description) %>></textarea>
+            <br />
+            <h2>Base Stats</h2>
+            <table>
+                <tr>
+                    <td>Hit Points</td><td>Physical Offense</td><td>Physical Defense</td><td>Special Offense</td><td>Special Defense</td><td>Agility</td>
+                </tr>
+                <tr>
+                    <td><input type="text" id="base_max_hp" name="base_max_hp" value=<%= pclass.base.max_hp %>></input></td>
+                    <td><input type="text" id="base_phys_ofn" name="base_phys_ofn" value=<%= pclass.base.phys_ofn %>></input></td>
+                    <td><input type="text" id="base_phys_dfn" name="base_phys_dfn" value=<%= pclass.base.phys_dfn %>></input></td>
+                    <td><input type="text" id="base_spec_ofn" name="base_spec_ofn" value=<%= pclass.base.spec_ofn %>></input></td>
+                    <td><input type="text" id="base_spec_dfn" name="base_spec_dfn" value=<%= pclass.base.spec_dfn %>></input></td>
+                    <td><input type="text" id="base_agility" name="base_agility" value=<%= pclass.base.agility %>></input></td>
+                </tr>
+                <tr>
+                    <td>Strength</td><td>Intellect</td><td>Awareness</td><td>Willpower</td><td>Persuasion</td><td>Fate</td>
+                </tr>
+                <tr>
+                    <td><input type="text" id="base_strength" name="base_strength" value=<%= pclass.base.strength %>></input></td>
+                    <td><input type="text" id="base_intellect" name="base_intellect" value=<%= pclass.base.intellect %>></input></td>
+                    <td><input type="text" id="base_awareness" name="base_awareness" value=<%= pclass.base.awareness %>></input></td>
+                    <td><input type="text" id="base_willpower" name="base_willpower" value=<%= pclass.base.willpower %>></input></td>
+                    <td><input type="text" id="base_persuasion" name="base_persuasion" value=<%= pclass.base.persuasion %>></input></td>
+                    <td><input type="text" id="base_fate" name="base_fate" value=<%= pclass.base.fate %>></input></td>
+                </tr>
+            </table>
+            <h2>Attacks</h2>
+            <table>
+                <tr>
+                    <td>Attack 1</td><td>Attack 2</td><td>Attack 3</td><td>Attack 4</td><td>Attack 5</td>
+                </tr>
+                <tr>
+                    <td>
+                        <select name="attack1">
+                            <option><%= pclass.attacks[0] %></option>
+                            <% for(var i=0;i<attacks.length;i++){ %>
+                                <option><%= attacks[i].name %></option>
+                            <% } %>
+                        </select>
+                    </td>
+                    <td>
+                        <select name="attack2">
+                            <option><%= pclass.attacks[1] %></option>
+                            <% for(var i=0;i<attacks.length;i++){ %>
+                                <option><%= attacks[i].name %></option>
+                            <% } %>
+                        </select>
+                    </td>
+                    <td>
+                        <select name="attack3">
+                            <option><%= pclass.attacks[2] %></option>
+                            <% for(var i=0;i<attacks.length;i++){ %>
+                                <option><%= attacks[i].name %></option>
+                            <% } %>
+                        </select>
+                    </td>
+                    <td>
+                        <select name="attack4">
+                            <option><%= pclass.attacks[3] %></option>
+                            <% for(var i=0;i<attacks.length;i++){ %>
+                                <option><%= attacks[i].name %></option>
+                            <% } %>
+                        </select>
+                    </td>
+                    <td>
+                        <select name="attack5">
+                            <option><%= pclass.attacks[4] %></option>
+                            <% for(var i=0;i<attacks.length;i++){ %>
+                                <option><%= attacks[i].name %></option>
+                            <% } %>
+                        </select>
+                    </td>
+                <tr>
+            </table>
+            <input type="text" id="taskFunc" name="taskFunc" value="generateClass" hidden/>
+            <input type="submit" value="Generate Class" style='width:400px;'/>
+         </fieldset>
+      </form>
+   </body>
+</html>

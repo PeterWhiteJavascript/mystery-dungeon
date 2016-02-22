@@ -14,7 +14,7 @@ var server = http.createServer(function (req, res) {
 });
 
 function createMaster(res){
-    fs.readdir("public/attacks", function(err, items) {
+    fs.readdir("./public/attacks", function(err, items) {
         //arr stores all attacks data
         var arr = [];
         //The current file we're on
@@ -31,7 +31,7 @@ function createMaster(res){
                 //We can now write the data to the master file
                 if(num===items.length){
                     var data = JSON.stringify(arr);
-                    fs.writeFile("../../public/attacks.json",data, function(err) {
+                    fs.writeFile("../../public/json/attacks.json",data, function(err) {
                         if(err) {
                             return console.log(err);
                         }
@@ -52,17 +52,57 @@ function displayAttacks(res,objs){
     res.end();
 }
 
-function displayForm(res) {
-    fs.readFile('./public/generate_attack.html', function (err, data) {
-        if(err) throw err;
-        res.writeHead(200, {
-            'Content-Type': 'text/html',
-                'Content-Length': data.length
-        });
-        res.write(data);
-        res.end();
-    });
+function displayForm(res,attack) {
+    if(!attack){
+        attack={
+            name:"",
+            description:"",
+            power:"",
+            accuracy:"",
+            range:"",
+            area:"",
+            category:"",
+            targets:"",
+            effect:""
+        }; 
+    }
+    var content = fs.readFileSync('./public/generate_attack.ejs', 'utf-8');
+    var compiled = ejs.compile(content);
+    res.writeHead(200, {'Content-Type': 'text/html'});
+    //Pass the JSON attacks to the html
+    res.write(compiled({attack:attack}));
+    res.end();
 }
+
+function getAttack(res,attackName){
+    if(attackName){
+        fs.readFile("./public/attacks/"+attackName+".json",function(err,data){
+            if(err) throw err;
+            var attack = JSON.parse(data);
+            //Set the id and other info
+            var genAttack={
+                name:attack.name,
+                description:attack.description,
+                power:attack.power,
+                accuracy:attack.accuracy,
+                range:attack.range,
+                area:attack.area,
+                category:attack.category,
+                targets:attack.targets,
+                effect:attack.effect
+            };
+            displayForm(res,genAttack);
+        });
+    }
+};
+function deleteAttack(res,attackName){
+    //Delete the attack
+    fs.unlink("public/attacks/"+attackName+".json",function(err){
+        if(err) throw err;
+        //Recreate the master attacks file
+        createMaster(res);
+    });
+};
 function processFormFieldsIndividual(req, res) {
     //Store the data from the fields in your data store.
     //The data store could be a file or database or any other store based
@@ -74,61 +114,67 @@ function processFormFieldsIndividual(req, res) {
     });
 
     form.on('end', function () {
-        
-        //Make sure there's no white space for the id
-        var id = replaceall(' ','',fields['name']);
-        //Initialize the attacks object
-        var attacks = {};
-        //Set the id and other info
-        attacks={
-            id:id,
-            name:fields['name'],
-            description:fields['description'],
-            power:fields['power'],
-            accuracy:fields['accuracy'],
-            range:fields['range'],
-            area:fields['area'],
-            category:fields['category'],
-            targets:fields['targets'],
-            effect:''
-        };
-        //Only set effect if there is one
-        if(fields['effect_type']!=="none"){
-            attacks.effect={
-                targets:fields['effect_targets'],
-                accuracy:fields['effect_accuracy'],
-                type:fields['effect_type'],
-                statusChange:{
-                    type:fields['effect_status_change'],
-                    turns:fields['effect_status_change_turns']
-                },
-                statChange:{
-                    type:fields['effect_stat_change'],
-                    amount:fields['effect_stat_change_amount'],
-                    turns:fields['effect_stat_change_turns']
-                },
-                move:fields['effect_move'],
-                changeTile:fields['effect_change_tile'],
-                unique:fields['effect_unique'],
-                description:fields['effect_description']
+        if(fields['taskFunc']==="generateAttack"){
+            //Make sure there's no white space for the id
+            var id = replaceall(' ','',fields['name']);
+            //Initialize the attacks object
+            var attacks = {};
+            //Set the id and other info
+            attacks={
+                id:id,
+                name:fields['name'],
+                description:fields['description'],
+                power:fields['power'],
+                accuracy:fields['accuracy'],
+                range:fields['range'],
+                area:fields['area'],
+                category:fields['category'],
+                targets:fields['targets'],
+                effect:''
             };
-        }
-        //If we have entered an attack
-        if(id.length){
-            var data = JSON.stringify(attacks);
-            fs.writeFile("./public/attacks/"+id+".json",data, function(err) {
-                if(err) {
-                    return console.log(err);
-                }
-                console.log("The file was saved!");
+            //Only set effect if there is one
+            if(fields['effect_type']!=="none"){
+                attacks.effect={
+                    targets:fields['effect_targets'],
+                    accuracy:fields['effect_accuracy'],
+                    type:fields['effect_type'],
+                    statusChange:{
+                        type:fields['effect_status_change'],
+                        turns:fields['effect_status_change_turns']
+                    },
+                    statChange:{
+                        type:fields['effect_stat_change'],
+                        amount:fields['effect_stat_change_amount'],
+                        turns:fields['effect_stat_change_turns']
+                    },
+                    move:fields['effect_move'],
+                    changeTile:fields['effect_change_tile'],
+                    unique:fields['effect_unique'],
+                    description:fields['effect_description']
+                };
+            }
+            //If we have entered an attack
+            if(id.length){
+                var data = JSON.stringify(attacks);
+                fs.writeFile("./public/attacks/"+id+".json",data, function(err) {
+                    if(err) {
+                        return console.log(err);
+                    }
+                    console.log("The file was saved!");
+                    createMaster(res);
+                });
+            } 
+            //If we're not adding an attack, generate the master JSON
+            else {
                 createMaster(res);
-            });
-        } 
-        //If we're not adding an attack, generate the master JSON
-        else {
-            createMaster(res);
+            }
+        } else if(fields['taskFunc']==="editAttack"){
+            var id = replaceall(' ','',fields['name']);
+            getAttack(res,id);
+        } else if(fields['taskFunc']==="deleteAttack"){
+            var id = replaceall(' ','',fields['name']);
+            deleteAttack(res,id);
         }
-        
     });
     form.parse(req);
 }

@@ -1,0 +1,16 @@
+{
+  "name": "class-generator",
+  "version": "1.0.0",
+  "description": "A tool to create and view player classes",
+  "main": "main.js",
+  "scripts": {
+    "test": "node main.js"
+  },
+  "author": "Peter White",
+  "license": "ISC",
+  "dependencies": {
+    "ejs": "^2.4.1",
+    "formidable": "^1.0.17",
+    "replaceall": "^0.1.6"
+  }
+}
