@@ -67,68 +67,38 @@ Q.endScene = function(data){
         }
     });
 };
-Q.startScene = function(saveData){
-    console.log(saveData)
-    var data = saveData.scene;
-    Q.state.set("saveData",data);
+Q.startScene = function(data){
+    var scene = data.scene;
+    var us = data.userData;
+    var pa = data.partsData;
+    var pi = data.pickupsData;
+    var ob = data.objectData;
     //Get the path if we're staging a .tmx
-    var currentPath = Q.getPath(data.levelMap.name);
+    var currentPath = Q.getPath(scene.levelMap.name);
     //Load the .tmx
-    Q.loadTMX(currentPath[0]+"/"+data.levelMap.name+".tmx",function(){
+    Q.loadTMX(currentPath[0]+"/"+scene.levelMap.name+".tmx",function(){
         //Load the music
-        Q.playMusic(data.onStart.music+".mp3",function(){ 
+        Q.playMusic(scene.onStart.music+".mp3",function(){ 
             //Create the scene
-            Q.makeScene(data.onStart.name,currentPath[0],data.levelMap.name,saveData.players,saveData.allies,saveData.enemies);
-            //Stage the TMX tilemap
-            Q.stageScene(data.onStart.name,1,{path:currentPath[0],pathNum:currentPath[1],sort:true});
-            var stage = Q.stage(1);
+            Q.makeScene(scene.onStart.name,currentPath[0],scene.levelMap.name,us,pa,ob,function(stage){
             Q.TL = stage.lists.TileLayer[stage.lists.TileLayer.length-1];
-            var players = Q("Player",1).items;
-            var allies = Q("Ally",1).items;
-            var enemies = Q("Enemy",1).items;
+            var users = Q("User",1).items;
+            var players = Q("Participant",1).items.filter(function(obj){
+                return Q._isNumber(obj.p.playerId);
+            });
+            var allies = Q("Participant",1).items.filter(function(obj){
+                return Q._isString(obj.p.playerId)&&obj.p.ally==="Player";
+            });
+            var enemies =Q("Participant",1).items.filter(function(obj){
+                return Q._isString(obj.p.playerId)&&obj.p.ally==="Enemy";
+            });
             //Play the correct scene
-            switch(data.onStart.name){
+            switch(scene.onStart.name){
                 //This is the first scene.
                 case "Prologue_00":
                     //Fade in
                     Q.stageScene("customAnimate",4,{anim:"fadeIn",speed:5});
 
-                    //The locations for all barrels to be placed
-                    var barrels = [
-                        [6,19],
-                        [7,19],
-                        [8,19],
-
-                        [20,16],
-                        [21,16],
-                        [22,16],
-                        [20,17],
-                        [21,17],
-                        [22,17],
-                        [20,18],
-                        [21,18],
-                        [22,18],
-                        [23,18],
-                        [24,18],
-                        [20,19],
-                        [21,19],
-                        [22,19],
-                        [23,19],
-                        [24,19],
-                        [20,20],
-                        [21,20],
-                        [22,20],
-                        [23,20],
-
-                        [19,21],
-
-                        [13,22],
-                        [14,22]
-                    ];
-                    for(i=0;i<barrels.length;i++){
-                        stage.insert(new Q.Barrel({loc:barrels[i]}));
-                    }
-                    
                     //Create the "viewMover" which moves the camera
                     var viewMover = stage.insert(new Q.Sprite({
                         x:14*Q.tileH,y:5*Q.tileH
@@ -184,7 +154,7 @@ Q.startScene = function(saveData){
                                         prof.playStand(dir);
                                         //Set what happens when you see the enemies
                                         viewMover.seeEnemies=function(){
-                                            Q.playMusic(data.battle.music+".mp3");
+                                            Q.playMusic(scene.battle.music+".mp3");
                                             var interaction = [
                                                 {asset:"Professor_Story_Idle.png",pos:"right",text:["Looks like they found us.","If they think they can stop me, then they are wrong.","Come, let us fight!"]},
                                                 {asset:"Dratini_Story_Idle.png",pos:"left",text:["Let's fight then!",{obj:Q,func:"readyForBattle"}]}
@@ -246,7 +216,6 @@ Q.startScene = function(saveData){
                     Q.stageScene("customAnimate",4,{anim:"fadeIn",speed:5});
                     Q.stageScene("customAnimate",5,{anim:"dimToNight",speed:1});
                     stage.viewport.scale=1.2;
-                    var allies = Q.createAllies(data.curAllies[0],stage);
                     var prof = allies[0];
                     prof.add("storySprite");
                     var drat = allies[1];
@@ -303,7 +272,7 @@ Q.startScene = function(saveData){
                         Q.playSound("whistle.mp3");
                         prof.p.onArrival = [{
                             func:function(){
-                                Q.playMusic(data.battle.music+".mp3",function(){
+                                Q.playMusic(scene.battle.music+".mp3",function(){
                                     var interaction = [
                                         {asset:"bandit_happy.png",pos:"left",text:["Hah!","You've walked right into our trap.","We'll be taking your valuable stone now."]},
                                         {asset:"Professor_Story_Idle.png",pos:"left",text:["Chief!","What is the meaning of this?"]},
@@ -320,15 +289,58 @@ Q.startScene = function(saveData){
                             }
                         }];
                         drat.p.onArrival = [{func:"playStand",props:"left"}];
+                        //We're going to use group one's enemies for the moving
+                        var group = 1;
+                        //Where all of the enemies move to
+                        var moving = [
+                            [10,14],
+                            [10,15],
+                            [10,16],
+                            [19,15],
+                            [19,16],
+                            [19,14],
+                            [17,11],
+                            [16,11],
+                            [15,11]
+                        ];
+                        var arrive = [
+                            [{func:"playStand",props:"right"}],
+                            [{func:"playStand",props:"right"}],
+                            [{func:"playStand",props:"right"}],
+                            
+                            [{func:"playStand",props:"left"}],
+                            [{func:"playStand",props:"left"}],
+                            
+                            [{func:"playStand",props:"left"}],
+                            
+                            [{func:"playStand",props:"down"}],
+                            [{func:"playStand",props:"down"}],
+                            [{func:"playStand",props:"down"}]
+                        ];
+                        //Used later for when some enemies move forward
+                        var forward = [
+                            false,
+                            false,
+                            false,
+                            [18,15],
+                            [18,16],
+                            [18,14],
+                            [17,13],
+                            [16,13],
+                            [15,13]
+                        ];
                         setTimeout(function(){
                             var wave = 0;
                             var inter = setInterval(function(){
                                 var en = enemies.filter(function(obj){
-                                    return parseInt(obj.p.playerId[1])%3===wave;
+                                    return obj.p.group===1&&obj.p.groupNum%3===wave;
                                 });
                                 for(ii=0;ii<en.length;ii++){
+                                    en[ii].p.moveTo = moving[en[ii].p.groupNum];
+                                    en[ii].p.onArrival = arrive[en[ii].p.groupNum];
+                                    en[ii].p.moveForward = forward[en[ii].p.groupNum];
                                     en[ii].add("storySprite");
-                                    en[ii].showStoryObj();
+                                    Q.showStoryObj(en[ii]);
                                     en[ii].startAutoMove();
                                 }
                                 wave++;
@@ -338,7 +350,6 @@ Q.startScene = function(saveData){
                             },500);
                         },500);
                     };
-
                     break;
                 case "Prologue_02":
                     //alert("That's all folks!");
@@ -346,43 +357,74 @@ Q.startScene = function(saveData){
                     Q.readyForBattle();
                     break;
             };
+            });
+            //Stage the TMX tilemap
+            Q.stageScene(scene.onStart.name,1,{path:currentPath[0],pathNum:currentPath[1],sort:true});
+            
         });
     });    
 };
-//Used to set up the objects that will be used in this scene
-Q.setUpPlayer=function(stage,objClass,data){
-    var obj = stage.insert(new Q[objClass]({
-        loc:data.loc?data.loc:[-1,-1],
-        className:data.className,
-        dir:data.dir?data.dir:"down",
-        name:data.name?data.name:data.className+" "+data.playerId,
-        level:data.level,
-        playerId:data.playerId,
-        
-        base:data.base,
-        stats:data.stats,
-        traits:data.traits
-        
-    }));
+Q.setUpObject=function(stage,objClass,data){
+    var obj = stage.insert(new Q[objClass]({loc:data.loc,playerId:data.playerId}));
     var pos = Q.setXY(obj.p.loc[0],obj.p.loc[1]);
     obj.p.x = pos[0];
-    obj.p.y=pos[1];
-    obj.hide();
+    obj.p.y = pos[1];
+    obj.p.z = pos[1];
 };
-Q.makeScene = function(sceneName,path,levelName,players,allies,enemies){
+Q.makeScene = function(sceneName,path,levelName,users,parts,objects,callback){
     Q.scene(sceneName,function(stage){
         Q.stageTMX(path+"/"+levelName+".tmx",stage);
         stage.add("viewport");
-        //Create all of the enemies and players (default hidden)
-        for(var i=0;i<players.length;i++){
-            Q.setUpPlayer(stage,"Player",players[i].p);
+        //Create the user sprites which allow the user to control things
+        for(var i=0;i<users.length;i++){
+            stage.insert(new Q.User({playerId:users[i].playerId,file:users[i].file,ready:users[i].ready,name:users[i].name}));
         }
-        for(var i=0;i<allies.length;i++){
-            Q.setUpPlayer(stage,"Ally",allies[i].p);
+        //Create all of the allies, enemies, and players (default hidden)
+        var objs = parts;
+        for(var i=0;i<objs.length;i++){
+            var pl = objs[i];
+            var classData = Q.state.get("classes").filter(function(obj){
+                return obj.id===pl.className;
+            })[0];
+            stage.insert(new Q.Participant({
+                playerId:pl.playerId,
+                className:pl.className,
+                sheet:pl.sheet?pl.sheet:pl.className,
+                loc:pl.loc,
+                level:pl.level,
+                dir:pl.dir,
+                iv:pl.iv,
+                base:classData.base,
+                stats:pl.stats,
+                modStats:pl.modStats,
+                attacks:pl.attacks,
+                items:pl.items,
+                abilities:pl.abilities,
+                exp:pl.exp,
+                gender:pl.gender?pl.gender:"M",
+                name:pl.name,
+                text:pl.text?pl.text:"...",
+                traits:pl.traits,
+                
+                final:pl.final,
+                group:pl.group,
+                groupNum:pl.groupNum
+            }));
         }
-        for(var i=0;i<enemies.length;i++){
-            Q.setUpPlayer(stage,"Enemy",enemies[i].p);
-        }
+        //Put all objects in the stage (things that do not have a turn but can still be interacted with in some way)
+        for(var i=0;i<objects.length;i++){
+            Q.setUpObject(stage,objects[i].className,objects[i]);
+        } 
+        
+        Q.TL = stage.lists.TileLayer[stage.lists.TileLayer.length-1];
+        Q.state.set("mapWidth",Q.TL.p.cols);
+        Q.state.set("mapHeight",Q.TL.p.rows);
+        //Also sets the final locations
+        Q.showAllStoryObjs();
+        stage.viewport.scale=1;
+        //Q.stageScene("customAnimate",4,{anim:"battleStart"});
+        //Run the unique scene function
+        callback(stage);
     });
 };
     

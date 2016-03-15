@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+n<!DOCTYPE html>
 <html>
     <head>
         <title>Generate Attack</title>
@@ -69,7 +69,7 @@
        </script>
        <div>To view all attacks, either create a new attack or leave the name field blank at hit 'generate attack'</div>
        <h1>Create an attack</h1>
-      <form action="" method="post" enctype="multipart/form-data">
+        <form action="" method="post" enctype="multipart/form-data">
          <fieldset>
             <h2>Name</h2>
             <input type="text" id="name" name="name" placeholder="Enter the name of the attack" style='width:400px;' value="<%= attack.name%>"></input>
@@ -87,15 +87,32 @@
             <input type="text" id="range" name="range" placeholder="Enter the range of the attack" value=<%= attack.range %>></input>
             <br />
             <h2>Area</h2>
-            <input type="text" id="area" name="area" placeholder="Enter the area of effect of the attack" value=<%= attack.area %>></input>
+            <input type="text" id="area" name="area" placeholder="Enter the area of effect of the attack" value="<%= attack.area %>"></input>
             <br />
             <h2>Category</h2>
             <select id="category" name="category">
-                <option value=<%= attack.category %>><%= attack.category %></option>
+                <option value="<%= attack.category %>"><%= attack.category %></option>
                 <option value="phys">Physical</option>
                 <option value="spec">Special</option>
                 <option value="stat">Status</option>
             </select>
+            <h2>Stat Type</h2>
+            <select id="stat_type" name="stat_type">
+                <option value="<%= attack.stat_type %>"><%= attack.stat_type %></option>
+                <!--<option value="max_hp">Max Hp</option>
+                <option value="phys_ofn">Physical Offense</option>
+                <option value="phys_dfn">Physical Defense</option>
+                <option value="spec_ofn">Special Offense</option>
+                <option value="spec_dfn">Special Defense</option>
+                <option value="agility">Agility</option>-->
+                <option value="strength">Strength</option>
+                <option value="intellect">Intellect</option>
+                <option value="awareness">Awareness</option>
+                <option value="willpower">Willpower</option>
+                <option value="persuasion">Persuasion</option>
+                <option value="fate">Fate</option>
+            </select>
+            <br />
             <br />
             <h2>Targets</h2>
             <select id="targets" name="targets">
@@ -111,7 +128,7 @@
             
             <h3>Type</h3>
             <select id="effect_type" name="effect_type" onChange="checkEffect(this.value);">
-                <option value=<%- attack.effect.type %>></option>
+                <option value=<%= attack.effect.type %>><%= attack.effect.type %></option>
                 <option value="none">None</option>
                 <option value="status">Status</option>
                 <option value="buff">Stat Change</option>
@@ -123,7 +140,7 @@
             <div class="effects_div" id="effect_targets">
                 <h3>Targets</h3>
                 <select name="effect_targets">
-                    <option value=<%- attack.effect.targets %>></option>
+                    <option value=<%= attack.effect.targets %>><%= attack.effect.targets %></option>
                     <option value="enemy">Enemy</option>
                     <option value="ally">Ally</option>
                     <option value="both">Both</option>
@@ -137,19 +154,19 @@
             <div class="effects_div" id="effect_status_change">
                 <h3>Status Change</h3>
                 <select name="effect_status_change">
-                    <option value=<%- attack.effect.status_change %>></option>
+                    <option value=<%= attack.effect.statusChange.type %>><%= attack.effect.statusChange.type %></option>
                     <option value="poison">Poison</option>
                     <option value="no_move">No Move</option>
                     <option value="no_attack">No Attack</option>
                     <option value="boost_phys">Boost Physical</option>
                     <option value="boost_spec">Boost Special</option>
                 </select>
-                <input type="text" name="effect_status_change_turns" placeholder="Number of turns for status change" value="<%- attack.effect.status_change_turns %>"/>
+                <input type="text" name="effect_status_change_turns" placeholder="Number of turns for status change" value="<%- attack.effect.statusChange.turns %>"/>
             </div>
             <div class="effects_div" id="effect_stat_change">
                 <h3>Stat Change</h3>
                 <select name="effect_stat_change">
-                    <option value=<%- attack.effect.stat_change %>></option>
+                    <option value=<%= attack.effect.statChange.type %>><%= attack.effect.statChange.type %></option>
                     <option value="phys_ofn">Physical Offense</option>
                     <option value="phys_dfn">Physical Defense</option>
                     <option value="spec_ofn">Special Offense</option>
@@ -162,8 +179,8 @@
                     <option value="persuasion">Persuasion</option>
                     <option value="fate">Fate</option>
                 </select>
-                <input type="text" id="effect_stat_change_amount" name="effect_stat_change_amount" placeholder="Amount changed" value="<%- attack.effect.stat_change_amount %>"/>
-                <input type="text" id="effect_stat_change_turns" name="effect_stat_change_turns" placeholder="Number of turns for stat change" value="<%- attack.effect.stat_change_amount %>"/>
+                <input type="text" id="effect_stat_change_amount" name="effect_stat_change_amount" placeholder="Amount changed" value="<%- attack.effect.statChange.amount %>"/>
+                <input type="text" id="effect_stat_change_turns" name="effect_stat_change_turns" placeholder="Number of turns for stat change" value="<%- attack.effect.statChange.amount %>"/>
             </div>
             <div class="effects_div" id="effect_move">
                 <h3>Move</h3>
@@ -172,6 +189,7 @@
             <div class="effects_div" id="effect_change_tile">
                 <h3>Change Tile</h3>
                 <select name="effect_change_tile">
+                    <option value=<%= attack.effect.change_tile %>><%= attack.effect.change_tile %></option>
                     <option value="fire">Fire</option>
                     <option value="water">Water</option>
                     <option value="ice">Ice</option>
@@ -183,7 +201,7 @@
             </div>
             <div class="effects_div" id="effect_description">
                 <h3>Effect Description</h3>
-                <textarea name="effect_description" placeholder="Give a description of the effect of this attack."></textarea>
+                <textarea name="effect_description" placeholder="Give a description of the effect of this attack."><%= attack.effect.description%></textarea>
              </div>
             
             <input type="text" id="taskFunc" name="taskFunc" value="generateAttack" hidden/>

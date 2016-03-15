@@ -4,7 +4,6 @@
 // Implements the astar search algorithm in javascript using a Binary Heap.
 // Includes Binary Heap (with modifications) from Marijn Haverbeke.
 // http://eloquentjavascript.net/appendix2.html
-
 (function(definition) {
     /* global module, define */
     if(typeof module === 'object' && typeof module.exports === 'object') {

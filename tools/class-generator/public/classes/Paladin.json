@@ -1,0 +1,1 @@
+{"id":"Paladin","name":"Paladin","description":"Largest AOE attacks. Access to decent melee ","base":{"max_hp":"3","phys_ofn":"2","phys_dfn":"2","spec_ofn":"3","spec_dfn":"2","agility":"1","strength":"2","intellect":"4","awareness":"2","willpower":"3","persuasion":"1","fate":"5"},"attacks":["Thrust","Onslaught","Incinerate","Perturb",""]}

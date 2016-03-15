@@ -31,11 +31,10 @@ function createMaster(res){
                 //We can now write the data to the master file
                 if(num===items.length){
                     var data = JSON.stringify(arr);
-                    fs.writeFile("../../server/json/classes.json",data, function(err) {
+                    fs.writeFile("../../public/data/_json/classes.json",data, function(err) {
                         if(err) {
                             return console.log(err);
                         }
-                        console.log("The file was saved!");
                         displayClasses(res,arr);
                     });
                 }
@@ -73,7 +72,7 @@ function getClass(res,pclassName){
 };
 //Reads the json that stores all of the attacks
 function getAttacks(res,pclass){
-    fs.readFile("../../public/json/attacks.json",function(err,data){
+    fs.readFile("../../server/json/attacks.json",function(err,data){
         if(err) throw err;
         displayForm(res,JSON.parse(data),pclass);
     });
@@ -168,7 +167,6 @@ function processFormFieldsIndividual(req, res) {
                     if(err) {
                         return console.log(err);
                     }
-                    console.log("The file was saved!");
                     createMaster(res);
                 });
             } 

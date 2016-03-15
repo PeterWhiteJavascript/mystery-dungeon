@@ -1,4 +1,6 @@
-//When creating database tables
+//This file is useless now*************
+//
+////When creating database tables
 //THE ONLY THINGS THAT SHOULD BE IN THE DATABASE ARE DYNAMIC VARIABLES
 //STATIC VARIABLES CAN STAY IN THE JS
 
@@ -19,108 +21,6 @@
 //EXP should be stored in the monsters object.
 
 var RP = {};
-RP.expNeeded = [
-    0,
-    25,
-    50,
-    100,
-    150,
-    200,
-    400,
-    600,
-    800,
-    1000,
-    1500,
-    2000,
-    3000,
-    4000,
-    5000,
-    6000,
-    7000,
-    8000,
-    9000,
-    10000,
-    11500,
-    13000,
-    14500,
-    16000,
-    17500,
-    19000,
-    20500,
-    22000,
-    23500,
-    25000,
-    27500,
-    30000,
-    32500,
-    35000,
-    37500,
-    40000,
-    42500,
-    45000,
-    47500,
-    50000,
-    55000,
-    60000,
-    65000,
-    70000,
-    75000,
-    80000,
-    85000,
-    90000,
-    95000,
-    100000,
-    110000,
-    120000,
-    130000,
-    140000,
-    150000,
-    160000,
-    170000,
-    180000,
-    190000,
-    200000,
-    210000,
-    220000,
-    230000,
-    240000,
-    250000,
-    260000,
-    270000,
-    280000,
-    290000,
-    300000,
-    315000,
-    330000,
-    345000,
-    360000,
-    375000,
-    390000,
-    405000,
-    420000,
-    435000,
-    450000,
-    470000,
-    490000,
-    510000,
-    530000,
-    550000,
-    570000,
-    590000,
-    610000,
-    630000,
-    650000,
-    675000,
-    700000,
-    725000,
-    750000,
-    775000,
-    800000,
-    825000,
-    850000,
-    875000,
-    900000
-];
 
 //Area is the area of effect when the attack hits the target.
 //1 - x
@@ -155,247 +55,7 @@ RP.expNeeded = [
 //    o o o o o
 //    o o o o o
 
-RP.moves = {
-    //Fighter
-    "Regular": {
-        "id": "Regular",
-        "name": "Regular",
-        "power": 35,
-        "effect":[],
-        "pp": 35,
-        "accuracy": 95,
-        "type": "Normal",
-        "cat": "PHYS",
-        "area": 1,
-        "range":1,
-        "desc": "User ignores its own negative stat changes",
-        "target": "enemy"
-    },
-    "TailWhip": {
-        "id": "TailWhip",
-        "name": "Tail Whip",
-        "power": 0,
-        "effect":["enemy",100,"stat",{dfn:-1}],
-        "pp": 30,
-        "accuracy": 75,
-        "type": "Normal",
-        "cat": "STAT",
-        "area": 1,
-        "range":1,
-        "desc": "Lowers target's Defense",
-        "target": "enemy"
-    },
-    "Leer": {
-        "id": "Leer",
-        "name": "Leer",
-        "power": 0,
-        "effect":["enemy",100,"stat",{dfn:-1}],
-        "pp": 30,
-        "accuracy": 75,
-        "type": "Normal",
-        "cat": "STAT",
-        "area": 1,
-        "range":1,
-        "desc": "Lowers target's Defense",
-        "target": "enemy"
-    },
-    "Wrap": {
-        "id": "Wrap",
-        "name": "Wrap",
-        "power": 10,
-        "effect":["both",100,"buff","bind"],
-        "pp": 20,
-        "accuracy": 90,
-        "type": "Normal",
-        "cat": "PHYS",
-        "area": 1,
-        "range":1,
-        "desc": "Traps target for 5 turns, damaging them. While wrapped, target cannot move.",
-        "target": "enemy"
-    },
-    "Tackle": {
-        "id": "Tackle",
-        "name": "Tackle",
-        "power": 35,
-        "effect":[],
-        "pp": 35,
-        "accuracy": 95,
-        "type": "Normal",
-        "cat": "PHYS",
-        "area": 1,
-        "range":1,
-        "desc": "User ignores its own negative stat changes",
-        "target": "enemy"
-    },
-    "DragonRage": {
-        "id": "DragonRage",
-        "name": "Dragon Rage",
-        "power": 20,
-        "effect":[],
-        "pp": 10,
-        "accuracy": 90,
-        "type": "Dragon",
-        "cat": "SPEC",
-        "area": 1,
-        "range":1,
-        "desc": "Deals 20 damage",
-        "target": "enemy"
-    },
-    "Foresight": {
-        "id": "Foresight",
-        "name": "Foresight",
-        "power": 0,
-        "effect":["enemy",100,"buff","foresight"],//Applies foresight debuff to enemy
-        "pp": 40,
-        "accuracy": 100,
-        "type": "Normal",
-        "cat": "STAT",
-        "area": 1,
-        "range":1,
-        "desc": "Resets target's evasiveness. Can hit Ghost with Normal/Fighting moves and vice versa",
-        "target": "enemy"
-    },
-    "QuickAttack": {
-        "id": "QuickAttack",
-        "name": "Quick Attack",
-        "power": 35,
-        "effect":[],
-        "pp": 30,
-        "accuracy": 95,
-        "type": "Normal",
-        "cat": "PHYS",
-        "area": 1,
-        "range":2,
-        "desc": "Can hit enemies up to 2 tiles away.",
-        "target": "enemy"
-    },
-    "Endure": {
-        "id": "Endure",
-        "name": "Endure",
-        "power": 0,
-        "effect":["self",100,"buff","endure"],
-        "pp": 10,
-        "accuracy": 90,
-        "type": "Normal",
-        "cat": "STAT",
-        "area": 1,
-        "range":0,
-        "desc": "Leaves user with 1HP instead of KOing until next turn. 1/2 chance to succeed following turns",
-        "target": "self"
-    },
-    "Pound": {
-        "id": "Pound",
-        "name": "Pound",
-        "power": 35,
-        "effect":[],
-        "pp": 35,
-        "accuracy": 95,
-        "type": "Normal",
-        "cat": "PHYS",
-        "area": 1,
-        "range": 1,
-        "desc": "",
-        "target": "enemy"
-    },
-    "PoisonSting": {
-        "id": "PoisonSting",
-        "name": "Poison Sting",
-        "power": 10,
-        "effect":["enemy",30,"buff","poisoned"],
-        "pp": 35,
-        "accuracy": 100,
-        "type": "Poison",
-        "cat": "PHYS",
-        "area": 1,
-        "range": 1,
-        "desc": "Has a 30% chance to poison target",
-        "target": "enemy"
-    },
-    "PoisonGas": {
-        "id": "PoisonGas",
-        "name": "Poison Gas",
-        "power": 0,
-        "effect":["enemy",100,"buff","poisoned"],
-        "pp": 35,
-        "accuracy": 90,
-        "type": "Poison",
-        "cat": "STAT",
-        "area": 1,
-        "range": 1,
-        "desc": "Has a 90% chance to poison target",
-        "target": "enemy"
-    },
-    "StringShot": {
-        "id": "StringShot",
-        "name": "String Shot",
-        "power": 0,
-        "effect":["enemy",100,"stat",{spd:-2}],
-        "pp": 30,
-        "accuracy": 45,
-        "type": "Bug",
-        "cat": "STAT",
-        "area": 1,
-        "range": 1,
-        "desc": "Sharply lowers target's Speed",
-        "target": "enemy"
-    },
-    "Bubble": {
-        "id": "Bubble",
-        "name": "Bubble",
-        "power": 20,
-        "effect":["enemy",10,"stat",{spd:-1}],
-        "pp": 30,
-        "accuracy": 95,
-        "type": "Water",
-        "cat": "SPEC",
-        "area": 1,
-        "range": 1,
-        "desc": "Has a 10% chance of lowering target's speed",
-        "target": "enemy"
-    },
-    "Harden": {
-        "id": "Harden",
-        "name": "Harden",
-        "power": 0,
-        "effect":["self",100,"stat",{dfn:1}],
-        "pp": 30,
-        "accuracy": 100,
-        "type": "Normal",
-        "cat": "STAT",
-        "area": 1,
-        "range": 0,
-        "desc": "Raises user's defense",
-        "target": "self"
-    },
-    "AcidSpray": {
-        "id": "AcidSpray",
-        "name": "Acid Spray",
-        "power": 40,
-        "effect":["enemy",100,"stat",{dfn:-2}],
-        "pp": 20,
-        "accuracy": 60,
-        "type": "Poison",
-        "cat": "PHYS",
-        "area": 1,
-        "range": 2,
-        "desc": "Sharply lowers opponent's defense.",
-        "target": "enemy"
-    },
-    "DumpsterDunk": {
-        "id": "DumpsterDunk",
-        "name": "Dumpster Dunk",
-        "power": 999,
-        "effect":[],
-        "pp": 20,
-        "accuracy": 100,
-        "type": "Water",
-        "cat": "PHYS",
-        "area": 2,
-        "range": 3,
-        "desc": "Dumpster dunk all in your way",
-        "target": "all"
-    }
-};
+
 RP.abilities={
     "RunAway":{
         "name":"Run Away",
@@ -455,7 +115,7 @@ RP.items={
     "Potion":{
         "id": "Potion",
         "name": "Potion",
-        "effect":["stat",{curHp:20}],
+        "effect":["stat",{"curHp":20}],
         "desc": "Heals 20 hp.",
         "target": "single",
         "kind": "Consumable"
@@ -464,7 +124,7 @@ RP.items={
     "OranBerry":{
         "id": "OranBerry",
         "name": "Oran Berry",
-        "effect":["stat",{curHp:10}],
+        "effect":["stat",{"curHp":10}],
         "desc": "Heals 10 hp.",
         "target": "single",
         "kind": "Consumable"
@@ -472,7 +132,7 @@ RP.items={
     "CheriBerry":{
         "id": "CheriBerry",
         "name": "Cheri Berry",
-        "effect":["buff",{paralyzed:"heal"}],
+        "effect":["buff",{"paralyzed":"heal"}],
         "desc": "Cures paralysis.",
         "target": "single",
         "kind": "Consumable"
@@ -480,7 +140,7 @@ RP.items={
     "PechaBerry":{
         "id": "PechaBerry",
         "name": "Pecha Berry",
-        "effect":["buff",{poisoned:"heal",toxic:"heal"}],
+        "effect":["buff",{"poisoned":"heal","toxic":"heal"}],
         "desc": "Cures poison.",
         "target": "single",
         "kind": "Consumable"
@@ -489,7 +149,7 @@ RP.items={
     "Leftovers":{
         "id": "Leftovers",
         "name": "Leftovers",
-        "effect":["statPercent",{curHp:10}],
+        "effect":["statPercent",{"curHp":10}],
         "desc": "Heals 10% of max hp each turn.",
         "target": "self",
         "kind": "Multiuse"
@@ -498,14 +158,11 @@ RP.items={
     "Diamond":{
         "id": "Diamond",
         "name": "Diamond",
-        "effect":["showDesc",{text:"The diamond is very shiny."}],
+        "effect":["showDesc",{"text":"The diamond is very shiny."}],
         "desc": "A valuable gem",
         "target":"",
         "kind":"Key"
     }
-};
-RP.classes={
-    
 };
 
 /*

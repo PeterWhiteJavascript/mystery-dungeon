@@ -8,13 +8,10 @@ Q.scene('title',function(stage){
     var menu = makeMainMenu(mainCont);
 });
 
-Q.scene('tophud',function(stage){
-    var target = stage.options.target;
+Q.scene('card',function(stage){
     //The box that holds the HUD
-    var box = stage.insert(new Q.HUDCont());
-    box.stage.insert(new Q.Card({
-        user:target,
-        menu:box
+    stage.insert(new Q.Card({
+        user:stage.options.user
     }));
     
 });
@@ -378,7 +375,7 @@ Q.scene("lobby",function(stage){
     }));
     var players = Q.state.get("players");
     for(i=0;i<players.length;i++){
-        box.insertPlayerText(players[i].p.name,i);
+        box.insertPlayerText(players[i].name,i);
     }
     if(stage.options.host){
         var startButton = stage.insert(new Q.UI.Button({
@@ -415,7 +412,7 @@ Q.scene("lobby",function(stage){
         }));
     }
     Q.state.on("change.players",function(){
-        box.insertPlayerText(Q.state.get("players")[Q.state.get("players").length-1].p.name);
+        box.insertPlayerText(Q.state.get("players")[Q.state.get("players").length-1].name);
     });
 });
 };

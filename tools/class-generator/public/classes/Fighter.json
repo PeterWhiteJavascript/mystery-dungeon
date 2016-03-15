@@ -1,0 +1,1 @@
+{"id":"Fighter","name":"Fighter","description":"Highest base HP. Prioritizes melee attacks.","base":{"max_hp":"5","phys_ofn":"4","phys_dfn":"1","spec_ofn":"4","spec_dfn":"2","agility":"2","strength":"4","intellect":"1","awareness":"3","willpower":"2","persuasion":"1","fate":"1"},"attacks":["Thrust","Onslaught","Fire Breath","Perturb","Incinerate"]}

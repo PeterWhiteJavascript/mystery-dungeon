@@ -1,4 +1,77 @@
 Quintus.QFunctions=function(Q){
+Q.startTurn=function(data){console.log(data)
+    //The only player who can send inputs is this one while it's his turn.
+    var player = Q("Player",1).items.filter(function(obj){
+        return obj.p.playerId===data;
+    })[0];
+    player.turnStart();
+};
+    
+//Gets the path to a scene by taking the level string
+Q.getPath = function(to){
+    var path = "";
+    var pathNumX="";
+    var pathNumY="";
+    //var num = "0123456789-/?!@#$%^&*()";
+    var num = "0123456789-/";
+    var donePath = false;
+    var doneX=false;
+    for(i=0;i<to.length;i++){
+        for(j=0;j<num.length;j++){
+            if(donePath&&to[i]==="_"){
+                doneX=true;
+                i++;
+            }
+            if(to[i]===num[j]){
+                donePath=true;
+            }
+        }
+        if(!donePath){
+            path+=to[i];
+        } else if(!doneX){
+            pathNumX+=to[i];
+        } else {
+            pathNumY+=to[i];
+        }
+    }
+    pathNumX=parseInt(pathNumX);
+    pathNumY=parseInt(pathNumY);
+    return [path,[pathNumX,pathNumY]];
+};
+Q.stageBattleScene=function(data){
+    var scene = data['scene'];
+    var us = data.userData;
+    var pa = data.partsData;
+    var pi = data.pickupsData;
+    var ob = data.objectData;
+    var placed = data['placed'];
+    //Get the path if we're staging a .tmx
+    var currentPath = Q.getPath(scene.levelMap.name);
+    //Load the .tmx
+    Q.loadTMX(currentPath[0]+"/"+scene.levelMap.name+".tmx",function(){
+        //Load the music
+        Q.playMusic(scene.onStart.music+".mp3",function(){ 
+            //Create the scene
+            Q.makeScene(scene.onStart.name,currentPath[0],scene.levelMap.name,us,pa,ob,function(stage){
+                //Place the playerLocs guide
+                var playerLocs = Q.state.get("sceneData").battle.playerLocs;
+                var user = Q("User",1).items.filter(function(obj){
+                    return obj.p.playerId===Q.state.get("playerConnection").id;
+                })[0];
+                //Send inputs to the server so that we can move the pointer
+                //The server checks for pointer logic
+                user.sendInputsToServer();
+                //Place the pointers for all users at the first spot
+                Q("User",1).each(function(){
+                    this.createPointer("placement",playerLocs[0]);
+                });
+            });
+            //Stage the TMX tilemap
+            Q.stageScene(scene.onStart.name,1,{path:currentPath[0],pathNum:currentPath[1],sort:true});
+            
+        });
+    });
+};
 //Is triggered when the user choses where to place his character
 Q.readyForBattle=function(){
     var socket = Q.state.get("playerConnection").socket;
@@ -6,6 +79,7 @@ Q.readyForBattle=function(){
 };
 //Follows the specified sprite on the specified stage
 Q.viewFollow=function(obj,stage){
+    if(!stage){stage=Q.stage(1);};
     var tl = stage.lists.TileLayer[0];
     obj.p.stageMaxX=tl.p.w;
     var minX=0;
@@ -18,11 +92,13 @@ Q.viewFollow=function(obj,stage){
 };
 //Adds an actor to mirror what other players do
 Q.addActor=function(actor,loc,dir){
-    var obj = Q.stage(1).insert(new Q.Player({className:actor.className,loc:loc,dir:dir||"down"}));
+    var obj = Q.stage(1).insert(new Q.Player({className:actor.className}));
     var ps = Object.keys(actor);
     for(i=0;i<ps.length;i++){
         obj.p[ps[i]]=actor[ps[i]];
     }
+    obj.p.loc = loc;
+    obj.p.dir = dir||"down";
     console.log("Placed "+obj.p.name+" at "+obj.p.loc[0]+","+obj.p.loc[1]);
     obj.add("actor");
     return obj;
@@ -62,7 +138,7 @@ Q.setXY=function(x,y){
 };
 //Sort through all players, allies, and enemies to find a target at a tile location
 Q.getTarget=function(x,y){
-    var target = Q(".commonPlayer",1).items.filter(function(obj){
+    var target = Q("Participant",1).items.filter(function(obj){
         return obj.p.loc[0]===Math.round(x/Q.tileH-1)&&obj.p.loc[1]===Math.round(y/Q.tileH-1);
     })[0];
     
@@ -70,8 +146,8 @@ Q.getTarget=function(x,y){
 };
 
 Q.getTargetAt=function(x,y){
-    var target = Q(".commonPlayer",1).items.filter(function(obj){
-        return obj.p.loc[0]===x&&obj.p.loc[1]===y;
+    var target = Q("Participant",1).items.filter(function(obj){
+        return obj.p.loc&&obj.p.loc[0]===x&&obj.p.loc[1]===y;
     })[0];
     return target;
 };
@@ -92,15 +168,18 @@ Q.getTileType=function(x,y){
 };
 
 Q.getNextLevelEXP=function(level){
-    if(RP.expNeeded[level]!==undefined){
-        return RP.expNeeded[level];
-    } else {
+    var exp = Q.state.get("expNeeded");
+    if(exp[level]!==undefined){
+        return exp[level];
+    } 
+    //The object's level is maxed
+    else {
         return "-";
     }
 };
 
 Q.getAttack=function(atk){
-    var attack = RP.moves[atk[0]];
+    var attack = Q.state.get("attacks")[atk[0]];
     return attack;
 };
 

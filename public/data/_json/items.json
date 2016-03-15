@@ -1,0 +1,50 @@
+{
+    "Potion":{
+        "id": "Potion",
+        "name": "Potion",
+        "effect":["stat",{"curHp":20}],
+        "desc": "Heals 20 hp.",
+        "target": "single",
+        "kind": "Consumable"
+    },
+    "OranBerry":{
+        "id": "OranBerry",
+        "name": "Oran Berry",
+        "effect":["stat",{"curHp":10}],
+        "desc": "Heals 10 hp.",
+        "target": "single",
+        "kind": "Consumable"
+    },
+    "CheriBerry":{
+        "id": "CheriBerry",
+        "name": "Cheri Berry",
+        "effect":["buff",{"paralyzed":"heal"}],
+        "desc": "Cures paralysis.",
+        "target": "single",
+        "kind": "Consumable"
+    },
+    "PechaBerry":{
+        "id": "PechaBerry",
+        "name": "Pecha Berry",
+        "effect":["buff",{"poisoned":"heal","toxic":"heal"}],
+        "desc": "Cures poison.",
+        "target": "single",
+        "kind": "Consumable"
+    },
+    "Leftovers":{
+        "id": "Leftovers",
+        "name": "Leftovers",
+        "effect":["statPercent",{"curHp":10}],
+        "desc": "Heals 10% of max hp each turn.",
+        "target": "self",
+        "kind": "Multiuse"
+    },
+    "Diamond":{
+        "id": "Diamond",
+        "name": "Diamond",
+        "effect":["showDesc",{"text":"The diamond is very shiny."}],
+        "desc": "A valuable gem",
+        "target":"",
+        "kind":"Key"
+    }
+}

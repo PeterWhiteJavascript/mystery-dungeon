@@ -121,7 +121,7 @@
             <input type="text" id="name" name="name" placeholder="Enter the name of the class" style='width:400px;' value=<%= pclass.name %>></input>
             <br />
             <h2>Description</h2>
-            <textarea id="description" name="description" placeholder="Give a description of the class." value=<%= JSON.stringify(pclass.description) %>></textarea>
+            <textarea id="description" name="description" placeholder="Give a description of the class."><%= pclass.description %></textarea>
             <br />
             <h2>Base Stats</h2>
             <table>

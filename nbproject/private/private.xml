@@ -3,7 +3,17 @@
     <editor-bookmarks xmlns="http://www.netbeans.org/ns/editor-bookmarks/2" lastBookmarkId="0"/>
     <open-files xmlns="http://www.netbeans.org/ns/projectui-open-files/2">
         <group>
-            <file>file:/C:/Users/Peter/Documents/GitHub/mystery-dungeon/public/json/attacks.json</file>
+            <file>file:/C:/Users/Peter/Documents/GitHub/mystery-dungeon/public/hud.js</file>
+            <file>file:/C:/Users/Peter/Documents/GitHub/mystery-dungeon/server/save_state.js</file>
+            <file>file:/C:/Users/Peter/Documents/GitHub/mystery-dungeon/public/story_scenes.js</file>
+            <file>file:/C:/Users/Peter/Documents/GitHub/mystery-dungeon/public/menu_scenes.js</file>
+            <file>file:/C:/Users/Peter/Documents/GitHub/mystery-dungeon/public/objects.js</file>
+            <file>file:/C:/Users/Peter/Documents/GitHub/mystery-dungeon/app.js</file>
+            <file>file:/C:/Users/Peter/Documents/GitHub/mystery-dungeon/public/story.js</file>
+            <file>file:/C:/Users/Peter/Documents/GitHub/mystery-dungeon/server/player.js</file>
+            <file>file:/C:/Users/Peter/Documents/GitHub/mystery-dungeon/public/q_functions.js</file>
+            <file>file:/C:/Users/Peter/Documents/GitHub/mystery-dungeon/public/main.js</file>
+            <file>file:/C:/Users/Peter/Documents/GitHub/mystery-dungeon/server/level_data.js</file>
         </group>
     </open-files>
 </project-private>

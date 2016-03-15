@@ -14,7 +14,7 @@ var server = http.createServer(function (req, res) {
 });
 
 function createMaster(res){
-    fs.readdir("./public/attacks", function(err, items) {
+    fs.readdir("public/attacks", function(err, items) {
         //arr stores all attacks data
         var arr = [];
         //The current file we're on
@@ -31,11 +31,10 @@ function createMaster(res){
                 //We can now write the data to the master file
                 if(num===items.length){
                     var data = JSON.stringify(arr);
-                    fs.writeFile("../../public/json/attacks.json",data, function(err) {
+                    fs.writeFile("../../public/data/_json/attacks.json",data, function(err) {
                         if(err) {
                             return console.log(err);
                         }
-                        console.log("The file was saved!");
                         displayAttacks(res,arr);
                     });
                 }
@@ -63,7 +62,11 @@ function displayForm(res,attack) {
             area:"",
             category:"",
             targets:"",
-            effect:""
+            stat_type:"",
+            effect:{
+                statusChange:'',
+                statChange:''
+            }
         }; 
     }
     var content = fs.readFileSync('./public/generate_attack.ejs', 'utf-8');
@@ -81,6 +84,7 @@ function getAttack(res,attackName){
             var attack = JSON.parse(data);
             //Set the id and other info
             var genAttack={
+                id:attackName,
                 name:attack.name,
                 description:attack.description,
                 power:attack.power,
@@ -88,6 +92,7 @@ function getAttack(res,attackName){
                 range:attack.range,
                 area:attack.area,
                 category:attack.category,
+                stat_type:attack.stat_type,
                 targets:attack.targets,
                 effect:attack.effect
             };
@@ -129,8 +134,12 @@ function processFormFieldsIndividual(req, res) {
                 range:fields['range'],
                 area:fields['area'],
                 category:fields['category'],
+                stat_type:fields['stat_type'],
                 targets:fields['targets'],
-                effect:''
+                effect:{
+                    statusChange:'',
+                    statChange:''
+                }
             };
             //Only set effect if there is one
             if(fields['effect_type']!=="none"){
@@ -160,7 +169,6 @@ function processFormFieldsIndividual(req, res) {
                     if(err) {
                         return console.log(err);
                     }
-                    console.log("The file was saved!");
                     createMaster(res);
                 });
             } 
@@ -177,7 +185,7 @@ function processFormFieldsIndividual(req, res) {
         }
     });
     form.parse(req);
-}
+};
 
 server.listen(5000);
 console.log("server listening on 5000");

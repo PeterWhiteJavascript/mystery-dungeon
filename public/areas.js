@@ -1,55 +1,8 @@
 Quintus.Areas = function(Q){
-
-Q.givePlayerProperties=function(stage,data,loc,dir){
-    var conn = Q.state.get("playerConnection");
-    //Set the players' properties
-    var player = stage.insert(new Q.Player({num:0,playerId:conn.id,socket:conn.socket,loc:loc,dir:dir}));
-    var keys = Object.keys(data);
-    for(i=0;i<keys.length;i++){
-        player.p[keys[i]]=data[keys[i]];
-    }
-    player.add("protagonist");
-    return player;
-};
 Q.afterDir=function(){
-    setTimeout(function(){
-        var turnOrder = Q.state.get("turnOrder");
-        var allies = [];
-        var enemies = [];
-        var players = [];
-        for(i=0;i<turnOrder.length;i++){
-            if(turnOrder[i][0]==="e"){enemies.push(turnOrder[i]);}
-            else if(turnOrder[i][0]==="a"){allies.push(turnOrder[i]);}
-            else{players.push(turnOrder[i]);}
-        }
-        //If there are no more enemies
-        if(enemies.length===0){
-            //Emit that the battle is done
-            setTimeout(function(){
-                Q.state.get("playerConnection").socket.emit('endBattle');
-            },200);
-        } 
-        //If there are no more friendlies
-        else if(allies.length===0&&players.length===0){
-            //Play the lose scene
-            setTimeout(function(){
-                Q.state.get("playerConnection").socket.emit('loseBattle');
-            },200);
-        } 
-        //If we're still battling
-        else {
-            if(Q.state.get("playerConnection").id===Q.state.get("battleHost")||Q.state.get("playerConnection").id===turnOrder[0]){
-                setTimeout(function(){
-                    Q.state.get("playerConnection").socket.emit('endTurn',{
-                        playerId:Q.state.get("playerConnection").id,
-                        turnOrder:turnOrder
-                    });
-                },200);
-            } else {
-                Q.state.get("playerConnection").socket.emit("readyForNextTurn",{playerId:Q.state.get("playerConnection").id});
-            }
-        }
-    },100);
+    Q.state.get("playerConnection").socket.emit('readyForNextTurn',{
+        playerId:Q.state.get("playerConnection").id
+    });
 };
 Q.addViewport=function(obj){
     if(Q._isString(obj)){
@@ -90,35 +43,4 @@ Q.addViewport=function(obj){
 Q.scene("fog",function(stage){
     stage.insert(new Q.Sprite({x:0,y:0,cx:0,cy:0,asset:"fog.png"}));
 });
-Q.getPath = function(to){
-    var path = "";
-    var pathNumX="";
-    var pathNumY="";
-    //var num = "0123456789-/?!@#$%^&*()";
-    var num = "0123456789-/";
-    var donePath = false;
-    var doneX=false;
-    for(i=0;i<to.length;i++){
-        for(j=0;j<num.length;j++){
-            if(donePath&&to[i]==="_"){
-                doneX=true;
-                i++;
-            }
-            if(to[i]===num[j]){
-                donePath=true;
-            }
-        }
-        if(!donePath){
-            path+=to[i];
-        } else if(!doneX){
-            pathNumX+=to[i];
-        } else {
-            pathNumY+=to[i];
-        }
-    }
-    pathNumX=parseInt(pathNumX);
-    pathNumY=parseInt(pathNumY);
-    return [path,[pathNumX,pathNumY]];
-};
-
 };

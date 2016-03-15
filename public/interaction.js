@@ -92,7 +92,9 @@ Q.UI.Container.extend("InteractionBox",{
         clearInterval(this.p.interval);
     },
     destroyText:function(){
-        this.p.textDisplay.destroy();
+        if(this.p.textDisplay){
+            this.p.textDisplay.destroy();
+        }
     },
     destroyImage:function(){
         if(this.p.image){

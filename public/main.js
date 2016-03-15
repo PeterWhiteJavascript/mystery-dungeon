@@ -88,147 +88,29 @@ require(objectFiles, function () {
             //This is the first one here
             if(Q.state.get("players").length===1){
                 host = true;
+                Q.state.set("host",selfId);
             } 
             Q.stageScene("lobby",1,{host:host});
         });
         //At the start of the scene
         socket.on("startedScene",function(data){
+            Q.state.set("sceneData",data.scene);
             //Clear the first scene
             Q.clearStage(1);
             //Start the scene
-            Q.startScene(data.saveData);
+            Q.startScene(data);
         });
         //Called when all players must now place their units
         socket.on("startedBattle",function(data){
-            Q.showAllStoryObjs();
-            Q.stage(1).viewport.scale=1;
             Q.state.set("turnOrder",data['turnOrder']);
             Q.state.set("battle",true);
-            //Q.afterDir();
-            //Q.stageScene("customAnimate",4,{anim:"battleStart"});
-            //TEMP
-            //This allows for not placing the players
-            //return;
-            var placed = data['placed'];
-            if(placed){
-                for(i=0;i<placed.length;i++){
-                    var player = Q.state.get("players").filter(function(obj){
-                        return obj.playerId===placed[i][2];
-                    })[0];
-                    var pl = Q.addActor(player,[placed[i][0],placed[i][1]],placed[i][3]);
-                    var objs = Q.state.get("playerObjs");
-                    objs.push(pl);
-                };
-            }
+            //Need to just restage the scene for syncing with the server
+            Q.stageBattleScene(data);
+            var playerLocs = data['scene'].battle.playerLocs;
             var stage = Q.stage(1);
-            var ld = Q.state.get("levelData");
-            //All of this user's players (for now, just the main one)
-            var myPlayers = Q.state.get("players").filter(function(obj){
-                return obj.playerId === Q.state.get("playerConnection").id;
-            });
-            //Place the playerLocs guide
-            var playerLocs = data['playerLocs'];
-            
-            //Create a pointer so the user can select a guide spot (and hover enemies to check their stats before the battle)
-            var pointer = stage.insert(new Q.Pointer({loc:playerLocs[0]}));
-            pointer.p.startGuide = [];
             for(i=0;i<playerLocs.length;i++){
-                pointer.p.startGuide.push(stage.insert(new Q.PathBox({loc:playerLocs[i]}),false,true));
+                stage.insert(new Q.PathBox({loc:playerLocs[i]}),false,true);
             }
-            pointer.p.z=100;
-            pointer.p.sort=true;
-            Q.pointer = pointer;
-            pointer.p.playerLocs = pointer.p.startGuide;
-            pointer.initial = function(){  
-                //If there's a card up top, get rid of it.
-                Q.clearStage(3);
-                //Set the pointer's defaults
-                pointer.p.sheet = "objects";
-                pointer.p.frame = 4;
-                pointer.p.player = null;
-                pointer.del("animation,animations,dirControls");
-                pointer.add("pointerControls");
-            };
-            pointer.attachPlayer = function(){
-                Q.playSound("text_stream.mp3");
-                //Make sure the pointer is at the correct position
-                pointer.p.loc = [pointer.p.placedLoc[0],pointer.p.placedLoc[1]];
-                //Default to the first player
-                var player = myPlayers[0];
-                //Set up the player's card
-                Q.stageScene("tophud",3,{target:player});
-                //Insert the player onto the pointer
-                pointer.p.sheet = player.sheet;
-                pointer.p.sprite = "player";
-                pointer.p.frame = 3;
-                pointer.p.playerId = player.playerId;
-                pointer.del("pointerControls");
-                pointer.add("animation,animations,dirControls");
-                //Make the pointer animate
-                pointer.playStand(pointer.p.dir||"down");
-            };
-            //Happens if two players try to place on the same square at the same time
-            pointer.invalidPos=function(){
-                pointer.p.placedLoc = null;
-                pointer.p.player = null;
-            };
-            //Checks if there is a player on the spot we want to place
-            pointer.checkPlayers=function(loc){
-                var players = Q.state.get("playerObjs");
-                for(i=0;i<players.length;i++){
-                    if(players[i].p.loc[0]===loc[0]&&players[i].p.loc[1]===loc[1]){
-                        pointer.invalidPos();
-                        return true;
-                    }
-                }
-                return false;
-            };
-            pointer.on("interact",function(){
-                if(pointer.p.placedPlayer){return;};
-                //Confirm placement if we're placing a player
-                if(pointer.has("dirControls")){
-                    Q.playSound("text_stream.mp3");
-                    Q.state.get("playerConnection").socket.emit("confirmPlayerPlacement",{playerId:pointer.p.playerId,dir:pointer.p.dir,loc:pointer.p.loc});
-                    pointer.p.placedPlayer = true;
-                    pointer.initial();
-                    return;
-                }
-                //Load the 'select character to put' scene if we've selected in the guide
-                //Can't do it while moving
-                if(!pointer.p.stepping&&pointer.p.diffX===0&&pointer.p.diffY===0){
-                    var obj = Q.getObjectAt(pointer.p.x,pointer.p.y);
-                    if(obj&&obj.isA("PathBox")&&!pointer.checkPlayers(pointer.p.loc)){
-                        pointer.p.placedLoc = [pointer.p.loc[0],pointer.p.loc[1]];
-                        pointer.p.player = true;
-                        Q.state.get("playerConnection").socket.emit("checkPlayerPlacement",{playerId:Q.state.get("playerConnection").id,dir:pointer.p.dir,loc:pointer.p.loc});
-                        return;
-                    }
-                }
-                
-            });
-            pointer.on("menu",function(){
-                console.log("menu")
-                //Show turn order
-                console.log(Q.state.get("turnOrder"))
-            });
-            pointer.on("back",function(){
-                if(pointer.p.placedPlayer){
-                    Q.playSound("text_stream.mp3");
-                    pointer.p.placedPlayer = false;
-                    pointer.p.player.destroy();
-                    pointer.p.loc=[pointer.p.placedLoc[0],pointer.p.placedLoc[1]];
-                    var pos = Q.setXY(pointer.p.loc[0],pointer.p.loc[1]);
-                    pointer.p.x = pos[0];
-                    pointer.p.y = pos[1];
-                    pointer.initial();
-                    Q.state.get("playerConnection").socket.emit("removePlayerPlacement",{playerId:Q.state.get("playerConnection").id,loc:pointer.p.loc});
-                } else if(pointer.p.player){
-                    Q.playSound("text_stream.mp3");
-                    pointer.p.player = null;
-                    pointer.initial();
-                    Q.state.get("playerConnection").socket.emit("removePlayerPlacement",{playerId:Q.state.get("playerConnection").id,loc:pointer.p.loc});
-                }
-            });
         });
         socket.on("checkedPlayerPlacement",function(data){
             //Don't do it if this client isn't at the battle placement area yet
@@ -241,65 +123,62 @@ require(objectFiles, function () {
             if(data['playerId']===Q.state.get("playerConnection").id){
                 Q.pointer.attachPlayer();
             } else {
-                var player = Q.state.get("players").filter(function(obj){
-                    return obj.playerId===data['playerId'];
+                var player = Q("Player",1).items.filter(function(obj){
+                    return obj.p.playerId===data['playerId'];
                 })[0];
-                var pl = Q.addActor(player,data['loc'],data['dir']);
-                var objs = Q.state.get("playerObjs");
-                objs.push(pl);
+                player.p.loc = data['loc'];
+                player.p.dir=data['dir'];
+                player.placePlayer();
+                player.show();
             }
         });
         socket.on("removedPlayerPlacement",function(data){
-            var objs = Q.state.get("playerObjs");
-            for(i=0;i<objs.length;i++){
-                if(objs[i].p.playerId===data['playerId']){
-                    objs[i].destroyReady();
-                    objs[i].destroy();
-                    objs.splice(i,1);
-                }
-            }
+            var player = Q("Player",1).items.filter(function(obj){
+                return obj.p.playerId===data['playerId'];
+            })[0];
+            player.destroyReady();
+            player.p.loc=[-1,-1];
+            player.placePlayer();
+                
         });
         socket.on("confirmedPlayerPlacement",function(data){
             //Can't do this if we're not at the battle placement area yet
             if(!Q.state.get("battle")){return;};
-            var pl = Q.state.get("players").filter(function(obj){
-                return obj.playerId===data['playerId'];
+            var pl = Q("Player",1).items.filter(function(obj){
+                return obj.p.playerId===data['playerId'];
             })[0];
-            var player;
+            
+            pl.p.loc = data['loc'];
+            pl.p.dir = data['dir'];
+            pl.placePlayer();
+            pl.showReady();
+            pl.playStand(data['dir']);
             if(data['playerId']===selfId){
-                player = Q.givePlayerProperties(Q.stage(1),pl,data['loc'],data['dir']);
-                var objs = Q.state.get("playerObjs");
-                objs.push(player);
-                Q.pointer.p.player = player;
-            } else {
-                player = Q.state.get("playerObjs").filter(function(obj){
-                    return obj.p.playerId===data['playerId'];
-                })[0];
-                player.playStand(data['dir']);
+                pl.add("protagonist");
+                Q.pointer.p.player = pl;
             }
+
             //If this was the last player to 'lock in', start the battle
             if(data['startBattle']){
-                var plObjs = Q.state.get("playerObjs");
-                for(i=0;i<plObjs.length;i++){
-                    plObjs[i].destroyReady();
-                }
+                Q("Player",1).each(function(){
+                    this.destroyReady();
+                });
                 for(i=0;i<Q.pointer.p.startGuide.length;i++){
                     Q.pointer.p.startGuide[i].destroy();
                 }
                 //Destroy the pointer
                 Q.pointer.destroy();
+                delete(Q.pointer);
                 //Animate the 'start battle'
                 //Q.stageScene("customAnimate",4,{anim:"battleStart"});
                 //Start the battle music
-                var ld = Q.state.get("levelData");
+                var ld = Q.state.get("sceneData");
                 Q.playMusic(ld.battle.music+".mp3");
-                
+                if(data['res']){
+                    Q.startTurn(data['res']);
+                }
             } 
-            //If there are still people who haven't selected a location
-            else {
-                player.showReady();
-            }
-        });
+        });/*
         socket.on("inputted",function(data){
             var player = Q("Player",1).items.filter(function (obj) {
                 return obj.p.playerId === data['playerId'];
@@ -307,7 +186,7 @@ require(objectFiles, function () {
             player.p.inputted.push(data['inputted']);
             player.p.locTo=data['locTo'];
             player.trigger("acceptInput");
-        });
+        });*/
         
         socket.on('pickedUpItem',function(data){
             var item = Q("Pickup",1).items.filter(function (obj) {
@@ -317,50 +196,33 @@ require(objectFiles, function () {
                 item.destroy();
             }
         });
-        socket.on("battleMoved",function(data){
-            var whatMoved = data['playerId'];
-            //Is enemy
-            if(Q._isString(whatMoved)){
-                var AITurn;
-                //Ally
-                if(whatMoved[0]==="a"){
-                    AITurn = Q("Ally",1).items.filter(function(obj){
-                        return obj.p.playerId===whatMoved;
-                    })[0];
-                } 
-                //Enemy
-                else if(whatMoved[0]==="e"){
-                    AITurn = Q("Enemy",1).items.filter(function(obj){
-                        return obj.p.playerId===whatMoved;
-                    })[0];
-                }
-                AITurn.p.calcMenuPath=data['walkPath'];
-                AITurn.p.myTurnTiles = AITurn.p.stats.sp.stamina;
-                Q.addViewport(AITurn);
-                AITurn.add("autoMove");
-                AITurn.on("doneAutoMove",function(){
-                   console.log("Waiting for AI"); 
-                });
-            }
-            //Is player
-            else {
-                var player = Q("Player",1).items.filter(function(obj){
-                    return obj.p.playerId===whatMoved;
-                })[0];
-                player.p.calcMenuPath=data['walkPath'];
-                player.p.myTurnTiles=data['myTurnTiles'];
-                Q.addViewport(player);
-                player.add("autoMove");
-            }
-        });
-        //Used when ending turn without action
-        socket.on("setDirection",function(data){
-            var player = Q(".commonPlayer",1).items.filter(function(obj){
+        //After the server has calculated what happens with the AI, play it out on the client
+        socket.on("AIAction",function(data){
+            var ai = data['AI'];
+            var aiObj = Q(".commonPlayer",1).items.filter(function(obj){
                 return obj.p.playerId===data['playerId'];
             })[0];
-            player.p.dir=data['dir'];
-            player.playStand(player.p.dir);
-            socket.emit("readyForNextTurn",{playerId:Q.state.get("playerConnection").id});
+            aiObj.p.calcMenuPath = ai.path;
+            aiObj.add("autoMove");
+            aiObj.p.action = ai.action;
+            Q.addViewport(aiObj);
+            
+        });
+        socket.on("startNextTurn",function(playerId){
+            var player = Q("Player",1).items.filter(function(obj){
+                return obj.p.playerId===playerId;
+            })[0];
+            player.turnStart();
+        });
+        //playerEvent is run when a function needs to be executed during a player's turn
+        socket.on("playerEvent",function(data){
+            var user = Q("User",1).items.filter(function(obj){
+                return obj.p.playerId===data['playerId'];
+            })[0];
+            //Loop through the funcs array
+            for(var i=0;i<data['funcs'].length;i++){
+                user[data['funcs'][i]](data['props'][i]);
+            }
         });
         socket.on("resetMove",function(data){
             var player = Q("Player",1).items.filter(function(obj){
@@ -374,60 +236,6 @@ require(objectFiles, function () {
            Q.stageScene("interaction",10,{interaction:interaction});
         });
         
-        socket.on("startedTurn",function(data){
-            var tO = data['turnOrder'];
-            Q.state.set("turnOrder",tO);
-            //If it's the current player turn
-            if(tO[0]===selfId){
-                var playerTurn = Q("Player",1).items.filter(function(obj){
-                    return obj.p.playerId===tO[0];
-                })[0];
-                //Clear the menu if there is one
-                Q.clearStage(3);
-                //Start the player's turn
-                playerTurn.turnStart();
-            }
-            //If the current player is a user
-            else if(Q._isNumber(tO[0])){
-                var playerTurn = Q("Player",1).items.filter(function(obj){
-                    return obj.p.playerId===tO[0];
-                })[0];
-                playerTurn.setStartLoc();
-                Q.addViewport(playerTurn);
-            } 
-            //If the current player is an AI
-            else if(Q._isString(tO[0])){
-                var AITurn;
-                //Ally
-                if(tO[0][0]==="a"){
-                    AITurn = Q("Ally",1).items.filter(function(obj){
-                        return obj.p.playerId===tO[0];
-                    })[0];
-                } 
-                //Enemy
-                else if(tO[0][0]==="e"){
-                    AITurn = Q("Enemy",1).items.filter(function(obj){
-                        return obj.p.playerId===tO[0];
-                    })[0];
-                }
-                //If this is the host, calculate the AI here
-                if(data['host']===selfId){
-                    //This only happens when it's the turn of a dead enemy.
-                    //Not sure why, but it may be due to the enemy not being actually dead when the turn order gets sent off
-                    if(!AITurn){
-                        console.log(AITurn,tO[0])
-                        Q.afterDir();
-                        return;
-                    }
-                    Q.addViewport(AITurn);
-                    AITurn.turnStart();
-                } 
-                //If this is not the host, center on the enemy and wait for the AI to be passed in
-                else {
-                    Q.addViewport(AITurn);
-                }
-            }
-        });
         socket.on("endedBattle",function(){
             //Play any win animations
             
@@ -586,7 +394,24 @@ require(objectFiles, function () {
     for(i=0;i<soundFiles.length;i++){
         soundFiles[i]="sounds/"+soundFiles[i];
     }
-    Q.load(soundFiles.concat(imageFiles).concat(storyImages).concat(battleImages).join(','),function(){
+    
+    var jsonFiles = [
+        "exp_needed.json",
+        "abilities.json",
+        "items.json",
+        "attacks.json",
+        "classes.json"
+    ];
+    for(i=0;i<jsonFiles.length;i++){
+        jsonFiles[i]="_json/"+jsonFiles[i];
+    }
+    
+    Q.load(soundFiles.concat(imageFiles).concat(storyImages).concat(battleImages).concat(jsonFiles).join(','),function(){
+        Q.state.set("expNeeded",Q.assets['_json/exp_needed.json'].exp);
+        Q.state.set("abilities",Q.assets['_json/abilities.json']);
+        Q.state.set("items",Q.assets['_json/items.json']);
+        Q.state.set("attacks",Q.assets['_json/attacks.json']);
+        Q.state.set("classes",Q.assets['_json/classes.json']);
         Q.setUpAnimations();
         //Stage the title scene
         //Q.stageScene('title', 0);

@@ -10,14 +10,17 @@ Q.goToNextScene = function(){
 Q.showStoryObj=function(obj){
     obj.show();
 };
+//Run at the start of battle
 Q.showAllStoryObjs=function(){
-    var allies = Q("Ally",1);
-    allies.each(function(){
-        Q.showStoryObj(this);
-    });
-    var enemies = Q("Enemy",1);
-    enemies.each(function(){
-        Q.showStoryObj(this);
+    Q("Participant",1).each(function(){
+        //If it has a final (All AI have a final and players that have participated in the story scene may have one)
+        if(this.p.final){
+            this.p.loc = this.p.final[0]?this.p.final[0]:this.p.loc;
+            this.p.dir = this.p.final[1]?this.p.final[1]:this.p.dir;
+            this.setPos(this.p.loc);
+            this.playStand(this.p.dir);
+        }
+        this.show();
     });
 };
 Q.component("storySprite",{

@@ -1096,6 +1096,8 @@ Quintus.Scenes = function(Q) {
     // Finally return the stage to the user for use if needed
     return stage;
   };
+  
+  
 
   Q.stageStepLoop = function(dt) {
     var i,len,stage;
