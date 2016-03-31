@@ -1,7 +1,7 @@
 window.addEventListener("load", function() {
 
 var Q = window.Q = Quintus({audioSupported: ['mp3','ogg','wav']}) 
-        .include("Sprites, Scenes, Input, 2D, Anim, Touch, UI, TMX, Audio, Objects, Areas, Animations, HUD, TileCosts, AttackFuncs, ItemFuncs, Music, AI, MenuScenes, Interaction, Story, QFunctions, StoryScenes")
+        .include("Sprites, Scenes, Input, 2D, Anim, Touch, UI, TMX, Audio, Shared, Objects, Areas, Animations, HUD, TileCosts, AttackFuncs, ItemFuncs, Music, AI, MenuScenes, Interaction, Story, QFunctions, StoryScenes")
         .setup({ development: true})
         .touch().controls(true)
         .enableSound();
@@ -50,6 +50,7 @@ require(objectFiles, function () {
                 Q.stageScene('soundControls',2); 
                 //Display the login
                 document.getElementById('login').style.display='block';
+                document.getElementById('create_account').style.display='block';
                 console.log("I am "+data['playerId']);
             });
             //Tell the server that this client has connected properly
@@ -99,6 +100,8 @@ require(objectFiles, function () {
             Q.clearStage(1);
             //Start the scene
             Q.startScene(data);
+            //Uncomment this and comment the above to go the the battle instantly
+            //Q.readyForBattle();
         });
         //Called when all players must now place their units
         socket.on("startedBattle",function(data){
@@ -112,108 +115,45 @@ require(objectFiles, function () {
                 stage.insert(new Q.PathBox({loc:playerLocs[i]}),false,true);
             }
         });
-        socket.on("checkedPlayerPlacement",function(data){
-            //Don't do it if this client isn't at the battle placement area yet
-            if(!Q.state.get("battle")){return;};
-            //Can't do it if there was already a player placed
-            if(data['found']){
-                Q.pointer.invalidPos();
-                return;
+        //The first turn of the battle
+        socket.on("firstTurn",function(data){
+            //If the user is watching others do their turns
+            if(Q.state.get("options").watchingTurn){
+                Q.state.set("watchingTurn",true);
             }
-            if(data['playerId']===Q.state.get("playerConnection").id){
-                Q.pointer.attachPlayer();
-            } else {
-                var player = Q("Player",1).items.filter(function(obj){
-                    return obj.p.playerId===data['playerId'];
-                })[0];
-                player.p.loc = data['loc'];
-                player.p.dir=data['dir'];
-                player.placePlayer();
-                player.show();
+            //Clear the path boxes
+            Q("PathBox",1).each(function(){
+                this.destroy();
+            });
+            Q("User",1).each(function(){
+                this.firstTurn();
+            });
+            Q("Participant",1).each(function(){
+                this.del("storySprite");
+            });
+            if(data['response']){
+                Q.startTurn(data);
             }
         });
-        socket.on("removedPlayerPlacement",function(data){
-            var player = Q("Player",1).items.filter(function(obj){
-                return obj.p.playerId===data['playerId'];
-            })[0];
-            player.destroyReady();
-            player.p.loc=[-1,-1];
-            player.placePlayer();
-                
-        });
-        socket.on("confirmedPlayerPlacement",function(data){
-            //Can't do this if we're not at the battle placement area yet
-            if(!Q.state.get("battle")){return;};
-            var pl = Q("Player",1).items.filter(function(obj){
-                return obj.p.playerId===data['playerId'];
-            })[0];
-            
-            pl.p.loc = data['loc'];
-            pl.p.dir = data['dir'];
-            pl.placePlayer();
-            pl.showReady();
-            pl.playStand(data['dir']);
-            if(data['playerId']===selfId){
-                pl.add("protagonist");
-                Q.pointer.p.player = pl;
-            }
-
-            //If this was the last player to 'lock in', start the battle
-            if(data['startBattle']){
-                Q("Player",1).each(function(){
-                    this.destroyReady();
-                });
-                for(i=0;i<Q.pointer.p.startGuide.length;i++){
-                    Q.pointer.p.startGuide[i].destroy();
-                }
-                //Destroy the pointer
-                Q.pointer.destroy();
-                delete(Q.pointer);
-                //Animate the 'start battle'
-                //Q.stageScene("customAnimate",4,{anim:"battleStart"});
-                //Start the battle music
-                var ld = Q.state.get("sceneData");
-                Q.playMusic(ld.battle.music+".mp3");
-                if(data['res']){
-                    Q.startTurn(data['res']);
-                }
-            } 
-        });/*
-        socket.on("inputted",function(data){
-            var player = Q("Player",1).items.filter(function (obj) {
-                return obj.p.playerId === data['playerId'];
-            })[0];
-            player.p.inputted.push(data['inputted']);
-            player.p.locTo=data['locTo'];
-            player.trigger("acceptInput");
-        });*/
-        
-        socket.on('pickedUpItem',function(data){
-            var item = Q("Pickup",1).items.filter(function (obj) {
-                return obj.p.pickupId === data['pickupId'];
-            })[0];
-            if(item){
-                item.destroy();
-            }
+        //Any turns after the first
+        socket.on("startTurn",function(data){
+            Q.startTurn(data);
         });
         //After the server has calculated what happens with the AI, play it out on the client
         socket.on("AIAction",function(data){
+            var turnOrder = data['turnOrder'];
+            Q.state.set("turnOrder",turnOrder);
+            
             var ai = data['AI'];
-            var aiObj = Q(".commonPlayer",1).items.filter(function(obj){
+            var aiObj = Q("Participant",1).items.filter(function(obj){
                 return obj.p.playerId===data['playerId'];
             })[0];
             aiObj.p.calcMenuPath = ai.path;
-            aiObj.add("autoMove");
             aiObj.p.action = ai.action;
-            Q.addViewport(aiObj);
-            
+            aiObj.add("autoMove");
+            Q.viewFollow(aiObj);
         });
-        socket.on("startNextTurn",function(playerId){
-            var player = Q("Player",1).items.filter(function(obj){
-                return obj.p.playerId===playerId;
-            })[0];
-            player.turnStart();
-        });
+        
         //playerEvent is run when a function needs to be executed during a player's turn
         socket.on("playerEvent",function(data){
             var user = Q("User",1).items.filter(function(obj){
@@ -240,7 +180,7 @@ require(objectFiles, function () {
             //Play any win animations
             
             //Stage the win battle scene
-            Q.endScene(Q.state.get("levelData").onCompleted);
+            Q.endScene(Q.state.get("sceneData").onCompleted);
         });
     };
     
@@ -249,34 +189,16 @@ require(objectFiles, function () {
             //The current stage that the player is on
             currentStage:[],
             currentStageName:"",
-            //Scene music
-            musicEnabled:false,//true,
-            //sound effects
-            soundEnabled:true,
-            //Auto scrolling for the interacting boxes
-            autoScroll:false,
+            
             //Which tunes have been loaded (so that we don't load music twice)
             loadedMusic:[],
             //The current music
             currentMusic:"",
             //The position of the player menu
-            //Also affects the sound toggle position
-            playerMenuPos:"right",
-            //All the player objects (actors and players)
-            playerObjs:[],
+            
             //The turn order for the battle
             turnOrder:[],
-            currentCharacter:{},
-            currentCharacterTurn:0,//The current turn (position in turnOrder array
             turnNumber:1,//The total number of rounds
-            
-            enemies:{},
-            //All battles eventId's that are going on in this stage right now
-            currentBattles:[],
-            //All players that are waiting to join the battle
-            waitingPlayers:[],
-            //Any players that didn't get added because more than one player ws going to the stage at a time during a battle.
-            actorsToAdd:[],
 
             //The current data happening in this level
             levelData:{},
@@ -284,15 +206,35 @@ require(objectFiles, function () {
             //Is set to false when all enemies are defeated, and is checked after the dirTri is set
             battle:false,
 
-            //The speed at which the enemy ai text goes (actually, this is just used for all bottomtextbox cycling now)
-            //1-2-3
-            textSpeed:1
+            
+            //Set to whatever is in options on battle start
+            watchingTurn:false,
+            //Default to watching the currnet user's turn
+            //If false, give a free pointer to the user during battle
+            //TO DO: Add music/sound etc to this
+            options:{
+                //Also affects the sound toggle position
+                playerMenuPos:"right",
+                //Is this user watching other user's turns
+                watchingTurn:true,
+                //Scene music
+                musicEnabled:false,//true,
+                //sound effects
+                soundEnabled:true,
+                //Auto scrolling for the interacting boxes
+                autoScroll:true,
+                //The speed at which the enemy ai text goes (actually, this is just used for all bottomtextbox cycling now)
+                //1-2-3
+                textSpeed:1,
+            }
         });
     };
 
     Q.toLobby = function(name,file){
         //Get rid of the login
         var div = document.getElementById('login');
+        document.getElementById('main').removeChild(div);
+        var div = document.getElementById('create_account');
         document.getElementById('main').removeChild(div);
         //Show the "loading" animation
         var loading = Q.stage(2).insert(new Q.Sprite({
@@ -339,7 +281,11 @@ require(objectFiles, function () {
             
         //});
     };
-    
+    Q.loadCreateAccountForm=function(){
+        document.getElementById('quintus').style.display='none';
+        
+        //Q.state.get("playerConnection").socket.emit("createAccount");
+    };
     
     //Define the misc image files to be loaded
     var imageFiles = [
@@ -400,18 +346,31 @@ require(objectFiles, function () {
         "abilities.json",
         "items.json",
         "attacks.json",
-        "classes.json"
+        "classes.json",
+        
+        "menus.json"
     ];
     for(i=0;i<jsonFiles.length;i++){
         jsonFiles[i]="_json/"+jsonFiles[i];
     }
     
-    Q.load(soundFiles.concat(imageFiles).concat(storyImages).concat(battleImages).concat(jsonFiles).join(','),function(){
+    Q.load(soundFiles.concat(imageFiles).concat(storyImages).concat(battleImages).concat(jsonFiles).concat(["/lib/astar.js"]).join(','),function(){
         Q.state.set("expNeeded",Q.assets['_json/exp_needed.json'].exp);
         Q.state.set("abilities",Q.assets['_json/abilities.json']);
         Q.state.set("items",Q.assets['_json/items.json']);
         Q.state.set("attacks",Q.assets['_json/attacks.json']);
+        //Power, Accuracy, Range, Area all parseInt
+        Q.state.get("attacks").forEach(function(atk){
+            atk.power = parseInt(atk.power);
+            atk.accuracy = parseInt(atk.accuracy);
+            atk.range = parseInt(atk.range);
+            atk.area = parseInt(atk.area);
+        });
         Q.state.set("classes",Q.assets['_json/classes.json']);
+        
+        Q.state.set("menus",Q.assets['_json/menus.json']);
+        Q.astar = astar;
+        Q.Graph = Graph;
         Q.setUpAnimations();
         //Stage the title scene
         //Q.stageScene('title', 0);

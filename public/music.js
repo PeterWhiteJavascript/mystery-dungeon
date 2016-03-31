@@ -5,7 +5,7 @@ Q.stopMusic=function(music){
 };
 
 Q.playMusic=function(music,callback){
-    if(Q.state.get("musicEnabled")){
+    if(Q.state.get("options").musicEnabled){
         var loadedMusic = Q.state.get("loadedMusic");
         var ld = loadedMusic.filter(function(songName){
             return songName===music;
@@ -35,7 +35,7 @@ Q.playMusic=function(music,callback){
 };
 
 Q.playSound=function(sound,callback){
-    if(Q.state.get("soundEnabled")){
+    if(Q.state.get("options").soundEnabled){
         Q.audio.play("sounds/"+sound);
     }
     if(callback){callback();}

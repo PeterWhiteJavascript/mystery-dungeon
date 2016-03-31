@@ -1,10 +1,19 @@
 Quintus.Story=function(Q){
-
+Q.allToStorySprite=function(additional){
+    Q("Participant",1).each(function(){
+        this.del("storySprite,AI");
+        this.p.action = null;
+        this.off("atDest");
+        this.off("doneAutoMove");
+        this.add("storySprite");
+        if(additional){
+            additional(this);
+        }
+    });
+};
 //Run this to go to the next scene as set in save_data
 Q.goToNextScene = function(){
-    var nextScene = Q.state.get("levelData").onCompleted.nextScene;
-    var socket = Q.state.get("playerConnection").socket;
-    socket.emit('readyForNextScene',{playerId:Q.state.get("playerConnection").id,nextScene:nextScene});
+    Q.state.get("playerConnection").socket.emit("readyForNextScene",{playerId:Q.state.get("playerConnection").id});
 };
 //Shows the object and also sets its loc
 Q.showStoryObj=function(obj){
@@ -35,7 +44,9 @@ Q.component("storySprite",{
     extend:{
         disappear:function(){
             this.add("tween");
-            this.animate({opacity:0.01},1,Q.Easing.Linear,{callback:function(){this.trigger("disappeared");}});
+            this.animate({opacity:0.01},1,Q.Easing.Linear,{callback:function(){
+                this.trigger("disappeared");
+            }});
             
         },
         disappeared:function(){
@@ -51,11 +62,10 @@ Q.component("storySprite",{
             var t = this;
             setTimeout(function(){
                 var path = [];
-                var graph = new Graph(t.getWalkMatrix());
                 for(i=0;i<paths.length;i++){
-                    var loc;
+                    var loc = t.p.loc;
                     if(i>0){loc=paths[i-1];}
-                    var pa = t.getPath(paths[i],graph,false,false,loc);
+                    var pa = t.getPath(loc,paths[i]);
                     for(j=0;j<pa.length;j++){
                         path.push(pa[j]);
                     }
@@ -67,8 +77,7 @@ Q.component("storySprite",{
         //follow the fastest path to a location
         startAutoMove:function(moveTo){
             if(moveTo){this.p.moveTo = moveTo;};
-            var graph = new Graph(this.getWalkMatrix());
-            this.p.calcMenuPath = this.getPath(this.p.moveTo,graph);
+            this.p.calcMenuPath = this.getPath(this.p.loc,this.p.moveTo);
             this.add("autoMove");
         },
         doneAutoMove:function(){

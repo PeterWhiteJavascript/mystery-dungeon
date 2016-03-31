@@ -27,44 +27,41 @@ Q.scene('bottomhud',function(stage){
 
 Q.scene('playerMenu',function(stage){
     //stage.options.player.disableControls();
-    var menu = stage.insert(new Q.Menu({h:330}));
+    var menu = stage.insert(new Q.PlayerMenu({h:330}));
     menu.p.player = stage.options.player;
-    menu.p.menuOpts={
-        attack:{
-            text:"Attack",
-            func:"showAttacks"
-        },
-        move:{
-            text:"Move",
-            func:"showPointer"
-        },
-        items:{
-            text:"Items",
-            func:"showItems"
-        },
-        status:{
-            text:"Status",
-            func:"showStatus"
-        },
-        checkGround:{
-            text:"Check Ground",
-            func:"checkGround"
-        },
-        resetMove:{
-            text:"Re-do",
-            func:"resetMovement"
-        },
-        endTurn:{
-            text:"End Turn",
-            func:"endTurn"
-        },
-        exit:{
-            text:"Exit Menu",
-            func:"exitMenu"
+    menu.p.user = stage.options.user;
+    menu.p.user.p.obj = menu;
+    menu.initializeMenu();
+    Q.inputs['interact']=false;
+});
+
+Q.scene('attackPrediction',function(stage){
+    var cont = stage.insert(new Q.UI.Container({x:0,y:0,h:0,w:0,color:'green'}));
+    cont.processInputs=function(input){
+        if(input['interact']){
+            //Confirm that we want to attack
+            Q.state.get("playerConnection").socket.emit("playerInputs",{playerId:this.p.user.p.playerId,inputs:{interact:true,time:input.time}});
+        } else if(input['back']){
+            //Go back to the attack pointer
         }
     };
-    menu.setUpMenu();
-    Q.inputs['interact']=false;
+    cont.p.user = stage.options.user;
+    cont.p.user.p.obj = cont;
+    var attacker = stage.options.attacker;
+    var defender = stage.options.defender;
+    var attack = stage.options.attack;
+    var attackerCard = cont.insert(new Q.Card({user:attacker,x:0,y:10}));
+    var defenderCard = cont.insert(new Q.Card({user:defender,x:0,y:10}));
+    attackerCard.p.x-=attackerCard.p.w+attackerCard.p.w/4;
+    //The low for attack power
+    var low = Math.floor((((2*attacker.p.level+10)/250)*(attacker.p.modStats[attack.category+"_ofn"]/defender.p.modStats[attack.category+"_dfn"])*parseInt(attack.power)+2)*.85);
+    //The high for attack power
+    var high = Math.floor((((2*attacker.p.level+10)/250)*(attacker.p.modStats[attack.category+"_ofn"]/defender.p.modStats[attack.category+"_dfn"])*parseInt(attack.power)+2));
+    var facingValue = Q.attackFuncs.compareDirection(attacker,defender);
+    var hitRate = attack.accuracy/facingValue;
+    var prediction = stage.insert(new Q.UI.Container({x:Q.width/2,y:Q.height/2,w:300,h:100,fill:"blue"}));
+    prediction.insert(new Q.UI.Text({color:"white",size:16,label:attack.name+" will do between "+low+" and "+high+" damage with a "+hitRate+"% hit rate."}));
+    prediction.fit(10,10);
 });
 
 Q.scene('interactingMenu',function(stage){
@@ -94,7 +91,7 @@ Q.scene('interactingMenu',function(stage){
     
 Q.scene('soundControls',function(stage){
     var soundCont = stage.insert(new Q.UI.Container({x:Q.width-100,y:5}));
-    var pos = Q.state.get("playerMenuPos");
+    var pos = Q.state.get("options").playerMenuPos;
     //If the menu is on the right, this needs to be on the left
     if(pos==="right"){soundCont.p.x=100;}
     //Disable/enable music
@@ -103,22 +100,22 @@ Q.scene('soundControls',function(stage){
         radius:8,
         border:0,
         
-        fill:Q.state.get("musicEnabled") ? "#345894" : "#447ba4",
+        fill:Q.state.get("options").musicEnabled ? "#345894" : "#447ba4",
         y:20,
         w:150,
         h:30
 
     },function(){
-        var music=Q.state.get("musicEnabled");
+        var music=Q.state.get("options").musicEnabled;
         if(!music){
             this.p.fill="#345894";
-            Q.state.set("musicEnabled",true);
+            Q.state.p.options.musicEnabled=true;
             var mus = Q.state.get("currentMusic");
             Q.state.set("currentMusic",false);
             Q.playMusic(mus);
         } else {
             this.p.fill="#447ba4";
-            Q.state.set("musicEnabled",false);
+            Q.state.p.options.musicEnabled=false;
             Q.stopMusic(Q.state.get("currentMusic"));
         }
     }));
@@ -129,19 +126,19 @@ Q.scene('soundControls',function(stage){
         radius:8,
         border:0,
         stroke:"black",
-        fill:Q.state.get("soundEnabled") ? "#345894" : "#447ba4",
+        fill:Q.state.get("options").soundEnabled ? "#345894" : "#447ba4",
         y:60,
         w:150,
         h:30
 
     },function(){
-        var sound=Q.state.get("soundEnabled");
+        var sound=Q.state.get("options").soundEnabled;
         if(!sound){
             this.p.fill="#345894";
-            Q.state.set("soundEnabled",true);
+            Q.state.p.options.soundEnabled=true;
         } else {
             this.p.fill="#447ba4";
-            Q.state.set("soundEnabled",false);
+            Q.state.p.options.soundEnabled=false;
         }
         
     }));
@@ -152,23 +149,23 @@ Q.scene('soundControls',function(stage){
         radius:8,
         border:0,
         stroke:"black",
-        fill:Q.state.get("autoScroll") ? "#345894" : "#447ba4",
+        fill:Q.state.get("options").autoScroll ? "#345894" : "#447ba4",
         y:100,
         w:150,
         h:30
 
     },function(){
-        var scroll=Q.state.get("autoScroll");
+        var scroll=Q.state.get("options").autoScroll;
         if(!scroll){
             this.p.fill="#345894";
-            Q.state.set("autoScroll",true);
+            Q.state.p.options.autoScroll=true;
             var box = Q.interactionBox;
             if(box){
                 box.setAutoScroll();
             }
         } else {
             this.p.fill="#447ba4";
-            Q.state.set("autoScroll",false);
+            Q.state.p.options.autoScroll=false;
             if(box){
                 box.stopAutoScroll();
             }

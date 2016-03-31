@@ -1,12 +1,27 @@
 Quintus.QFunctions=function(Q){
-Q.startTurn=function(data){console.log(data)
-    //The only player who can send inputs is this one while it's his turn.
-    var player = Q("Player",1).items.filter(function(obj){
-        return obj.p.playerId===data;
+Q.startTurn=function(data){
+    var response = data['response'];
+    var turnOrder = data['turnOrder'];
+    Q.state.set("turnOrder",turnOrder);
+    var user = Q("User",1).items.filter(function(obj){
+        return obj.p.playerId===response;
     })[0];
-    player.turnStart();
-};
+    //In turn start, it checks if this client is watching
+    user.turnStart();
+    var player = Q("Participant",1).items.filter(function(obj){
+        return obj.p.playerId===response;
+    })[0];
+    Q.viewFollow(player);
     
+};
+//Gets the total cost for a movement path
+Q.getPathCost=function(path){
+    var curCost = 0;
+    for(var j=0;j<path.length;j++){
+        curCost+=path[j].weight;
+    }
+    return curCost;
+};
 //Gets the path to a scene by taking the level string
 Q.getPath = function(to){
     var path = "";
@@ -50,9 +65,10 @@ Q.stageBattleScene=function(data){
     //Load the .tmx
     Q.loadTMX(currentPath[0]+"/"+scene.levelMap.name+".tmx",function(){
         //Load the music
-        Q.playMusic(scene.onStart.music+".mp3",function(){ 
+        Q.playMusic(scene.battle.music+".mp3",function(){ 
             //Create the scene
             Q.makeScene(scene.onStart.name,currentPath[0],scene.levelMap.name,us,pa,ob,function(stage){
+                Q.showAllStoryObjs();
                 //Place the playerLocs guide
                 var playerLocs = Q.state.get("sceneData").battle.playerLocs;
                 var user = Q("User",1).items.filter(function(obj){
@@ -63,7 +79,7 @@ Q.stageBattleScene=function(data){
                 user.sendInputsToServer();
                 //Place the pointers for all users at the first spot
                 Q("User",1).each(function(){
-                    this.createPointer("placement",playerLocs[0]);
+                    this.createPointer({loc:playerLocs[0]});
                 });
             });
             //Stage the TMX tilemap
@@ -72,10 +88,16 @@ Q.stageBattleScene=function(data){
         });
     });
 };
-//Is triggered when the user choses where to place his character
+//Is triggered when the user has to chose where to place his character
 Q.readyForBattle=function(){
     var socket = Q.state.get("playerConnection").socket;
     socket.emit("readyForBattle",{playerId:Q.state.get("playerConnection").id});
+};
+Q.addViewport=function(playerId){
+    var part = Q("Participant",1).items.filter(function(obj){
+        return obj.p.playerId===playerId;
+    })[0];
+    Q.viewFollow(part);
 };
 //Follows the specified sprite on the specified stage
 Q.viewFollow=function(obj,stage){
@@ -102,23 +124,6 @@ Q.addActor=function(actor,loc,dir){
     console.log("Placed "+obj.p.name+" at "+obj.p.loc[0]+","+obj.p.loc[1]);
     obj.add("actor");
     return obj;
-};
-//Add the viewport to whoever's turn it is
-Q.addTurnOrderView=function(){
-    var tO = Q.state.get("turnOrder");
-    if(Q._isNumber(tO[0])){
-        var playerTurn = Q("Player",1).items.filter(function(obj){
-            return obj.p.playerId===tO[0];
-        })[0];
-        Q.addViewport(playerTurn);
-    } 
-    //If the current player is an enemy
-    else if(Q._isString(tO[0])){
-        var enemyTurn = Q("Enemy",1).items.filter(function(obj){
-            return obj.p.playerId===tO[0];
-        })[0];
-        Q.addViewport(enemyTurn);
-    }
 };
 //This loads when the music is loading at the start
 Q.showWaiting=function(){
@@ -179,7 +184,9 @@ Q.getNextLevelEXP=function(level){
 };
 
 Q.getAttack=function(atk){
-    var attack = Q.state.get("attacks")[atk[0]];
+    var attack = Q.state.get("attacks").filter(function(att){
+        return att.id===atk;
+    })[0];
     return attack;
 };
 

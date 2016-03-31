@@ -1,0 +1,51 @@
+{
+    "playerMenu":{
+        "initial":{
+            "display":[
+                "Attack",
+                "Move",
+                "Items",
+                "Status",
+                "Check Ground",
+                "Re-do",
+                "End Turn",
+                "Exit"
+            ],
+            "funcs":[
+                "getAttacks",
+                "move",
+                "getItems",
+                "showStatus",
+                "checkGround",
+                "redo",
+                "endTurn",
+                "exitMenu"
+            ],
+            "backFunc":"exitMenu"
+        },
+        "selectItem":{
+            "display":[
+                "Use",
+                "Move",
+                "Toss"
+            ],
+            "funcs":[
+                "useItem",
+                "moveItem",
+                "askTossItem"
+            ],
+            "backFunc":"getItems"
+        },
+        "askTossItem":{
+            "display":[
+                "No",
+                "Yes"
+            ],
+            "funcs":[
+                "goBack",
+                "tossItem"
+            ],
+            "backFunc":"selectItem"
+        }
+    }
+}

@@ -10,7 +10,6 @@ Quintus.HUD = function(Q){
                 guide:[],
                 movTiles:[],
                 
-                name:"Pointer",
                 stepDistance:Q.tileH,
                 stepDelay:0.2,
                 stepWait:0,
@@ -20,38 +19,31 @@ Quintus.HUD = function(Q){
                 
                 locsTo:[]
             });
+        },
+        initialize:function(){
             var pos = Q.setXY(this.p.loc[0],this.p.loc[1]);
             this.p.x = pos[0];
             this.p.y = pos[1];
             this.p.z=this.p.y+Q.tileH/2;
             this.p.destX = this.p.x;
             this.p.destY = this.p.y;
-            
+            this.p.diffX=0;
+            this.p.diffY=0;
             this.moveGuide(0,0);
             this.on("unflash",this,"unFlashObjs");
             this.on("finished");
-            var t = this;
-            setTimeout(function(){
-                t.showUserName();
-            },1);
+            this.showName(this.p.name);
         },
-        showUserName:function(){
-            this.p.username = this.stage.insert(new Q.UI.Container({x:this.p.x,y:this.p.y-this.p.h,z:100000}));
-            this.p.username.insert(new Q.UI.Text({label:this.p.user.p.name,z:100000,size:20}));
+        showName:function(name){
+            this.p.username = Q.stage(1).insert(new Q.UI.Container({x:this.p.x,y:this.p.y-this.p.h,z:100000}));
+            this.p.username.insert(new Q.UI.Text({label:name,z:100000,size:20}));
             this.p.username.fit(2,2);
         },
         //This function displays the attack area and moves with the pointer
         createAttackArea:function(areas){
             this.p.attackAreas=areas;
             for(i=0;i<areas.length;i++){
-                this.p.guide.push(Q.stage(1).insert(new Q.PathBox({loc:[this.p.loc[0]+areas[i][0],this.p.loc[1]+areas[i][1]]}),false,true));
-            }
-        },
-        clearGuide:function(){
-            if(this.p.guide.length>0){
-                for(i=0;i<this.p.guide.length;i++){
-                    this.p.guide[i].destroy();
-                }
+                this.p.guide.push(Q.stage(1).insert(new Q.PathBox({loc:[this.p.loc[0]+areas[i][0],this.p.loc[1]+areas[i][1]]})));
             }
         },
         //Clears the guide that shows where you can place a player at the start of the scene
@@ -59,20 +51,6 @@ Quintus.HUD = function(Q){
             if(this.p.startGuide.length>0){
                 for(i=0;i<this.p.startGuide.length;i++){
                     this.p.startGuide[i].destroy();
-                }
-            }
-        },
-        hideGuide:function(){
-            if(this.p.guide.length>0){
-                for(i=0;i<this.p.guide.length;i++){
-                    this.p.guide[i].hide();
-                }
-            }
-        },
-        showGuide:function(){
-            if(this.p.guide.length>0){
-                for(i=0;i<this.p.guide.length;i++){
-                    this.p.guide[i].show();
                 }
             }
         },
@@ -86,8 +64,20 @@ Quintus.HUD = function(Q){
             }
             return valid;
         },
+        clearGuide:function(){
+            var p = this.p;
+            if(p.guide&&p.guide.length>0){
+                for(i=0;i<p.guide.length;i++){
+                    p.guide[i].destroy();
+                }
+            }
+            this.p.guide=[];
+        },
         finished:function(){
             this.trigger("unflash");
+            if(this.p.user.p.player){
+                this.p.user.p.player.clearGuide();
+            }
             this.clearGuide();
             Q.clearStage(3);
             this.stage.remove(this);
@@ -95,7 +85,7 @@ Quintus.HUD = function(Q){
         },
         flashObjs:function(guide){
             var obj = Q.getTarget(guide.p.x,guide.p.y);
-            if(obj&&this.p.player.checkValidTarget(obj,this.entity.p.attack)){
+            if(obj&&this.p.user.p.player.checkValidTarget(obj,this.p.attack)){
                 obj.flash();
                 this.p.flashObjs.push(obj);
             }
@@ -162,16 +152,20 @@ Quintus.HUD = function(Q){
             var newLoc = [p.loc[0],p.loc[1]];
             if(input['up']){
                 p.diffY = -p.stepDistance;
+                this.moveGuide('y',p.diffY);
                 newLoc[1]--;
             } else if(input['down']){
                 p.diffY = p.stepDistance;
+                this.moveGuide('y',p.diffY);
                 newLoc[1]++;
             }
             if(input['right']){
                 p.diffX = p.stepDistance;
+                this.moveGuide('x',p.diffX);
                 newLoc[0]++;
             } else if(input['left']){
                 p.diffX = -p.stepDistance;
+                this.moveGuide('x',p.diffX);
                 newLoc[0]--;
             }
             var loc = this.checkValidLoc(newLoc);
@@ -187,11 +181,11 @@ Quintus.HUD = function(Q){
                 p.loc = newLoc;
                 p.target=Q.getTargetAt(p.loc[0],p.loc[1]);
                 if(p.target){
-                    if(p.user.controlled()){
+                    if(Q.state.get("watchingTurn")||p.user.controlled()){
                         p.target.showCard();
                     }
                 } else {
-                    if(p.user.controlled()){
+                    if(Q.state.get("watchingTurn")||p.user.controlled()){
                         p.user.checkClearStage(3);
                     }
                 }
@@ -207,15 +201,24 @@ Quintus.HUD = function(Q){
             if(!p.stepping&&!this.p.noInteract&&!this.p.noBack){
                 if(input['interact']){
                     if(p.target){
-                        p.user.loadFullMenu(p.target);
+                        //If we're attacking
+                        if(p.attack&&p.user.p.player.checkValidTarget(p.target,p.attack)){
+                            //p.user.loadAttackPrediction(p.attack,p.target);
+                        } 
+                        //If we're not attacking, load the full menu of the target
+                        else if(!p.user.p.player.checkValidTarget(p.target,p.user.p.player.attack)){
+                            //p.user.loadFullMenu(p.target);
+                        }
+                        Q.inputs['interact']=false;
                     } else {
                         this.trigger("inputsInteract");
-                        Q.state.get("playerConnection").socket.emit("playerInputs",{playerId:this.p.user.p.playerId,inputs:{interact:true,time:input.time}});
-                        this.p.noInteract = true;
-                        setTimeout(function(){
-                            p.noInteract=false;
-                        },200);
                     }
+                    Q.state.get("playerConnection").socket.emit("playerInputs",{playerId:this.p.user.p.playerId,inputs:{interact:true,time:input.time}});
+                    this.p.noInteract = true;
+                    setTimeout(function(){
+                        p.noInteract=false;
+                    },100);
+                    Q.inputs['interact']=false;
                     return;
                 } else if(input['back']){
                     this.trigger("inputsBack");
@@ -223,7 +226,8 @@ Quintus.HUD = function(Q){
                     this.p.noBack = true;
                     setTimeout(function(){
                         p.noBack=false;
-                    },200);
+                    },100);
+                    Q.inputs['back']=false;
                     return;
                 }
                 this.checkInputs(input);
@@ -278,6 +282,7 @@ Quintus.HUD = function(Q){
             if(!this.p.loc){
                 this.p.loc = Q.getLoc(this.p.x,this.p.y);
             }
+            this.on("step",this,function(){this.p.z=this.p.y-Q.tileH/2;});
         }
     });
     
@@ -316,7 +321,7 @@ Quintus.HUD = function(Q){
                 fill:'#9999ff'
             });
             this.p.y=Q.height-this.p.h;
-            this.p.startTime = Q.state.get("textSpeed");
+            this.p.startTime = Q.state.get("options").textSpeed;
             this.p.time=this.p.startTime;
         },
         destroyText:function(){
@@ -422,12 +427,12 @@ Quintus.HUD = function(Q){
             }
         }
     });
-    Q.UI.Container.extend("Menu",{
+    Q.UI.Container.extend("PlayerMenu",{
         init:function(p){
             this._super(p,{
                 x:Q.width,
-                w:Q.width/4,//h is set in setUpMenu()
-                textNum:0,
+                w:Q.width/4,
+                selectorNum:0,
                 type:Q.SPRITE_NONE,
                 fill:'#009933',
                 spacing:10,
@@ -438,7 +443,170 @@ Quintus.HUD = function(Q){
                 greyed:[],
                 cy:0
             });
-        }
+            this.p.x-=this.p.w/2+this.p.spacing;
+            this.p.y = this.p.spacing;
+            this.p.menus = Q.state.get("menus").playerMenu;
+            this.p.h = this.p.spacing*2+this.p.menus.initial.display.length*this.p.textH;
+            this.on("finished",this,"destroy");
+        },
+        //Create the other parts of the menu such as the text areas and the selector
+        initializeMenu:function(){
+            this.makeMenu(this.p.menus.initial);
+        },
+        destroyTexts:function(){
+            if(this.p.texts.length){
+                for(var i=0;i<this.p.texts.length;i++){
+                    this.p.texts[i].destroy();
+                }
+            }
+            this.p.texts=[];
+        },
+        makeMenu:function(menu){
+            this.destroyTexts();
+            var display = menu.display;
+            //Create the text for each of the displays
+            for(var i=0;i<display.length;i++){
+                this.p.texts.push(this.insert(new Q.MenuText({label:display[i],x:10,y:this.p.spacing+this.p.textH*i,num:i})));
+            }
+            this.p.menu = menu;
+        },
+        changeSelected:function(newTextNum){
+            var selectorNum = this.p.selectorNum;
+            var texts = this.p.texts;
+            texts[selectorNum].p.color="white";
+            texts[this.p.selectorNum+newTextNum].p.color="red";
+            this.p.selectorNum+=newTextNum;
+        },
+        
+        //Gets the attacks for the menu
+        getAttacks:function(){
+            var attacks = this.p.player.p.attacks;
+            var display = [];
+            var funcs = [];
+            for(var i=0;i<attacks.length;i++){
+                display.push(attacks[i][0]);
+                funcs.push("selectAttack");
+            }
+            this.makeMenu({display:display,funcs:funcs,backFunc:"initializeMenu"});
+        },
+        //Gets the items for the menu
+        getItems:function(){
+            var items = this.p.player.p.items;
+            var display = [];
+            var funcs = [];
+            for(var i=0;i<items.length;i++){
+                display.push(items[i][0]);
+                funcs.push("selectItem");
+            }
+            this.makeMenu({display:display,funcs:funcs,backFunc:"initializeMenu"});
+        },
+        //Load the use item text in the menu
+        selectItem:function(item){
+            if(item){
+                this.p.itemSelected=item;
+            }
+            this.makeMenu(this.p.menus.selectItem);
+        },
+        //When the player selects use item, do the item effect and lower the item amount by 1
+        useItem:function(item){
+            
+        },
+        //Set movingItem to true which makes the next interact change the item location in the player's items property
+        //Pressing back just sets movingItem to false
+        moveItem:function(item){
+            
+        },
+        //Load the yes/no menu for confirming if the user intends to toss this item
+        askTossItem:function(item){
+            this.makeMenu(this.p.menus.askTossItem);
+        },
+        //Minus the inventory by one for this item and load the items screen
+        tossItem:function(){
+            
+        },
+        //Creates the status card and closes the menu
+        showStatus:function(){
+            
+        },
+        //Closes the menu and loads the interaction text for what happens when checking the ground
+        checkGround:function(){
+            
+        },
+        //Resets the player loc to the startLoc and closes then opens the menu again
+        redo:function(){
+            this.p.player.setPos(this.p.user.p.player.p.startLoc);
+            this.p.player.p.modStats.movement=this.p.player.p.stats.movement;
+            this.p.selectorNum=0;
+            this.initializeMenu();
+        },
+        //Loads up the direction triangle that allows the player to select a direction before ending the turn
+        endTurn:function(){
+            this.processInputs=function(){};
+            this.destroy();
+        },
+        //Creates a pointer when 'move' is selected (After getting info from server)
+        move:function(){
+            this.processInputs=function(){};
+            this.destroy();
+        },
+        goForward:function(){
+            if(this[this.p.menu.funcs[this.p.selectorNum]]){
+                this[this.p.menu.funcs[this.p.selectorNum]](this.p.menu.display[this.p.selectorNum]);
+                this.p.selectorNum = 0;
+            }
+        },
+        goBack:function(){
+            if(this[this.p.menu.backFunc]){
+                this[this.p.menu.backFunc]();
+                this.p.selectorNum = 0;
+            }
+        },
+        moveUp:function(){
+            if(this.p.selectorNum-1<0){
+                this.changeSelected(this.p.menu.display.length-1);
+            } else {
+                this.changeSelected(-1);
+            }
+        },
+        moveDown:function(){
+            if(this.p.selectorNum+1>this.p.menu.display.length-1){
+                this.changeSelected(-this.p.menu.display.length+1);
+            } else {
+                this.changeSelected(1);
+            }
+        },
+        processInputs:function(input){
+            if(!this.p.noInput){
+                var p = this.p;
+                if(input['up']){
+                    this.moveUp();
+                    Q.state.get("playerConnection").socket.emit("playerInputs",{playerId:this.p.user.p.playerId,inputs:{up:true,time:input.time}});
+                } else if(input['down']){
+                    this.moveDown();
+                    Q.state.get("playerConnection").socket.emit("playerInputs",{playerId:this.p.user.p.playerId,inputs:{down:true,time:input.time}});
+                    
+                } else if(input['interact']){
+                    this.goForward();
+                    Q.state.get("playerConnection").socket.emit("playerInputs",{playerId:this.p.user.p.playerId,inputs:{interact:true,time:input.time}});
+                    Q.inputs['interact']=false;
+                } else if(input['back']){
+                    this.goBack();
+                    Q.state.get("playerConnection").socket.emit("playerInputs",{playerId:this.p.user.p.playerId,inputs:{back:true,time:input.time}});
+                    Q.inputs['back']=false;
+                }
+                this.p.noInput = true;
+                setTimeout(function(){
+                    p.noInput=false;
+                },100);
+                Q.inputs['up']=false;
+                Q.inputs['down']=false;
+                Q.inputs['interact']= false;
+                Q.inputs['back']=false;
+            }
+        },
+        executeFunc:function(func,props){
+            this[func](props);
+        },
     });
     Q.UI.Text.extend("MenuText",{
         init: function(p){
@@ -449,32 +617,9 @@ Quintus.HUD = function(Q){
                 type:Q.SPRITE_NONE,
                 align:'center'
             });
+            if(this.p.num===0){this.p.color="red";};
         }
     });
-    
-    Q.UI.Container.extend("MenuSelector",{
-        init: function(p){
-            this._super(p,{
-                
-            });
-            this.p.startY=this.p.y;
-        },
-        move:function(curText,maxText,dir,cont){
-            var newTextNum = curText+dir;
-            //Check if we need to loop around
-            if(newTextNum>maxText){newTextNum=0;}else if(newTextNum<0){newTextNum=maxText;};
-            this.p.y=(this.p.startY-cont.p.spacing/2)+(this.p.h*newTextNum)+this.p.spacing/2;
-            return newTextNum;
-        },
-        draw:function(ctx){
-            ctx.beginPath();
-            ctx.lineWidth="8";
-            ctx.strokeStyle="#660033";
-            ctx.rect(-this.p.w/2,-this.p.h/2,this.p.w,this.p.h);
-            ctx.stroke();
-        }
-    });
-    
     
     Q.UI.Container.extend("Card",{
         init: function(p) {

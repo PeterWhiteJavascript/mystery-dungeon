@@ -12,16 +12,19 @@ Q.getTileType=function(x,y){
     
 Q.component("AI", {
     added: function() {
+        this.entity.on("startAI",this,"startAI");
+    },
+    startAI:function(){
         var p = this.entity.p;
         //Get the AI's opponents
         switch(p.ally){
             case "Player":
-                p.opponents = Q(".commonPlayer",1).items.filter(function(obj){
+                p.opponents = Q("Participant",1).items.filter(function(obj){
                     return obj.p.ally==="Enemy";
                 });
                 break;
             case "Enemy":
-                p.opponents = Q(".commonPlayer",1).items.filter(function(obj){
+                p.opponents = Q("Participant",1).items.filter(function(obj){
                     return obj.p.ally==="Player";
                 });
         }
@@ -42,13 +45,14 @@ Q.component("AI", {
         if(p.AI.path&&p.AI.path.length){
             //Set the server AI to the destination
             p.loc=[p.AI.path[p.AI.path.length-1].x,p.AI.path[p.AI.path.length-1].y];
-            //Get the interaction
-            var result = this.entity[p.AI.action[0]](p.AI.action[1]);
-            //Push the result of the action (usually attack)
-            p.AI.action.push(result);
             
-        };
-        //Calculate what happens at the location
+        }
+        //Get the interaction
+        var result = this.entity[p.AI.action[0]](p.AI.action[1]);
+        //Push the result of the action (usually attack)
+        p.AI.action.push(result);
+         
+       //Calculate what happens at the location
         io.sockets.in(p.fileName).emit('AIAction',{AI:p.AI,playerId:p.playerId});
     },
     
@@ -89,7 +93,8 @@ Q.component("AI", {
                 if(!target){target=t;};
             }
             AI = {};
-            AI.action = ["attackTarget",{targetId:AI.playerId,attack:attack,endDir:this.getBestDir([AI.path[AI.path.length-1].x,AI.path[AI.path.length-1].y])}];
+            //Make better logic for best dir after not moving and attacking. Right now, it just looks up
+            AI.action = ["attackTarget",{targetId:target.p.playerId,attack:attack,endDir:"up"}];
             return AI;
         }
         
@@ -184,7 +189,7 @@ Q.component("AI", {
     },
     //Trims the end of the path so that the object doesn't land on another object
     checkPathForObjs:function(path){
-        var objs = Q(".commonPlayer",1).items;
+        var objs = Q("Participant",1).items.concat(Q("IntObj",1).items);
         var ok = false;
         //While there's a player in the way
         while(!ok&&path.length){
@@ -238,8 +243,15 @@ Q.component("AI", {
         }
         //If we're moving somewhere, trim the ends that land on top of friendlies
         var path = this.cutPath(path,p.stats.movement);
-        //Do some AI that determines if we can do a buff or heal (or some other self/ally target move) TODO
-        return {path:path,action:["endTurn",{endDir:this.getBestDir([path[path.length-1].x,path[path.length-1].y])}]};
+        //If we can get close to the enemy
+        if(path.length>0){
+            //Do some AI that determines if we can do a buff or heal (or some other self/ally target move) TODO
+            return {path:path,action:["endTurn",this.getBestDir([path[path.length-1].x,path[path.length-1].y])]};
+        } 
+        //If we can't move to the path closest to the target because there is something in the way and this results in not moving at all.
+        else {
+            return {action:["endTurn","up"]};
+        }
     },
     getOutlineTargets:function(targets){
         var p = this.entity.p;
@@ -375,7 +387,7 @@ Q.component("AI", {
             return "Wall";
         };
         //If there's no wall, check if there's an object that is not itself
-        var objs = Q(".commonPlayer",1).items;
+        var objs = Q("Participant",1).items;
         for(var o=0;o<objs.length;o++){
             //Don't care if this square is occupied by this object itself
             if(objs[o].p.playerId!==this.entity.p.playerId){
@@ -489,7 +501,7 @@ Q.component("AI", {
                 var path = this.entity.getPath(p.loc,check[ii]);
                 var cost = this.getPathCost(path);
                 //Make sure there is a path that's not empty and that path is able to be gone to
-                if(cost<=p.stats.movement){
+                if(cost<=p.modStats.movement){
                     //Set the proper path
                     info[hitsFrom]={cost:cost,path:path};
                     //Check if this is the closest path
@@ -508,121 +520,6 @@ Q.component("AI", {
             curCost+=path[j].weight;
         }
         return curCost;
-    },
-    extend:{
-        getEndFuncs:function(endDir){
-            return [ 
-                {text:[{obj:"Q",func:"addViewport",props:this.p.playerId}]},
-                {text:[{obj:this.p.playerId,func:"faceDirection",props:endDir}]},
-                {text:[{obj:this.p.playerId,func:"endTurn"}]}
-            ];
-        },
-        endTurn:function(props){
-            return this.getEndFuncs(props.endDir);
-        },
-        attackTarget:function(props){
-            var targetIds = props.targetId;
-            var attackInfo = props.attack;
-            var endDir = props.endDir;
-            var targets = [];
-            var target = this.p.opponents.filter(function(obj){
-                return obj.p.playerId===targetIds;
-            })[0];
-            if(target){targets.push(target);};
-            
-            var attack = Q.state.get("attacks").filter(function(obj){
-                return obj.id===attackInfo[0];
-            })[0];
-            //Set the direction we need to be facing
-            this.faceTarget(targets[0].p.loc);
-            var interaction = [
-                {text:[
-                    {obj:this.p.playerId,func:"faceTarget",props:{x:targets[0].p.x,y:targets[0].p.y}},
-                    {obj:this.p.playerId,func:"playAttack",props:this.p.dir},
-                    this.p.name+" used "+attack.name+". "
-                ]}
-                
-            ];
-            //Do this for all targets
-            for(var i_targ=0;i_targ<targets.length;i_targ++){
-                var target = targets[i_targ];
-                //Random number between 1 and 100 
-                var rand = Math.floor(Math.random()*100)+1;
-                var hit;
-                var t = this;
-                var facingValue = this.compareDirection(t,target);
-                rand*=facingValue;
-                rand = Math.floor(rand);
-                //If the attack hits
-                if(rand<=attack.accuracy){
-                    //If the attack does damage
-                    if(attack.power>0){
-                        //Figure out how much damage this attack does 
-                        var damageCalc = Q.attackFuncs.calculateDamage(this,target,attack,facingValue);
-                        //Show the attack text
-                        interaction.push(damageCalc.modText);
-                        //We hit!
-                        if(damageCalc.damage>0){
-                            interaction.push({text:[{obj:"Q",func:"playSound",props:"attack.mp3"},"Hit "+target.p.name+" for "+damageCalc.damage+" damage!"]});
-                            target.lowerHp(damageCalc.damage);
-                            //If the target was defeated
-                            if(target.p.modStats.hp<=0){
-                                interaction.push({text:[{obj:target.p.playerId,func:"dead"},target.p.name+" died."]});
-                                target.p.defeated=true;
-                                target.removeFromTurnOrder(target.p.playerId);
-                                target.checkDrop();
-                                var expText = target.giveExp();
-                                if(expText&&expText.text.length>0){
-                                    interaction.push(expText);
-                                }
-                            }
-                        }
-                    }
-                    
-                    //If the power is 0, then it doesn't do damage so it is a stat
-                    //Also check for the additional effect here
-                    if(attack.effect.length>0){
-                        var rand = Math.ceil(Math.random()*100);
-                        //Check if we get this additional effect
-                        if(rand<=attack.effect[1]){
-                            var effect = attack.effect;
-                            //Who are we targeting
-                            var effectTarget,effectUser;
-                            switch(effect[0]){
-                                case "both":
-                                    effectTarget=target;
-                                    effectUser = this;
-                                    break;
-                                case "enemy":
-                                    effectTarget=target;
-                                    break;
-                                case "self":
-                                    effectTarget=target;//Maybe combine these since you will be 'targeting' yourself
-                                    break;
-                            }
-                            var effectText = Q.attackFuncs.effects[effect[2]](effect[3],effectTarget,effectUser);
-
-                            if(effectText.length>0){
-                                for(kk=0;kk<effectText.length;kk++){
-                                    //interaction.push({playSound:"attack.mp3"},effectText[kk]);
-                                }
-                            }
-                        }
-                    }
-                    hit = true;
-                }
-                //Missed
-                else {
-                    interaction.push({text:[{obj:"Q",func:"playSound",props:"attack.mp3"},"Missed "+target.p.name+"..."]});
-                    hit = false;
-                }
-            }
-            
-            //Finish up with the functions that are called after the text is done
-            var endFuncs = this.getEndFuncs(endDir);
-            interaction.push(endFuncs[0],endFuncs[1],endFuncs[2]);
-            return interaction;
-        }
     }
 });
 

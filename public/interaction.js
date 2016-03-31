@@ -1,7 +1,11 @@
 Quintus.Interaction=function(Q){  
 //An interaction (Talking in the story, and battle text in a battle)
 Q.scene('interaction',function(stage){
-    Q.interactionBox = stage.insert(new Q.InteractionBox({interaction:stage.options.interaction,stage:stage}));
+    var inter = stage.options.interaction;
+    //Convert the object to an array if only one object was passed in
+    if(Q._isObject(inter)){inter=[stage.options.interaction];};
+    
+    Q.interactionBox = stage.insert(new Q.InteractionBox({interaction:inter,stage:stage}));
     Q.interactionBox.cycleInteraction();
     Q.inputs['interact']=false;
 });
@@ -30,7 +34,7 @@ Q.UI.Text.extend("InteractionText",{
             cx:0,
             charNum:0,
             time:0,
-            speed:Q.state.get("textSpeed"),
+            speed:Q.state.get("options").textSpeed,
             label:"_"
         });
         //this.p.x = this.p.pos==="left" ? 300 : Q.width - 300; 
@@ -77,7 +81,7 @@ Q.UI.Container.extend("InteractionBox",{
             canInteract:true
         });
         this.p.y=Q.height-this.p.h;
-        if(Q.state.get("autoScroll")){
+        if(Q.state.get("options").autoScroll){
             this.setAutoScroll();
         }
     },
@@ -99,12 +103,16 @@ Q.UI.Container.extend("InteractionBox",{
     destroyImage:function(){
         if(this.p.image){
             this.p.image.destroy();
+            this.p.image = null;
         }
     },
     done:function(){
-        for(i=0;i<this.children.length;i++){
-            this.children[i].destroy();
+        if(this.children){
+            for(i=0;i<this.children.length;i++){
+                this.children[i].destroy();
+            }
         }
+        Q.clearStage(10);
         this.destroy();
         this.stopAutoScroll();
         Q.interactionBox = false;
@@ -131,23 +139,23 @@ Q.UI.Container.extend("InteractionBox",{
                         if(obj[0]==="Q"){
                             obj = Q;
                         } else if(obj[0]==="e"){
-                            obj = Q("Enemy",1).items.filter(function(o){
-                                return o.p.playerId===obj;
+                            obj = Q("Participant",1).items.filter(function(o){
+                                return o.p.playerId===text.obj;
                             })[0];
                         } else if(obj[0]==="a"){
-                            obj = Q("Ally",1).items.filter(function(o){
-                                return o.p.playerId===obj;
+                            obj = Q("Participant",1).items.filter(function(o){
+                                return o.p.playerId===text.obj;
                             })[0];
                         } 
                     }
                     if(Q._isNumber(obj)){
-                        obj = Q("Player",1).items.filter(function(o){
-                            return o.p.playerId===obj;
+                        obj = Q("Participant",1).items.filter(function(o){
+                            return o.p.playerId===text.obj;
                         })[0];
                     }
                     var func = text.func;
                     //If there's no obj, that means the obj killed itself
-                    if(!obj){return Q.afterDir();}
+                    //if(!obj){return Q.afterDir();}
                     obj[func](text.props);
                     return true;
                 }
@@ -155,14 +163,14 @@ Q.UI.Container.extend("InteractionBox",{
             //Check if this text position has an object
             if(checkObject(this.p.text[this.p.textNum])){
                 this.p.textNum++;
-                this.cycleText();
-                return;
+                return this.cycleText();
             };
             //Show the text if it is text
             if(Q._isString(this.p.text[this.p.textNum])){
                 this.p.textDisplay = this.insert(new Q.InteractionText({text:this.p.text[this.p.textNum],y:this.p.h/2}));
                 this.p.textNum++;
             }
+            if(!this.p.textDisplay){this.p.textNum++;this.cycleInteraction();}
         } 
         else if(this.p.textNum>=this.p.text.length){
             this.p.interactionNum++;
