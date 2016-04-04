@@ -19,9 +19,9 @@ Q.setUpAnimations=function(){
     };
     //Battle sprites
     var toSheet= [
-        ['Fighter','Fighter.png',60,60],
-        ['Pyromancer','Pyromancer.png',60,60],
-        ['Paladin','Paladin.png',70,70]
+        ['fighter','Fighter.png',60,60],
+        ['pyromancer','Pyromancer.png',60,60],
+        ['paladin','Paladin.png',70,70]
     ];
     for(j=0;j<toSheet.length;j++){
         Q.sheet(toSheet[j][0],

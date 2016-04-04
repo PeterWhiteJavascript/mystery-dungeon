@@ -1,121 +1,6 @@
 var quintusServerPlayer = function(Quintus,io) {
 "use strict";
 Quintus.ServerPlayer = function(Q) {
-//This will be taken from the database
-var users = {
-    Saito:{
-        name:"Saito",
-        className:"Fighter",
-        sheet:"Fighter",
-        level:1,
-        exp:0,
-        curHp:20,
-        gender:"M",
-        stats:{
-            hp:5,
-            phys_ofn:4,
-            phys_dfn:4,
-            spec_ofn:1,
-            spec_dfn:2,
-            agility:2,
-
-            strength:4,
-            intellect:1,
-            awareness:3,
-            willpower:2,
-            persuasion:1,
-            fate:1,
-            
-            movement:8
-        },
-        iv:{
-            max_hp:5,
-            phys_ofn:4,
-            phys_dfn:4,
-            spec_ofn:1,
-            spec_dfn:2,
-            agility:2,
-
-            strength:4,
-            intellect:1,
-            awareness:3,
-            willpower:2,
-            persuasion:1,
-            fate:1 
-        },
-        abilities:{
-            Swimmer:1
-        },
-        attacks:[
-            ["Thrust",1],
-            ["Onslaught",1],
-            ["Perturb",1]
-        ],
-        items:[
-            ["Potion",1]
-        ],
-        text:[
-            "Hello, I'm Saito!"
-        ],
-        file:"BigGame"
-    },
-    Estevan:{
-        name:"Estevan",
-        className:"Paladin",
-        sheet:"Paladin",
-        level:1,
-        exp:0,
-        curHp:20,
-        gender:"M",
-        stats:{
-            hp:20,
-            phys_ofn:4,
-            phys_dfn:4,
-            spec_ofn:1,
-            spec_dfn:2,
-            agility:2,
-
-            strength:4,
-            intellect:1,
-            awareness:3,
-            willpower:2,
-            persuasion:1,
-            fate:1,
-            
-            movement:8
-        },
-        iv:{
-            max_hp:5,
-            phys_ofn:4,
-            phys_dfn:4,
-            spec_ofn:1,
-            spec_dfn:2,
-            agility:2,
-
-            strength:4,
-            intellect:1,
-            awareness:3,
-            willpower:2,
-            persuasion:1,
-            fate:1 
-        },
-        abilities:{
-            Swimmer:1
-        },
-        attacks:[
-            ["Thrust",1],
-            ["Incinerate",1],
-            ["Perturb",1]
-        ],
-        items:[
-            ["Potion",1]
-        ],
-        text:[
-            "Hello, I'm Estevan!"
-        ],
-        file:"BigGame"
-    }
-};
 Q.component("endTurnControls",{
     extend:{
         processInputs:function(inputs){
@@ -233,9 +118,19 @@ Q.Sprite.extend("User",{
             obj:null,
             inputs:[]
         });
-        var num=0;
+        var data = this.p.userData;
+        this.p.name = data.name;
+        this.p.stats = data.stats;
+        this.p.level = data.level;
+        this.p.exp = data.exp;
+        this.p.className = data.className;
+        this.p.traits = data.traits;
+        this.p.attacks = data.attacks;
+        this.p.file = data.file;
         //The below code is for debugging. It will count up as long as the user exists(game is still running)
-        /*this.on("step",function(){
+        /*
+        var num=0;
+        this.on("step",function(){
             console.log(num)
             num++;
         });*/
@@ -682,31 +577,44 @@ Q.Sprite.extend("Participant",{
         this.add("commonPlayer");
         //If this is a user controlled participant, we need to get the data from the user
         if(this.p.user){
-            var data = users[this.p.user.p.name];
-            var player = this;
-            var keys = Object.keys(data);
-            //Populate the p property with the data from the database
-            for(var i=0;i<keys.length;i++){
-                player.p[keys[i]]=data[keys[i]];
+            var u = this.p.user.p;
+            this.p.name = u.name;
+            this.p.stats = u.stats;
+            this.p.level = u.level;
+            this.p.exp = u.exp;
+            this.p.className = u.className;
+            this.p.traits = u.traits;
+            
+            var attacks = u.attacks;
+            this.p.attacks = [];
+            for(var i=0;i<attacks.length;i++){
+                if(attacks[i].length===0){continue;};
+                this.p.attacks.push([attacks[i],1]);
             }
-            var p = player.p;
-            p.modStats = {
-                hp:p.curHp,
-                phys_ofn:p.stats.phys_ofn,
-                phys_dfn:p.stats.phys_dfn,
-                spec_ofn:p.stats.spec_ofn,
-                spec_dfn:p.stats.spec_dfn,
-                agility:p.stats.agility,
+            this.p.file = u.file;
+            this.p.gender = u.gender;
+            this.p.modStats = {
+                hp:u.stats.hp,
+                phys_ofn:u.stats.phys_ofn,
+                phys_dfn:u.stats.phys_dfn,
+                spec_ofn:u.stats.spec_ofn,
+                spec_dfn:u.stats.spec_dfn,
+                agility:u.stats.agility,
 
-                strength:p.stats.strength,
-                intellect:p.stats.intellect,
-                awareness:p.stats.awareness,
-                willpower:p.stats.willpower,
-                persuasion:p.stats.persuasion,
-                fate:p.stats.fate,
+                strength:u.stats.strength,
+                intellect:u.stats.intellect,
+                awareness:u.stats.awareness,
+                willpower:u.stats.willpower,
+                persuasion:u.stats.persuasion,
+                fate:u.stats.fate,
                 
-                movement:p.stats.movement
+                movement:u.stats.movement
             };
+            this.p.sheet = u.sheet?u.sheet:u.className;
+            this.p.items = [];
+            this.p.text = "Hello, I'm "+u.name+"!";
+            
+            this.p.stats.movement = 8;
             this.p.ally="Player";
         } 
         //If this is AI
@@ -723,7 +631,7 @@ Q.Sprite.extend("Participant",{
             for(var i_ai=0;i_ai<keys.length;i_ai++){
                 this.p[keys[i_ai]]=classData[keys[i_ai]];
             }
-            this.p.name = this.p.data.name?this.p.data.name:this.p.className+" "+this.p.playerId;
+            this.p.name = this.p.data.name?this.p.data.name:classData.name+" "+this.p.playerId;
             delete(this.p.data);
             delete(this.p.classData);
             //Generate some random iv's
@@ -731,7 +639,7 @@ Q.Sprite.extend("Participant",{
             //Now that we have the base stats and ivs, generate the stats
             var p = this.p;
             p.stats = {
-                hp:(p.base.max_hp*p.level*2)+p.iv.max_hp,
+                hp:(p.base.hp*p.level*2)+p.iv.hp,
                 phys_ofn:((p.base.phys_ofn)/2)*p.level*p.iv.phys_ofn*2,
                 phys_dfn:((p.base.phys_dfn)/2)*p.level*p.iv.phys_dfn*2,
                 spec_ofn:((p.base.spec_ofn)/2)*p.level*p.iv.spec_ofn*2,
@@ -777,7 +685,7 @@ Q.Sprite.extend("Participant",{
                 //If there's an attack in this slot
                 if(attack.length>0){
                     //Get the attack info
-                    info = attackData.filter(function(obj){return obj.name===attack;})[0];
+                    info = attackData.filter(function(obj){return obj.id===attack;})[0];
                     //Figure out which is the bonus stat for this attack
                     var stat = info.stat_type;
                     //Calculate the AI's attcak level
@@ -794,7 +702,7 @@ Q.Sprite.extend("Participant",{
     },
     generateIvs:function(){
         return {
-            max_hp:Math.ceil(Math.random()*10),
+            hp:Math.ceil(Math.random()*10),
             phys_ofn:Math.ceil(Math.random()*10),
             phys_dfn:Math.ceil(Math.random()*10),
             spec_ofn:Math.ceil(Math.random()*10),

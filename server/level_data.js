@@ -316,17 +316,17 @@ Quintus.ServerLevelData = function(Q) {
                     },
                     allies:[
                         [
-                            {name:"Old Wizard",className:"Pyromancer",loc: [14,13],level: 10,dir: "left",traits:["aggressive","genius"],final:[[14,13],"up"]},
-                            {name:"Young Wizard",className:"Pyromancer",loc: [13,13],level: 10,dir: "right",traits:["aggressive","genius"],final:[[13,13],"up"]},
+                            {name:"Old Wizard",className:"pyromancer",loc: [14,13],level: 10,dir: "left",traits:["aggressive","genius"],final:[[14,13],"up"]},
+                            {name:"Young Wizard",className:"pyromancer",loc: [13,13],level: 10,dir: "right",traits:["aggressive","genius"],final:[[13,13],"up"]},
                         ]
                     ],
                     enemies:[
                         [
-                            {className: "Fighter",loc: [9,10],level: 1,dir: "right",final:[[9,10],"down"]},
-                            {className: "Fighter",loc: [9,11],level: 1,dir: "right",final:[[9,11],"down"]},
-                            {className: "Fighter",loc: [12,9],level: 1,dir: "down",final:[[12,9],"down"]},
-                            {className: "Fighter",loc: [14,9],level: 1,dir: "down",final:[[14,9],"down"]},
-                            {className: "Fighter",loc: [16,10],level: 1,dir: "left",final:[[16,10],"left"]}
+                            {className: "fighter",loc: [9,10],level: 1,dir: "right",final:[[9,10],"down"]},
+                            {className: "fighter",loc: [9,11],level: 1,dir: "right",final:[[9,11],"down"]},
+                            {className: "fighter",loc: [12,9],level: 1,dir: "down",final:[[12,9],"down"]},
+                            {className: "fighter",loc: [14,9],level: 1,dir: "down",final:[[14,9],"down"]},
+                            {className: "fighter",loc: [16,10],level: 1,dir: "left",final:[[16,10],"left"]}
                         ]
                     ],
                     pickups:[
@@ -354,27 +354,27 @@ Quintus.ServerLevelData = function(Q) {
                     },
                     allies:[
                         [
-                            {name:"Old Wizard",className:"Pyromancer",loc: [36,6],level: 100,dir: "left",traits:["aggressive","genius"],final:[[13,15],"left"]},
-                            {name:"Young Wizard",className:"Pyromancer",loc: [36,7],level: 100,dir: "left",traits:["aggressive","genius"],final:[[13,16],"left"]}
+                            {name:"Old Wizard",className:"pyromancer",loc: [36,6],level: 100,dir: "left",traits:["aggressive","genius"],final:[[13,15],"left"]},
+                            {name:"Young Wizard",className:"pyromancer",loc: [36,7],level: 100,dir: "left",traits:["aggressive","genius"],final:[[13,16],"left"]}
                         ]
                     ],
                     enemies:[
                         [
-                            {name:"Obama",className: "Fighter",loc: [15,6], level: 20, dir:"right",traits:["aggressive","genius"],final:[[17,14],"left"]}
+                            {name:"Obama",className: "fighter",loc: [15,6], level: 20, dir:"right",traits:["aggressive","genius"],final:[[17,14],"left"]}
                         ],
                         [
-                            {className: "Fighter",loc: [10,17],level: 2,dir: "up",final:[[10,14],"right"]},
-                            {className: "Fighter",loc: [10,17],level: 2,dir: "up",final:[[10,15],"right"]},
-                            {className: "Fighter",loc: [10,17],level: 2,dir: "up",final:[[10,16],"right"]},
+                            {className: "fighter",loc: [10,17],level: 2,dir: "up",final:[[10,14],"right"]},
+                            {className: "fighter",loc: [10,17],level: 2,dir: "up",final:[[10,15],"right"]},
+                            {className: "fighter",loc: [10,17],level: 2,dir: "up",final:[[10,16],"right"]},
                             
-                            {className: "Fighter",loc: [19,17],level: 2,dir: "up",final:[[18,15],"left"]},
-                            {className: "Fighter",loc: [19,17],level: 2,dir: "up",final:[[18,16],"left"]},
+                            {className: "fighter",loc: [19,17],level: 2,dir: "up",final:[[18,15],"left"]},
+                            {className: "fighter",loc: [19,17],level: 2,dir: "up",final:[[18,16],"left"]},
                        
-                            {className: "Fighter",loc: [19,13],level: 2,dir: "down",final:[[18,14],"left"]},
+                            {className: "fighter",loc: [19,13],level: 2,dir: "down",final:[[18,14],"left"]},
                         
-                            {className: "Fighter",loc: [14,11],level: 2,dir: "right",final:[[15,13],"down"]},
-                            {className: "Fighter",loc: [14,11],level: 2,dir: "right",final:[[16,13],"down"]},
-                            {className: "Fighter",loc: [14,11],level: 2,dir: "right",final:[[17,13],"down"]}
+                            {className: "fighter",loc: [14,11],level: 2,dir: "right",final:[[15,13],"down"]},
+                            {className: "fighter",loc: [14,11],level: 2,dir: "right",final:[[16,13],"down"]},
+                            {className: "fighter",loc: [14,11],level: 2,dir: "right",final:[[17,13],"down"]}
                         ]
                     ],
                     pickups:[
@@ -395,19 +395,19 @@ Quintus.ServerLevelData = function(Q) {
                     },
                     allies:[
                         [
-                            //{name:"Old Wizard",className:"Pyromancer",loc: [14,16],level: 100,dir: "left",traits:["aggressive","genius"],final:[[14,16],"up"]},
-                            {name:"Young Wizard",className:"Pyromancer",loc: [13,16],level: 100,dir: "left",traits:["aggressive","genius"],final:[[13,16],"up"]},
+                            //{name:"Old Wizard",className:"pyromancer",loc: [14,16],level: 100,dir: "left",traits:["aggressive","genius"],final:[[14,16],"up"]},
+                            {name:"Young Wizard",className:"pyromancer",loc: [13,16],level: 100,dir: "left",traits:["aggressive","genius"],final:[[13,16],"up"]},
                         ]
                     ],
                     enemies:[
                         [/*
-                            {className: "Fighter",loc: [11,9],level: 2,dir: "up",final:[[9,10],"down"]},
-                            {className: "Fighter",loc: [12,9],level: 2,dir: "up",final:[[11,10],"down"]},
-                            {className: "Fighter",loc: [13,9],level: 2,dir: "up",final:[[13,10],"down"]}*/
+                            {className: "fighter",loc: [11,9],level: 2,dir: "up",final:[[9,10],"down"]},
+                            {className: "fighter",loc: [12,9],level: 2,dir: "up",final:[[11,10],"down"]},
+                            {className: "fighter",loc: [13,9],level: 2,dir: "up",final:[[13,10],"down"]}*/
                             
                         ],
                         [
-                            {name:"Obama",className: "Fighter",loc: [15,6],level: 20,dir:"right",final:[[13,12],"down"]}
+                            {name:"Obama",className: "fighter",loc: [15,6],level: 20,dir:"right",final:[[13,12],"down"]}
                         ]
                     ],
                     pickups:[

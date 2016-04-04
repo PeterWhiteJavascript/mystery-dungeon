@@ -6,11 +6,321 @@ and open the template in the editor.
 -->
 <html>
     <head>
-        <title>TODO supply a title</title>
+        <title>Create an Account</title>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        
+        <link rel="stylesheet" href="css/tables.css" />
+        
+        <script src='lib/quintus.js'></script>
+        <script src="socket.io/socket.io.js"></script>
     </head>
     <body>
-        <div>TODO write content</div>
+        <script src="lib/require.min.js"></script>
+        <script>
+            window.addEventListener("load", function() {
+                var Q = window.Q = Quintus({audioSupported: ['mp3','ogg','wav']})
+                        .setup({ development: true});
+                Q.load("_json/classes.json, _json/attacks.json, _json/abilities.json",function(){
+                    //Show the set properties button after the json's have loaded
+                    document.getElementById("set_props").style.display="block";
+                    function calculateValues(name,trait1,trait2,baseClassStats){
+                        function calculateValues(trait,mod){
+                            var values = [];
+                            //hp, phys_ofn, phys_dfn, spec_ofn, spec_dfn, 
+                            //strength, agility, intellect, 
+                            //awareness, willpower, persuasion, fate
+                            switch(trait){
+                                case "aggressive":
+                                    values = [8,7,5,2,5,8,6,1,9,5,2,2];
+                                    break;
+                                case "defensive":
+                                    values = [9,3,8,3,8,5,3,3,8,8,1,1];
+                                    break;
+                                case "passive":
+                                    values = [5,5,5,5,5,6,7,7,8,1,1,5];
+                                    break;
+                                case "neutral":
+                                    values = [5,5,5,5,5,5,5,5,5,5,5,5];
+                                    break;
+                                case "greedy":
+                                    values = [3,0,2,0,2,3,5,9,9,9,9,9];
+                                    break;
+                                case "intelligent":
+                                    values = [6,1,1,7,7,3,3,9,6,4,9,4];
+                                    break;
+                                case "assassin":
+                                    values = [2,9,3,0,5,3,9,6,9,3,7,4];
+                                    break;
+                                case "ranger":
+                                    values = [2,8,2,8,2,7,8,2,6,3,4,8];
+                                    break;
+                                case "trickster":
+                                    values = [7,0,7,0,7,0,4,7,7,6,9,6];
+                                    break;
+                                case "pushy":
+                                    values = [9,7,5,7,5,9,3,1,2,7,2,3];
+                                    break;
+                                case "wrangler":
+                                    values = [9,5,7,5,7,9,3,1,2,7,2,3];
+                                    break;
+                                case "genius":
+                                    values = [4,0,4,9,5,1,4,9,9,3,9,3];
+                                    break;
+                                case "wizard":
+                                    values = [3,0,2,9,9,0,3,9,6,5,9,5];
+                                    break;
+                                case "focussed":
+                                    values = [9,3,5,3,5,5,5,5,7,7,3,3];
+                                    break;
+                                case "hardy":
+                                    values = [9,1,9,1,9,3,1,1,6,9,2,9];
+                                    break;
+                            }
+                            //Gets the sum of the array (to confirm that it is indeed 60 points)
+                            var v = values.reduce(function(previousValue, currentValue) {
+                                return previousValue + currentValue;
+                            });
+                            console.log(trait+" has "+v+" points.");
+                            return values.map(function(val){
+                                return Math.floor(val*=mod);
+                            });
+                        }
+                        function addValues(v1,v2){
+                            return v1+=v2;
+                        };
+                        var val1 = calculateValues(trait1,1);
+                        var val2 = calculateValues(trait2,0.5);
+                        
+                        var stats = [];
+                        //Add the two trait values arrays together
+                        for(var i=0;i<val1.length;i++){
+                            stats.push(addValues(val1[i],val2[i]));
+                        };
+                        var sts = {};
+                        var ids = ["hp","phys_ofn","phys_dfn","spec_ofn","spec_dfn","agility","strength","intellect","awareness","willpower","persuasion","fate"];
+                        //Need to add the values to the innerHTML
+                        document.getElementById("p_name").innerHTML = name;
+                        for(var i=0;i<ids.length;i++){
+                            var num = parseInt(baseClassStats[ids[i]])+stats[i];
+                            var elm = document.getElementById(ids[i]);
+                            elm.innerHTML = num;
+                            sts[ids[i]]=num;
+                        }
+                        return sts;
+                    }
+                    Q.setProperties=function(){
+                        //Check to see if the form is valid
+                        if(document.getElementById('name').value.length===0){
+                            alert("Please name your character!");
+                            return;
+                        }
+                        if(document.getElementById('login_string').value.length===0){
+                            alert("Please give a login string (and maybe write it down somewhere)!");
+                            return;
+                        }
+                        if(document.getElementById('trait1').value===document.getElementById('trait2').value){
+                            alert("Please select two different traits and try again!");
+                            return;
+                        }
+                        //End check
+                        
+                        var fields = ["name","class_name","trait1","trait2","login_string","gender","text"];
+                        var props = {};
+                        var curClass = Q.state.get("classes").filter(function(cl){
+                            return cl.id===document.getElementById("class_name").value;
+                        })[0];
+                        var elements = [];
+                        for(var i=0;i<fields.length;i++){
+                            var element = document.getElementById(fields[i]);
+                            elements.push(element.value);
+                            props[fields[i]]=element.value;
+                        }
+                        //Calculates the character values and draws them in the table
+                        var stats = calculateValues(props['name'],props['trait1'],props['trait2'],curClass.base);
+                        
+                        //Set the character object
+                        Q.state.set("character",{
+                            name:props['name'],
+                            stats:stats,
+                            className:props['class_name'],
+                            traits:[props['trait1'],props['trait2']],
+                            attacks:curClass.attacks,
+                            login:props['login_string'],
+                            file:{scene:"Prologue_00",name:"BigGame"},
+                            gender:props['gender'],
+                            text:props['text'],
+                            level:1,
+                            exp:0
+                        });
+                        var attacks = Q.state.get("attacks");
+                        var aDiv = document.getElementById("attack_values");
+                        //Clear any attacks from previous generation
+                        while (aDiv.firstChild) {
+                          aDiv.removeChild(aDiv.firstChild);
+                        }
+                        //Create the attacks tables
+                        //Loop through each attack
+                        for(var i=0;i<curClass.attacks.length;i++){
+                            var attack = attacks.filter(function(att){
+                                return att.id===curClass.attacks[i];
+                            })[0];
+                            if(attack){
+                                var table = document.createElement("table");
+                                var title = document.createElement("tr");
+                                var data = document.createElement("tr");
+                                var headers = ["Name","Power","Accuracy","Range","Area","Category","Stat Type","Targets","Effect","Description"];
+                                var info = ["name","power","accuracy","range","area","category","stat_type","targets","effect","description"];
+                                for(var j=0;j<headers.length;j++){
+                                    var head = document.createElement("th");
+                                    head.innerHTML = headers[j];
+                                    title.appendChild(head);
+                                    var inf = document.createElement("th");
+                                    inf.innerHTML = attack[info[j]];
+                                    data.appendChild(inf);
+                                }
+                                table.appendChild(title);
+                                table.appendChild(data);
+                                aDiv.appendChild(table);
+                            }
+                        }
+                        //Show the save character button
+                        document.getElementById("save_character").style.display="block";
+                    };
+                    
+                    Q.saveCharacter=function(){
+                        var character = Q.state.get("character");
+                        if(character.name.length<=0){
+                            alert("Please fill out the name field and click set properties!");
+                            return;
+                        };
+                        if(character.login.length<=0){
+                            alert("Please fill out the login field and click set properties!");
+                            return;
+                        };
+                        //Emit the character to the server (This will happen at a different stage later)
+                        var id = Q.state.get("character").name+Date.now();
+                        Q.state.get("socket").emit("createAccount",{char:Q.state.get("character"),id:id});
+                        window.location.href='index.html';
+                    };
+                    Q.state.set("classes",Q.assets['_json/classes.json']);
+                    Q.state.set("attacks",Q.assets['_json/attacks.json']);
+                    Q.state.set("abilities",Q.assets['_json/abilities.json']);
+                    
+                    require(['socket.io/socket.io.js']);
+                    var socket = io.connect();
+                    Q.state.set("socket",socket);
+                });
+            });
+            
+            
+        </script>
+        
+        <h1>Fill out all of the fields</h1>
+        <div id="main">
+            <form id="form">
+                <fieldset>
+                <h2>Login String</h2>
+                <h3>For now, this string is what you'll use to load your character in the game (Proper login is not complete)</h3>
+                <input type="text" id="login_string" style='width:400px;' value=""/>
+                <h2>Name</h2>
+                <input type="text" id="name" style='width:400px;' value=""/>
+                <br />
+                <h2>Class Name</h2>
+                <select id="class_name">
+                    <option value="fighter">Fighter</option>
+                    <option value="bio_caster">Bio Caster</option>
+                    <option value="hydraulic">Hydraulic</option>
+                    <option value="pyromancer">Pyromancer</option>
+                    <option value="paladin">Paladin</option>
+                    <option value="wretchen">Wretchen</option>
+                </select>
+                <br />
+                <h2>Traits</h2>
+                <select id="trait1">
+                    <option value="aggressive">Aggressive</option>
+                    <option value="defensive">Defensive</option>
+                    <option value="passive">Passive</option>
+                    <option value="neutral">Neutral</option>
+                    <option value="greedy">Greedy</option>
+                    <option value="intelligent">Intelligent</option>
+                    <option value="assassin">Assassin</option>
+                    <option value="ranger">Ranger</option>
+                    <option value="trickster">Trickster</option>
+                    <option value="pushy">Pushy</option>
+                    <option value="wrangler">Wrangler</option>
+                    <option value="genius">Genius</option>
+                    <option value="wizard">Wizard</option>
+                    <option value="focussed">Focussed</option>
+                    <option value="hardy">Hardy</option>
+                </select>
+                <select id="trait2">
+                    <option value="aggressive">Aggressive</option>
+                    <option value="defensive">Defensive</option>
+                    <option value="passive">Passive</option>
+                    <option value="neutral">Neutral</option>
+                    <option value="greedy">Greedy</option>
+                    <option value="intelligent">Intelligent</option>
+                    <option value="assassin">Assassin</option>
+                    <option value="ranger">Ranger</option>
+                    <option value="trickster">Trickster</option>
+                    <option value="pushy">Pushy</option>
+                    <option value="wrangler">Wrangler</option>
+                    <option value="genius">Genius</option>
+                    <option value="wizard">Wizard</option>
+                    <option value="focussed">Focussed</option>
+                    <option value="hardy">Hardy</option>
+                </select>
+                <br />
+                <h2>Gender</h2>
+                <select id="gender">
+                    <option value="M">Male</option>
+                    <option value="F">Female</option>
+                </select>
+                <h2>Player Text</h2>
+                <input type="text" id="text" style='width:400px;' placeholder="..." value=""/>
+                </fieldset>
+            </form>
+            <button id="set_props" style="display:none" onclick="Q.setProperties();">Set Properties</button>
+            <button id="save_character" style="display:none" onclick="Q.saveCharacter();">Save Character</button>
+        </div>
+        <h2>Character Values</h2>
+        <div id="character_values">
+            <table>
+            <tr>
+                <th>Name</th>
+                <th>Hit Points</th>
+                <th>Physical Offense</th>
+                <th>Physical Defense</th>
+                <th>Special Offense</th>
+                <th>Special Defense</th>
+                <th>Agility</th>
+                <th>Strength</th>
+                <th>Intellect</th>
+                <th>Awareness</th>
+                <th>Willpower</th>
+                <th>Persuasion</th>
+                <th>Fate</th>
+            </tr>
+            <tr>
+                <th id="p_name"></th>
+                <th id="hp"></th>
+                <th id="phys_ofn"></th>
+                <th id="phys_dfn"></th>
+                <th id="spec_ofn"></th>
+                <th id="spec_dfn"></th>
+                <th id="agility"></th>
+                <th id="strength"></th>
+                <th id="intellect"></th>
+                <th id="awareness"></th>
+                <th id="willpower"></th>
+                <th id="persuasion"></th>
+                <th id="fate"></th>
+            </tr>
+            </table>
+        </div>
+        <h2>Attacks</h2>
+        <div id="attack_values">
+        </div>
     </body>
 </html>

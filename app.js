@@ -3,9 +3,14 @@ var app = express();
 var server = require('http').Server(app);
 var io = require('socket.io')(server);
 
+var fs = require('fs');
+
 app.use(express.static(__dirname + '/public'));
 app.get('/', function(req, res){
     res.render('/index.html');
+});
+app.get('/', function(req, res){
+    res.render('/create_account.html');
 });
 var Quintus = require("./public/lib/quintus.js");
 
@@ -31,6 +36,7 @@ Q.state.set("classes",require("./public/data/_json/classes.json"));
 Q.state.set("expNeeded",require("./public/data/_json/exp_needed.json"));
 Q.state.set("items",require("./public/data/_json/items.json"));
 Q.state.set("abilities",require("./public/data/_json/abilities.json"));
+Q.state.set("userData",require("./public/data/_json/users.json"));
 
 Q.state.set("menus",require("./public/data/_json/menus.json"));
 
@@ -85,7 +91,7 @@ io.on('connection', function (socket) {
                     saveData.users.splice(i,1);
                 }
             }
-            var users = Q.state.get("users")
+            var users = Q.state.get("users");
             for(var i=0;i<users.length;i++){
                 if(users[i]===userId){
                     users.splice(i,1);
@@ -125,12 +131,15 @@ io.on('connection', function (socket) {
             files[file.name]=saveData;
         }
         data.socket=socket;
+        var userData = Q.state.get("userData").filter(function(us){
+            return us.login===data['login'];
+        })[0];
         //Create a new user which keeps a copy of the current saveData
-        var user = new Q.User({playerId:data['playerId'],socket:socket,file:data['file'],name:data['name'],saveData:saveData});
+        var user = new Q.User({file:file,playerId:userId,socket:socket,userData:userData,saveData:saveData});
         //Set the socket id
         //player.p.socketId=socket.id;
         //Add the player to the saveData
-        setPlayer(data['playerId'],user);
+        setPlayer(userId,user);
         //Leave the lobby as we are going to the main game now
         socket.leave('login');
         //Join the file
@@ -142,9 +151,9 @@ io.on('connection', function (socket) {
         var levelData = Q.state.get("levelData");
         var users = levelData.getUsersToSend(saveData.users);
         var u = levelData.getUsersToSend([user])[0];
-        socket.emit(saveData.file.name).emit("goToLobby",{player:u,players:users});
+        socket.emit(saveData.file.name).emit("goToLobby",{user:u,users:users});
         //Tell all other connected clients in this file that I have joined the lobby
-        socket.broadcast.to(saveData.file.name).emit('playerJoinedLobby',{player:u});
+        socket.broadcast.to(saveData.file.name).emit('playerJoinedLobby',{user:u});
     });
     //This runs after the first player in the lobby presses start
     socket.on("startGame",function(){
@@ -222,9 +231,41 @@ io.on('connection', function (socket) {
             });
         }
     });
-    //Create account
-    socket.on("createAccount",function(){
+    //create_account.html
+    socket.on("createAccount",function(data){
        //Process the html form that was submitted
+        var char = JSON.stringify(data['char']);
+        fs.writeFile("server/users/"+data['id']+".json",char, function(err) {
+            if(err) {
+                return console.log(err);
+            }
+        });
+        fs.readdir("server/users", function(err, items) {
+            //arr stores all users data
+            var arr = [];
+            //The current file we're on
+            var num = 0;
+            //Loop through the files in the directory
+            for (var i=0; i<items.length; i++) {
+                //What should we do with the file?
+                fs.readFile("server/users/"+items[i],function(err,dat){
+                    if(err) throw err;
+                    var user = JSON.parse(dat);
+                    arr.push(user);
+                    num++;
+                    //This means that this is the last file.
+                    //We can now write the data to the master file
+                    if(num===items.length){
+                        var d = JSON.stringify(arr);
+                        fs.writeFile("public/data/_json/users.json",d, function(err) {
+                            if(err) {
+                                return console.log(err);
+                            }
+                        });
+                    }
+                });
+            }
+        });
     });
 });
 

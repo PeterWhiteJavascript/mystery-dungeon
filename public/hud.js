@@ -484,7 +484,10 @@ Quintus.HUD = function(Q){
             var display = [];
             var funcs = [];
             for(var i=0;i<attacks.length;i++){
-                display.push(attacks[i][0]);
+                var attack = Q.state.get("attacks").filter(function(att){
+                    return att.id===attacks[i][0];
+                })[0];
+                display.push(attack.name);
                 funcs.push("selectAttack");
             }
             this.makeMenu({display:display,funcs:funcs,backFunc:"initializeMenu"});
@@ -726,8 +729,11 @@ Quintus.HUD = function(Q){
             ];
             var st = data.stats;
             var ms = data.modStats;
+            var classData= Q.state.get("classes").filter(function(cl){
+                return cl.id===data.className;
+            })[0];
             var statValues = [
-                data.className,
+                classData.name,
                 ms.hp+"/"+st.hp,
                 ms.phys_ofn+" ("+st.phys_ofn+")",
                 ms.phys_dfn+" ("+st.phys_dfn+")",

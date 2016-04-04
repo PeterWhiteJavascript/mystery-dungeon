@@ -77,14 +77,14 @@ require(objectFiles, function () {
         //Gets called when another user joins the lobby
         socket.on("playerJoinedLobby",function(data){
             //Push the connected player into the players
-            Q.state.get("players").push(data['player']);
+            Q.state.get("players").push(data['user']);
             //Make sure to update who is in the lobby
             Q.state.trigger("change.players");
         });
         //Gets called when the user logs in
         //This sends the user to the lobby
         socket.on('goToLobby', function (data) {
-            Q.state.set("players",data['players']);
+            Q.state.set("players",data['users']);
             var host = false;
             //This is the first one here
             if(Q.state.get("players").length===1){
@@ -99,9 +99,9 @@ require(objectFiles, function () {
             //Clear the first scene
             Q.clearStage(1);
             //Start the scene
-            Q.startScene(data);
+            //Q.startScene(data);
             //Uncomment this and comment the above to go the the battle instantly
-            //Q.readyForBattle();
+            Q.readyForBattle();
         });
         //Called when all players must now place their units
         socket.on("startedBattle",function(data){
@@ -229,13 +229,27 @@ require(objectFiles, function () {
             }
         });
     };
+    
+    //When the user presses 'login' in the html
+    Q.login = function(){
+        var input = document.getElementById("login_string");
+        Q.load("_json/users.json",function(){
+            var users = Q.assets['_json/users.json'];
+            var user = users.filter(function(us){
+                return us.login===input.value;
+            })[0];
+            if(user){
+                Q.toLobby(user.login,user.file);
+            } else {
+                alert("That login didn't work!");
+            }
+        });
+    };
 
-    Q.toLobby = function(name,file){
+    Q.toLobby = function(login,file){
         //Get rid of the login
-        var div = document.getElementById('login');
-        document.getElementById('main').removeChild(div);
-        var div = document.getElementById('create_account');
-        document.getElementById('main').removeChild(div);
+        document.getElementById('main').removeChild(document.getElementById('login'));
+        document.getElementById('main').removeChild(document.getElementById('create_account'));
         //Show the "loading" animation
         var loading = Q.stage(2).insert(new Q.Sprite({
             x:0,y:0,
@@ -274,7 +288,7 @@ require(objectFiles, function () {
                 loading.destroy();
                 Q.state.get("playerConnection").socket.emit('toLobby', { 
                     playerId:Q.state.get("playerConnection").id, 
-                    name:name,
+                    login:login,
                     file:file
                 });
             });
@@ -282,7 +296,17 @@ require(objectFiles, function () {
         //});
     };
     Q.loadCreateAccountForm=function(){
+        document.getElementById('main').style.display='none';
+        document.getElementById('login').style.display='none';
         document.getElementById('quintus').style.display='none';
+        var form = document.createElement("form");
+        form.setAttribute("id", "create_account_form");
+        document.body.appendChild(form);
+
+        var name = document.createElement("INPUT");
+        name.setAttribute("type", "text");
+        name.setAttribute("value", "");
+        document.getElementById("create_account_form").appendChild(name);
         
         //Q.state.get("playerConnection").socket.emit("createAccount");
     };
